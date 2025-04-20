@@ -1,0 +1,13 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.DS_Store
+._*
+data-raw/
+data/
+doc/
+R/deprecated/
+R/dev/
+fig/
+.Rprofile

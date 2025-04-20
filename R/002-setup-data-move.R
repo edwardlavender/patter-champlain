@@ -1,0 +1,61 @@
+###########################
+###########################
+#### setup-data-move.R
+
+#### Aims
+# 1) Sets movement datasets
+
+#### Prerequisites
+# 1) Movement data provided by Blanchfield et al. (2023)
+
+
+###########################
+###########################
+#### Set up 
+
+#### Wipe workspace 
+rm(list = ls())
+
+#### Set global options
+Sys.setenv("JULIA_SESSION" = FALSE)
+
+#### Load essential packages
+library(proj.verse)
+library(data.table)
+files_source_r(here_src())
+
+#### Load data
+blanchfield <- fread(here_data_raw("model-move", "blanchfield-et-al-2023", 
+                                   "Alexie Accelerometer Data 20250307.csv"))
+
+
+###########################
+###########################
+#### Setup data
+
+# Examine raw data
+head(blanchfield)
+
+# Clean data.table
+blanchfield <- 
+  blanchfield |> 
+  select(individual_id = Transmitter, 
+         timestamp = DateTime_MST, 
+         accel = Accel) |> 
+  as.data.table()
+
+# Quality checks
+hist(blanchfield$accel, breaks = 100, xlim = range(blanchfield$accel))
+nrow(blanchfield)            # 632,503
+table(blanchfield$accel > 2) # 6484
+table(blanchfield$accel > 3) # 3744
+table(blanchfield$accel > 4) # 2567
+table(blanchfield$accel > 5)
+
+# Write to file
+qs::qsave(blanchfield, here_data("supp", "model-move", "blanchfield.qs"))
+
+
+#### End of code. 
+###########################
+###########################
