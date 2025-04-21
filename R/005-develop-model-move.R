@@ -366,6 +366,7 @@ if (requireNamespace("flapper", quietly = TRUE)) {
 #### Define parameters
 # TO DO
 pars_model_move <- list(shape = 3.0, scale = 30.0, mobility = 350, phi = 1.2)
+qs::qsave(pars_model_move, here_input("pars-model-move.qs"))
 
 #### Build validity map(s)
 mobility <- pars_model_move$mobility

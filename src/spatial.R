@@ -1,4 +1,4 @@
-if (Sys.getenv("JULIA_SESSION") == "FALSE") {
+if (!patter:::julia_session()) {
   
   # Convert shapefile to SpatRaster
   as_SpatRaster <- function(.x, .simplify = NULL, .utm = NULL,

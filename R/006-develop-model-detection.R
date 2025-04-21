@@ -57,12 +57,20 @@ ggplot(data.frame(x = c(0, receiver_gamma)), aes(x = x)) +
 
 ###########################
 ###########################
-#### Update moorings
+#### Analyse Klinard et al. (2019) datasets
 
 # TO DO
-moorings[, receiver_alpha := 2.25]
-moorings[, receiver_beta := -0.0022]
-moorings[, receiver_gamma := 7000]
+
+###########################
+###########################
+#### Record parameters
+
+pars_model_obs <- list(receiver_alpha = 2.25, 
+                       receiver_beta = -0.0022, 
+                       receiver_gamma = 7000)
+
+qs::qsave(pars_model_obs, 
+          here_input("pars-model-obs.qs"))
 
 
 #### End of code. 

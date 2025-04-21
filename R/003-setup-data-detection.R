@@ -25,6 +25,7 @@ library(proj.verse)
 library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
 library(lubridate)
 library(tictoc)
 files_source_r(here_src())
@@ -41,12 +42,46 @@ detections <- readRDS(here_data_raw_mf("lkt_detections_2013-2017.rds"))
 ###########################
 #### Identify fish 
 
-#### Define fish & lengths 
+#### Define fish (id, size, tagging location)
+# TO DO
+# * Where are tagging dates recorded?
+# * (We should focus on fish within the time span of detections)
 fish <- 
   detections |> 
   group_by(animal_id) |> 
-  summarise(len = length[1] / 1000, 
-            nlen = n_distinct(length)) |> 
+  summarise(individual_id = animal_id[1], 
+            len = length[1] / 1000, 
+            lat = deploy_lat[1], 
+            lon = deploy_long[1],
+            # Checks 
+            nlen = n_distinct(length), 
+            nlat = n_distinct(lat), 
+            nlon = n_distinct(lon)
+            ) |> 
+  as.data.table()
+# Define tagging locations (UTM)
+xy <- 
+  cbind(fish$lon, fish$lat) |> 
+  terra::vect(crs = "EPSG:4326") |> 
+  terra::project(epsg_utm) |> 
+  terra::crds()
+fish[, x := xy[, 1]]
+fish[, y := xy[, 2]]
+# Check tagging locations
+stopifnot(all(!is.na(terra::extract(map, xy)[, 1])))
+terra::plot(map)
+points(xy)
+
+#### Checks
+# Each individual is associated with one length (presumably length @ tagging)
+# deploy_lat and deploy_long seem to refer to fish tagging locations
+stopifnot(all(fish$nlen == 1L))
+stopifnot(all(fish$nlat == 1L))
+stopifnot(all(fish$nlon == 1L))
+
+#### Clean up
+fish |> 
+  select(individual_id, len, x, y, lon, lat) |> 
   as.data.table()
 
 #### Comments
@@ -78,8 +113,18 @@ moorings <-
          receiver_int = lubridate::interval(receiver_start, receiver_end),
          receiver_x = rxy[, 1],
          receiver_y = rxy[, 2]) |> 
-  select(receiver_id, receiver_sn, receiver_start, receiver_end, receiver_int, receiver_x, receiver_y) |>
+  select(receiver_id, receiver_sn, receiver_start, receiver_end, 
+         receiver_int, receiver_x, receiver_y) |>
   as.data.frame()
+
+#### Check deployment periods
+ggplot(moorings) +
+  geom_segment(aes(
+    x    = receiver_start,
+    xend = receiver_end,
+    y    = factor(receiver_id),
+    yend = factor(receiver_id)
+  ), size = 2)
 
 #### Add detection probability parameters
 # This is implemented later
@@ -137,12 +182,26 @@ detections <- detections[!is.na(receiver_id), ]
 ###########################
 #### Clean up
 
+# Define study period
+study_start <- min(detections$timestamp)
+study_end   <- max(detections$timestamp)
+study_int   <- lubridate::interval(study_start, study_end)
+
+#### Clean up fish 
+# TO DO
+# (Focus on fish tagged in study period)
+
 #### Clean up moorings 
 head(moorings)
+nrow(moorings)
 moorings <- 
   moorings |> 
+  as.data.frame() |>
+  mutate(int = lubridate::interval(receiver_start, receiver_end)) |> 
+  filter(int_overlaps(int, study_int)) |> 
   select(receiver_id, receiver_start, receiver_end, receiver_x, receiver_y) |> 
   as.data.table()
+nrow(moorings)
 
 #### Clean up detections
 head(detections)
@@ -156,7 +215,7 @@ detections <-
 ###########################
 #### Write outputs
 
-qs::qsave(fish, here_input_real("fish.qs"))
+qs::qsave(fish, here_input("fish.qs"))
 qs::qsave(moorings, here_input("moorings.qs"))
 qs::qsave(detections, here_input_real("detections.qs"))
 
