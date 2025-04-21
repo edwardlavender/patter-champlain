@@ -35,6 +35,7 @@ fish            <- qs::qread(here_input("fish.qs"))
 moorings        <- qs::qread(here_input("moorings.qs"))
 pars_model_move <- qs::qread(here_input("pars-model-move.qs"))
 pars_model_obs  <- qs::qread(here_input("pars-model-obs.qs"))
+unitsets        <- qs::qread(here_input_sim("unitsets.qs"))
 
 
 ###########################
@@ -46,7 +47,7 @@ set_seed()
 set_map(map)
 
 #### Define n_sim
-n_sim <- 30L
+n_sim <- nrow(unitsets)
 
 #### Define timeline (one-month)
 timeline <- seq(as.POSIXct("2025-01-01 00:00:00", tz = "UTC"), 
@@ -107,8 +108,8 @@ for (i in seq_len(n_sim)) {
   detections_by_path[[i]] <- detections[obs == 1L, ]
 }
 # C) Validation
-# * We should only record detections within receiver_gamma of receiver
-lapply(seq_len(n_sim), function(i) {
+# (i) We should only record detections within receiver_gamma of receiver
+cl_lapply(seq_len(n_sim), function(i) {
   # Join path and detection data.tables
   path       <- paths[path_id == i, ][, .(timestamp, x, y)]
   detections <- detections_by_path[[i]][, .(timestamp, receiver_x, receiver_y, receiver_gamma)]
@@ -121,6 +122,8 @@ lapply(seq_len(n_sim), function(i) {
   # Verify all distances are less than the detection threshold
   stopifnot(all(positions$dist <= positions$receiver_gamma))
 })
+# (ii) Check the number of detections per simulation
+sapply(detections_by_path, nrow) |> sort()
 
 #### Write datasets to file
 qs::qsave(paths, here_input_sim("paths.qs"))

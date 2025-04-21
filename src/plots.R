@@ -8,7 +8,7 @@ plot_dbn <- function(dbn, xlim, add = FALSE, pars = list(), ...) {
   y <- do.call(ddbn, pars)
   # Plot
   if (!add) {
-    plot(x, y, ...)
+    plot(x, y, type = "l", ...)
   } else {
     lines(x, y, ...)
   }
