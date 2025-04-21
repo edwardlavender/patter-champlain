@@ -4399,7 +4399,7 @@
       "RemoteUsername": "edwardlavender",
       "RemoteRepo": "proj.templates",
       "RemoteRef": "main",
-      "RemoteSha": "e1da4da4be295c5fb24a2ab9ee44d24a76aadbe5",
+      "RemoteSha": "d62f1e1dcad9defbc2329f38efa66f997fbb18b6",
       "Remotes": "github::edwardlavender/proj.build"
     },
     "proj.verse": {
