@@ -46,13 +46,13 @@ unitsets <-
              individual_id = 1:n_sim, 
              time_id = 1:n_sim) |> 
   mutate(
-    file_detection = file.path("data", "input", "sim", individual_id, time_id, "detection.qs"),
+    file_detections = file.path("data", "input", "sim", individual_id, time_id, "detection.qs"),
     folder_home = file.path("data", "output", "sim", "runs", individual_id, time_id), 
     folder_home_patter = file.path(folder_home, "patter")) |>
   as.data.table()
 
 #### Build directories
-dirs.create(dirname(unitsets$file_detection))
+dirs.create(dirname(unitsets$file_detections))
 dirs.create(unitsets$folder_home)
 dirs.create(unitsets$folder_home_patter)
 
@@ -81,7 +81,9 @@ pars <-
 #### Define iteration 
 iteration <- 
   unitsets |> 
-  select(unit_id, individual_id, time_id, folder_home = folder_home_patter) |>
+  select(unit_id, individual_id, time_id, 
+         file_detections,
+         folder_home = folder_home_patter) |>
   cross_join(pars) |> 
   mutate(index = row_number(),
          folder_coord = file.path(folder_home, "coord", parameter_id)) |> 

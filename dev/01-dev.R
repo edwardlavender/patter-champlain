@@ -34,6 +34,9 @@ if (!requireNamespace("patter", quietly = TRUE)) {
 if (!requireNamespace("patter.workflows", quietly = TRUE)) {
   renv::install("edwardlavender/patter.workflows", prompt = FALSE)
 }
+if (!requireNamespace("Rfast", quietly = TRUE)) {
+  renv::install("Rfast", prompt = FALSE)
+}
 # Utilities
 if (!requireNamespace("utils.add", quietly = TRUE)) {
   renv::install("edwardlavender/utils.add", prompt = FALSE)

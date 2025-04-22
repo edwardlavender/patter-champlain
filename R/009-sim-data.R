@@ -61,6 +61,8 @@ plot(model_move)
 #### Define observation model
 # We assume all receivers were active over the simulated study period
 # This is a 'best-case' scenario! 
+moorings[, receiver_start := min(timeline) -  24 * 60 * 60]
+moorings[, receiver_end := max(timeline) + 24 * 60 * 60]
 model_obs <- model_obs_champlain(moorings, pars_model_obs)
 plot(model_obs)
 
@@ -132,6 +134,7 @@ sapply(detections_by_path, nrow) |> sort()
 
 qs::qsave(timeline, here_input_sim("timeline.qs"))
 qs::qsave(paths, here_input_sim("paths.qs"))
+qs::qsave(moorings, here_input_sim("moorings.qs"))
 qs::qsave(acoustics_by_path, here_input_sim("acoustics-by-path.qs"))
 qs::qsave(detections_by_path, here_input_sim("detections-by-path.qs"))
 for (i in 1:nrow(unitsets)) {

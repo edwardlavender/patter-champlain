@@ -74,7 +74,7 @@ terra::plot(map)
 points(map_bbox, pch = 21, bg = "red", cex = 5)
 
 #### Write maps
-qs::qsave(epsg_utm, here_input("epsg_utm.qs"))
+qs::qsave(epsg_utm, here_input("epsg-utm.qs"))
 terra::writeRaster(map, here_input("map.tif"), overwrite = TRUE)
 terra::writeRaster(regions$SpatRaster, here_input("regions.tif"), overwrite = TRUE)
 qs::qsave(map_bbox, here_input("map-bbox.qs"))

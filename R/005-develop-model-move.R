@@ -397,18 +397,27 @@ plot_dbn("gamma",
 plot_dbn("gamma", 
          xlim = c(0, 300), 
          pars = list(shape = pars_model_move_full$shape[2], 
-                     scale = pars_movement_full$scale[2]), 
+                     scale = pars_model_move_full$scale[2]), 
          add = TRUE, col = "red")
 # Flexible model (step-length)
 plot_dbn("gamma", 
          xlim = c(0, 300), 
          pars = list(shape = pars_model_move_full$shape[3], 
-                     scale = pars_movement_full$scale[3]), 
+                     scale = pars_model_move_full$scale[3]), 
          add = TRUE, col = "darkgreen")
 
 #### Write parameters to file
+# Parameters
 qs::qsave(pars_model_move_best, here_input("pars-model-move.qs"))
 qs::qsave(pars_model_move_full, here_input("pars-model-move-full.qs"))
+# vmaps
+dirs.create(here_input("vmap", pars_model_move_full$mobility))
+pp <- par(mfrow = c(1, nrow(pars_model_move_full)))
+lapply(split(pars_model_move_full, seq_len(nrow(pars_model_move_full))), function(d) {
+  vmap <- patter:::spatVmap(.map = map, .mobility = d$mobility, .plot = TRUE)
+  terra::writeRaster(vmap, here_input("vmap", d$mobility, "vmap.tif"))
+})
+par(pp)
 
 
 #### End of code. 

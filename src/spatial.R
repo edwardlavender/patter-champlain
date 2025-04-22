@@ -1,3 +1,11 @@
+# Check if spatial dependencies are loaded (linux helper)
+expect_no_geospatial <- function() {
+  if (any(c("terra", "sf") %in% loadedNamespaces())) {
+    warning("Geospatial dependencies loaded!")
+  }
+  invisible(NULL)
+}
+
 if (!patter:::julia_session()) {
   
   # Convert shapefile to SpatRaster

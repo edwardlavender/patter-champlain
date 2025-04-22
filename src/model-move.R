@@ -3,7 +3,7 @@ state_trout <- function() {
 }
 
 # model_move_cxy() wrapper for trout
-# * .pars is a named list with model parameters
+# * .pars is a named list or 1-row data.table with model parameters
 model_move_trout <- function(.pars) {
   proj.build::check_names(.pars, c("mobility", "shape", "scale", "phi"))
   mobility <- .pars$mobility 
