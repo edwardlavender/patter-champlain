@@ -45,9 +45,16 @@ unitsets <-
   data.table(unit_id = 1:30L, 
              individual_id = 1:n_sim, 
              time_id = 1:n_sim) |> 
-  mutate(folder_home = file.path("data", "output", "sim", "runs", individual_id, time_id), 
-         folder_home_patter = file.path(folder_home, "patter")) |>
+  mutate(
+    file_detection = file.path("data", "input", "sim", individual_id, time_id, "detection.qs"),
+    folder_home = file.path("data", "output", "sim", "runs", individual_id, time_id), 
+    folder_home_patter = file.path(folder_home, "patter")) |>
   as.data.table()
+
+#### Build directories
+dirs.create(dirname(unitsets$file_detection))
+dirs.create(unitsets$folder_home)
+dirs.create(unitsets$folder_home_patter)
 
 #### Write to file
 qs::qsave(unitsets, here_input_sim("unitsets.qs"))

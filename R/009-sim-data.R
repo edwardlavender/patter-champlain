@@ -125,10 +125,19 @@ cl_lapply(seq_len(n_sim), function(i) {
 # (ii) Check the number of detections per simulation
 sapply(detections_by_path, nrow) |> sort()
 
+
+###########################
+###########################
 #### Write datasets to file
+
+qs::qsave(timeline, here_input_sim("timeline.qs"))
 qs::qsave(paths, here_input_sim("paths.qs"))
 qs::qsave(acoustics_by_path, here_input_sim("acoustics-by-path.qs"))
 qs::qsave(detections_by_path, here_input_sim("detections-by-path.qs"))
+for (i in 1:nrow(unitsets)) {
+  detections <- detections_by_path[[i]]
+  qs::qsave(detections, unitsets$file_detection[i])
+}
 
 
 #### End of code. 
