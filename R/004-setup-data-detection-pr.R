@@ -20,18 +20,118 @@ rm(list = ls())
 Sys.setenv("JULIA_SESSION" = FALSE)
 
 #### Load essential packages
+library(data.table)
 library(proj.verse)
 files_source_r(here_src())
 
 #### Load data
-# TO DO
+detections <- fread(here_data_raw("model-obs", "klinard-et-al-2019", 
+                                  "Aug2015-Jun2016_Range_Detections.csv"))
+
+
+###########################
+###########################
+#### Klinard et al. (2019) Methods
+
+# Study period: 
+# The complete receiver array, including the 85 receivers
+# from the bloater telemetry project and the five receivers
+# for range testing, was deployed from 22 October, 2015
+# to 23 May, 2016 (215 days). To ensure consistency across
+# detection distances and probabilities, only detections for
+# these dates were used in analyses. 
+
+# Transmitters:
+# * 3x V9-2x 69-kHz range tags 
+#   (power output 145 dB, nominal delay 1800 s, random interval 1750–1850 s), 
+# * 1x V13-169-kHz range tag 
+#   (power output 153 dB, nominal delay 1800 s)
+# * four V16-6X 69-kHz range tags 
+#   (power output 158 dB, nominal delay 1800 s)
+
+# Depth zones:
+# To examine spatial variability in DE across tag types and
+# depths, detection data were separated into five _categories_: 
+# deep V9, shallow V9, deep V13, deep V16, and shallow V16. 
+
+# Tag deployment depths:
+# * The deep group of tags (two** V9, one V13, one V16) was situated
+#   below the thermocline at a depth of 50 m
+#   ** There is a typo in the manuscript, two V9s were deployed at 50 m
+#      See Table 1
+# * The shallow group (one V9, one V16) was above the thermocline
+#   at a depth of 11 m to evaluate the impact of tag depth and
+#   thermal stratification on DE. 
+
+# cf. Lake Champlain system:
+# * Receivers deployed in depths of 3 - 50 m (see setup-data-detection.R)
+# * V13 147 dB tags used
+
+# We will select tags in the following categories:
+# * V9 11 m (one tag)  
+# * V9 50 m (two tags tag)
+# * V13 50 m (one tag)
+# (These tags bound the characteristics of the tags used in our system)
+
+# Transmitter IDs
+# * See LakeOntario_2015-16_range_tag_specs
+# * This defines transmitter models (V9, V13) and IDs (but not depths)
+# * This list is the subset of (a) relevant and (b) properly functional tags
+# * We identified the depth category for each tag by:
+#   - Compute max detection range (below)
+#   - Compare to Table 1 in Klinard et al. (2019) 
+
+# 30838: V13 (deep)
+# 57347: V9 (deep)
+# 57349: V9 (deep)
+# 57350: V9 (shallow)
+
+# Analyses were performed separately for each tag category. For each tag and
+# receiver combination (n=720), DE was calculated for
+# each day of deployment by dividing the number of detections 
+# by the expected number of transmissions per day
+# (48 for a nominal transmission interval of 1800 s). 
+# Daily DE was used to estimate DE for the entire study period
+# using generalized additive mixed models (GAMMs)
 
 
 ###########################
 ###########################
 #### Setup data
 
-# TO DO
+#### Define transmitter IDs (see above)
+transmitter_ids <- c("57347", "57349", "57350", "30838")
+stopifnot(all(transmitter_ids %in% detections$transmitter_id))
+
+#### Identify transmitter depth categories (see above)
+detections |> 
+  filter(transmitter_id %in% transmitter_ids) |> 
+  mutate(dist = terra::distance(cbind(tag_lon, tag_lat), cbind(longitude, latitude), 
+                                lonlat = TRUE, pairwise = TRUE)) |> 
+  group_by(transmitter_id) |>
+  summarise(max(dist))
+
+#### Process detections 
+detections |> 
+  select(transmitter_id, 
+         timestamp = datetime_UTC,
+         tag_lon, tag_lat,
+         rec_lon = longitude, rec_lat = latitude) |> 
+  # Focus on the relevant time window of detections
+  filter(timestamp >= as.POSIXct("2015-10-22 00:00:00", tz = "UTC")) |> 
+  filter(timestamp <= as.POSIXct("2016-05-23 00:00:00", tz = "UTC")) |> 
+  # Focus on relevant transmitters
+  filter(transmitter_id %in% transmitter_ids) |> 
+  # Add covariates for models
+  mutate(dist = terra::distance(cbind(tag_lon, tag_lat), cbind(rec_lon, rec_lat), 
+                                lonlat = TRUE, pairwise = TRUE)) |> 
+  # Cleanup
+  arrange(transmitter_id, timestamp) |>
+  as.data.table()
+
+#### Write to file
+qs::qsave(detections, here_data("supp", "model-obs", "klinard.qs"))
+
 
 #### End of code. 
 ###########################
