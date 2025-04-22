@@ -368,11 +368,6 @@ if (requireNamespace("flapper", quietly = TRUE)) {
 pars_model_move <- list(shape = 3.0, scale = 30.0, mobility = 350, phi = 1.2)
 qs::qsave(pars_model_move, here_input("pars-model-move.qs"))
 
-#### Build validity map(s)
-mobility <- pars_model_move$mobility
-vmap <- patter:::spatVmap(.map = map, .mobility = mobility, .plot = TRUE)
-terra::writeRaster(vmap, here_input_real("vmap.tif"), overwrite = TRUE)
-
 
 #### End of code. 
 ###########################

@@ -30,23 +30,12 @@ library(tictoc)
 files_source_r(here_src())
 
 #### Load data
-map                <- terra::rast(here_input("map.tif"))
-moorings           <- qs::qread(here_input("moorings.qs"))
-detections_by_unit <- qs::qread(here_input_sim("detections-by-path.qs"))
 iteration          <- qs::qread(here_input_sim("iteration-patter.qs"))
 
 
 ###########################
 ###########################
 #### Estimate coordinates
-
-#### Define datasets 
-# Check memory requirements
-lobstr::obj_size(detections_by_unit) # 26.38 MB
-# Define in-memory data
-datasets <- list(map = map, 
-                 moorings = moorings, 
-                 detections_by_unit = detections_by_unit)
 
 #### Select iterations 
 iteration <- iteration[sensitivity == "best", ]
@@ -58,6 +47,12 @@ stopifnot(length(unique(iteration$mobility)) == 1L)
 set_vmap(.map = map, .mobility = iteration$mobility[1])
 
 #### Estimate coordinates
+# TO DO
+# * Develop parallelisation (with julia_connect(.socket = TRUE))
+# * Add parallelisation check in constructor
+# * Develop constructor function for simulations
+# * Use simulated timeline 
+# * Initialise models correctly from sim with helper functions
 coord_list <- 
   cl_lapply_workflow(.iteration   = iteration,
                      .datasets    = datasets,
