@@ -112,7 +112,8 @@ detections |>
   summarise(max(dist))
 
 #### Process detections 
-detections |> 
+detections <- 
+  detections |> 
   select(transmitter_id, 
          timestamp = datetime_UTC,
          tag_lon, tag_lat,
