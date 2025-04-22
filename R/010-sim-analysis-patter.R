@@ -54,18 +54,52 @@ iteration[, file_diag := file.path(folder_coord, "diagnostics.qs")]
 iteration[, file_output := file_diag]
 
 #### Set maps
-set_map(here_input("map.tif"))
-set_vmap(.vmap = here_input("vmap", iteration$mobility[1], "vmap.tif"))
+# This is implemented below on each node. 
+# set_map(here_input("map.tif"))
+# set_vmap(.vmap = here_input("vmap", iteration$mobility[1], "vmap.tif"))
 
 #### Set logs
 log.txt <- here_output_sim("logs", paste0("log-", iteration$mobility[1], ".txt"))
 log.txt <- TRUE
 # unlink(log.txt)
 
+#### Setup cluster
+# Define number of workers
+ncl <- 2L
+# Define required memory for export
+lobstr::mem_used() * ncl
+# Initialise cluster
+cl  <- parallel::makeCluster(ncl)
+parallel::clusterExport(cl = cl, varlist = ls())
+parallel::clusterEvalQ(cl = cl, {
+  
+  # Load packages 
+  library(data.table)
+  library(dtplyr)
+  library(dplyr, warn.conflicts = FALSE)
+  library(JuliaCall)
+  library(patter)
+  library(patter.workflows)
+  library(proj.verse)
+  library(tictoc)
+  files_source_r(here_src())
+  
+  # Initialise Julia 
+  particle_startup(.sim = NULL, .cl = ncl)
+  expect_no_geospatial()
+  
+  # Set maps
+  set_map(here_input("map.tif"))
+  set_vmap(.vmap = here_input("vmap", iteration$mobility[1], "vmap.tif"))
+  invisible(NULL)
+})
+
 #### Estimate coordinates
 # TO DO
 # * Update constructor function e.g., with xinit 
 # * Develop parallelisation (with julia_connect(.socket = TRUE))
+# * TO DO 
+# * Update .verbose for parallelisation
 iteration <- iteration[1:2L, ]
 coord_list <- 
   cl_lapply_workflow(.iteration   = iteration,
@@ -73,8 +107,8 @@ coord_list <-
                      .constructor = constructor_ac_sim, 
                      .algorithm   = estimate_coord_particle, 
                      .success     = particle_success, 
-                     .startup     = NULL, # particle_startup, 
                      .cleanup     = particle_cleanup,
+                     .cl          = cl,
                      .verbose     = log.txt)
 
 #### Collate coordinates across batches
@@ -83,9 +117,12 @@ coord_list <-
 list.files(iteration$folder_coord)
 stopifnot(all(file.exists(iteration$file_output)))
 iteration[, file_coord := file.path(folder_coord, "coord.qs")]
+timeline    <- qs::qread(here_input_sim("timeline.qs"))
+timeline    <- timeline[1:500L]
 convergence <- cl_lapply(split(iteration, seq_len(nrow(iteration))), function(.sim) {
   # Collate particles across batches and write file_coord
-  convergence <- particle_collate(.sim = .sim)
+  convergence <- particle_collate(.sim = .sim,
+                                  .timeline = timeline)
   # (optional)  Clean up smo-{i}.jld2 files to save space
   if (TRUE) {
     batches <- list.files(.sim$folder_coord, 

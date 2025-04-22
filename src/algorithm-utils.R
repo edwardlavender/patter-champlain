@@ -41,7 +41,7 @@ particle_cleanup <- function(.sim, .cl) {
 }
 
 # Collate batches in R
-particle_collate <- function(.sim) {
+particle_collate <- function(.sim, .timeline) {
   
   # Check names
   # * We run particle algorithms with batching
@@ -59,6 +59,9 @@ particle_collate <- function(.sim) {
   if (!out$smooth$callstats$convergence) {
     return(FALSE)
   }
+  
+  # Define timeline 
+  julia_assign("timeline", .timeline)
   
   # Define batch files (for smoother)
   batch <- particle_batch(.sim = .sim, .type = "smo")
