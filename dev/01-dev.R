@@ -23,10 +23,27 @@ renv::init()
 
 #### Install package(s)
 # Project management 
-renv::install("edwardlavender/proj.verse", prompt = FALSE)
+# (NB: requireNamespace() is necessary for renv to register the packages
+if (!requireNamespace("proj.verse", quietly = TRUE)) {
+  renv::install("edwardlavender/proj.verse", prompt = FALSE)
+}
 # Modelling
-renv::install("edwardlavender/patter", prompt = FALSE)
-renv::install("edwardlavender/patter.workflows", prompt = FALSE)
+if (!requireNamespace("patter", quietly = TRUE)) {
+  renv::install("edwardlavender/patter", prompt = FALSE)
+}
+if (!requireNamespace("patter.workflows", quietly = TRUE)) {
+  renv::install("edwardlavender/patter.workflows", prompt = FALSE)
+}
+# Utilities
+if (!requireNamespace("utils.add", quietly = TRUE)) {
+  renv::install("edwardlavender/utils.add", prompt = FALSE)
+}
+if (!requireNamespace("usethis", quietly = TRUE)) {
+  renv::install("usethis", prompt = FALSE)
+}
+if (!requireNamespace("lobstr", quietly = TRUE)) {
+  renv::install("lobstr", prompt = FALSE)
+}
 # commonmark/(r)markdown packages (for README documentation)
 if (!requireNamespace("commonmark", quietly = TRUE)) {
   renv::install("commonmark", prompt = FALSE)
