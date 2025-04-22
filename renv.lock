@@ -3993,7 +3993,7 @@
       "RemoteUsername": "edwardlavender",
       "RemoteRepo": "patter.workflows",
       "RemoteRef": "main",
-      "RemoteSha": "a68c9185b94cab0b3bf4eabc7b1b789ff08b7e66",
+      "RemoteSha": "13fe25949ed5f05728d4f9d66e49769f9b974fea",
       "Remotes": "github::edwardlavender/proj.build, github::edwardlavender/proj.file, github::edwardlavender/proj.lapply, github::edwardlavender/spatial.extensions, github::YuriNiella/RSP"
     },
     "pbapply": {
@@ -4510,7 +4510,7 @@
       "RemoteUsername": "edwardlavender",
       "RemoteRepo": "proj.lapply",
       "RemoteRef": "main",
-      "RemoteSha": "423040385105b6dba08419a3e95c6fb690c0c71e",
+      "RemoteSha": "25ac49048cc3c25e6c52d6e02408a62c536ef360",
       "Remotes": "github::edwardlavender/proj.build"
     },
     "proj.templates": {

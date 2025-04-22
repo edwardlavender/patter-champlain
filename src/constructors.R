@@ -3,7 +3,7 @@ constructor_ac_sim <- function(.sim, .datasets, .verbose, ...) {
   
   # Checks 
   stopifnot(length(list(...)) == 0L)
-  proj.build::check_names(.sim, c("file_detections", "mobility"))
+  proj.build::check_names(.sim, c("file_detections", "mobility", "file_output"))
   stopifnot(file.exists(.sim$file_detections))
   
   # Enable testing & define tuning settings 
@@ -19,7 +19,7 @@ constructor_ac_sim <- function(.sim, .datasets, .verbose, ...) {
   # Define timeline
   timeline <- qs::qread(here_input_sim("timeline.qs"))
   if (test) {
-    timeline <- timeline[1:1000L]
+    timeline <- timeline[1:500L]
   }
   
   # Define movement model
@@ -56,15 +56,15 @@ constructor_ac_sim <- function(.sim, .datasets, .verbose, ...) {
   }
   
   # Define arguments for forward filter run
-  # TO DO
-  # * Implement batching
-  # * Implement .collect = FALSE (?)
+  # * With batching, we can keep .collect = TRUE to record diagnostics/callstats
   args_fwd <- list(.timeline   = timeline, 
                    .state      = state,
                    .model_move = model_move, 
                    .yobs       = yobs_fwd, 
                    .n_particle = n_particle_filter, 
                    .direction  = "forward", 
+                   .batch      = particle_batch(.sim = .sim, .type = "fwd"),
+                   .collect    = TRUE,
                    .verbose    = .verbose, 
                    .progress   = julia_progress(enabled = test))
   
@@ -72,13 +72,18 @@ constructor_ac_sim <- function(.sim, .datasets, .verbose, ...) {
   args_bwd            <- args_fwd
   args_bwd$.yobs      <- yobs_bwd
   args_bwd$.direction <- "backward"
+  args_bwd$.batch     <- particle_batch(.sim = .sim, .type = "bwd")
   
   # Define smoother arguments
-  # * Limit .n_sim and .n_particle for example speed only
+  # * Note .collect = TRUE is required for particle_success()
   args_smo <- list(.n_particle = n_particle_smo, 
                    .n_sim = n_sim_smo, 
                    .cache = TRUE, 
-                   .progress = julia_progress(enabled = test))
+                   .batch = particle_batch(.sim = .sim, .type = "smo"),
+                   .progress = julia_progress(enabled = test), 
+                   .collect = TRUE, 
+                   .verbose = .verbose)
+  stopifnot(args_smo$.collect)
   
   # Checks
   stopifnot(all(names(args_fwd) %in% names(formals(pf_filter))))

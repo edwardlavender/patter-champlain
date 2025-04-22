@@ -23,6 +23,7 @@ patter::julia_connect()
 library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
+library(JuliaCall)
 library(patter)
 library(patter.workflows)
 library(proj.verse)
@@ -39,39 +40,77 @@ iteration <- qs::qread(here_input_sim("iteration-patter.qs"))
 #### Estimate coordinates
 
 #### (optional) Reset directories
-if (FALSE) {
+if (TRUE) {
+  # unlink(dirname(iteration$folder_coord), recursive = TRUE)
   unlink(iteration$folder_coord, recursive = TRUE)
   dirs.create(iteration$folder_coord)
 }
 
 #### Select iterations 
 stopifnot(!any(duplicated(iteration$index)))
+table(iteration$mobility)
 iteration <- iteration[sensitivity == "best", ]
-iteration[, file_coord := file.path(folder_coord, "coord.qs")]
-iteration[, file_output := file_coord]
+iteration[, file_diag := file.path(folder_coord, "diagnostics.qs")]
+iteration[, file_output := file_diag]
 
 #### Set maps
 set_map(here_input("map.tif"))
 set_vmap(.vmap = here_input("vmap", iteration$mobility[1], "vmap.tif"))
 
+#### Set logs
+log.txt <- here_output_sim("logs", paste0("log-", iteration$mobility[1], ".txt"))
+log.txt <- TRUE
+# unlink(log.txt)
+
 #### Estimate coordinates
 # TO DO
-# * Add success methods for cl_lapply_workflow
 # * Update constructor function e.g., with xinit 
 # * Develop parallelisation (with julia_connect(.socket = TRUE))
+iteration <- iteration[1:2L, ]
 coord_list <- 
-  cl_lapply_workflow(.iteration   = iteration[1:2L, ],
+  cl_lapply_workflow(.iteration   = iteration,
                      .datasets    = list(),
                      .constructor = constructor_ac_sim, 
-                     .algorithm   = patter.workflows::estimate_coord_particle)
+                     .algorithm   = estimate_coord_particle, 
+                     .success     = particle_success, 
+                     .startup     = NULL, # particle_startup, 
+                     .cleanup     = particle_cleanup,
+                     .verbose     = log.txt)
+
+#### Collate coordinates across batches
+# constructor_ac_sim() implements batching
+# For each iteration, we should collate the estimated coordinates across batches
+list.files(iteration$folder_coord)
+stopifnot(all(file.exists(iteration$file_output)))
+iteration[, file_coord := file.path(folder_coord, "coord.qs")]
+convergence <- cl_lapply(split(iteration, seq_len(nrow(iteration))), function(.sim) {
+  # Collate particles across batches and write file_coord
+  convergence <- particle_collate(.sim = .sim)
+  # (optional)  Clean up smo-{i}.jld2 files to save space
+  if (TRUE) {
+    batches <- list.files(.sim$folder_coord, 
+                          pattern = "^smo-\\d+\\.jld2$", 
+                          full.names = TRUE)
+    unlink(batches)
+  }
+  convergence
+})
+# Check the number of algorithm runs for which convergence was achieved 
+table(unlist(convergence))
 
 #### Examine coordinates
 if (FALSE) {
-  # This code uses {terra}
-  map <- terra::rast(here_input("map.tif"))
+  
+  # Examine example file
   list.files(iteration$folder_coord)
+  eg <- qs::qread(iteration$file_coord[1])
+  summary(eg)
+  # View(eg)
+  
+  # Visualise coordinates
+  map <- terra::rast(here_input("map.tif"))
   lapply_qplot_coord(iteration, 
-                     .datasets = list(coordinates = function(x) x$smooth$states),
+                     .datasets = list(coordinates = function(smo) smo$states),
                      .map = map)
 }
 
