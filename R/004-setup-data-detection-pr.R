@@ -115,23 +115,51 @@ detections |>
 detections <- 
   detections |> 
   select(transmitter_id, 
+         receiver_id = receiver_sn,
          timestamp = datetime_UTC,
          tag_lon, tag_lat,
-         rec_lon = longitude, rec_lat = latitude) |> 
+         receiver_lon = longitude, receiver_lat = latitude) |> 
   # Focus on the relevant time window of detections
   filter(timestamp >= as.POSIXct("2015-10-22 00:00:00", tz = "UTC")) |> 
   filter(timestamp <= as.POSIXct("2016-05-23 00:00:00", tz = "UTC")) |> 
   # Focus on relevant transmitters
   filter(transmitter_id %in% transmitter_ids) |> 
   # Add covariates for models
-  mutate(dist = terra::distance(cbind(tag_lon, tag_lat), cbind(rec_lon, rec_lat), 
+  mutate(dist = terra::distance(cbind(tag_lon, tag_lat), cbind(receiver_lon, receiver_lat), 
                                 lonlat = TRUE, pairwise = TRUE)) |> 
   # Cleanup
   arrange(transmitter_id, timestamp) |>
   as.data.table()
 
+#### Create daily summarises of observed/expected number of detections for modelling
+klinard <- 
+  detections |> 
+  # Compute observed number of detections per transmitter/receiver/day
+  mutate(timestamp = lubridate::floor_date(timestamp, "days")) |> 
+  group_by(transmitter_id, receiver_id, timestamp) |> 
+  mutate(observed = n()) |> 
+  slice(1L) |>
+  ungroup() |> 
+  # Compute expected number of transmissions per day
+  mutate(expected = (24 * 60 * 60) / 1800) |>
+  # Use success/failure for glm
+  mutate(success = observed, failure = expected - observed, 
+         prop = success / (success + failure)) |>
+  # Cleanup
+  select(transmitter_id, timestamp, prop, success, failure, dist) |> 
+  arrange(transmitter_id, timestamp) |>
+  as.data.table()
+
+#### Checks
+# The expected number of transmissions should be >= observed number
+# There are a few cases where that is not the case
+table(sort(klinard$failure))
+klinard[failure < 0, c("success", "failure") := .(48, 0)]
+table(sort(klinard$failure))
+table(sort(klinard$success))
+
 #### Write to file
-qs::qsave(detections, here_data("supp", "model-obs", "klinard.qs"))
+qs::qsave(klinard, here_data("supp", "model-obs", "klinard.qs"))
 
 
 #### End of code. 

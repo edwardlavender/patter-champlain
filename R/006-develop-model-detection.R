@@ -20,11 +20,14 @@ rm(list = ls())
 Sys.setenv("JULIA_SESSION" = FALSE)
 
 #### Load essential packages
+library(DHARMa)
+library(mgcv)
+library(mgcViz)
 library(proj.verse)
 files_source_r(here_src())
 
 #### Load data
-# TO DO
+klinard <- qs::qread(here_data("supp", "model-obs", "klinard.qs"))
 
 
 ###########################
@@ -59,16 +62,61 @@ ggplot(data.frame(x = c(0, receiver_gamma)), aes(x = x)) +
 ###########################
 #### Analyse Klinard et al. (2019) datasets
 
-# TO DO
+#### Model detection probability
+# detections ~ B(n, p)
+# p = logistic(dist) or p = s(dist)
+m1 <- glm(cbind(success, failure) ~ dist,
+          data = klinard, family = binomial("cloglog"))
+m2 <- gam(cbind(success, failure) ~ s(dist), 
+          data = klinard, family = binomial)
+
+#### GLM coefficients
+(receiver_alpha <- coef(m1)[1]) # 2.904267
+(receiver_beta  <- coef(m1)[2]) # -0.001546906
+
+#### Visualise models
+# The GLM is more 'generous' than our initial guess
+# The GLM and GAM match well
+# The GAM better captures low-probability detections at higher distances
+# The GAM behaves more poorly beyond range of data
+dist <- seq(0, 1e4, length.out = 1e3L)
+nd   <- data.frame(dist = dist)
+y0   <- plogis(2.5 + -0.003 * dist) # initial guess
+y1   <- predict(m1, newdata = nd, type = "response")
+y2   <- predict(m2, newdata = nd, type = "response")
+fit  <- data.frame(dist = dist, y0 = y0, y1 = y1, y2 = y2)
+ggplot(klinard, aes(x = dist, y = prop)) +
+  geom_bin_2d(bins = 50) +
+  scale_fill_viridis_c(name = "Count") +
+  geom_point(shape = ".") + 
+  geom_line(data = fit, aes(x = dist, y = y0),
+            lwd = 1.5, color = "grey", inherit.aes = FALSE) +
+  geom_line(data = fit, aes(x = dist, y = y1),
+            lwd = 1.5, color = "blue", inherit.aes = FALSE) +
+  geom_line(data = fit, aes(x = dist, y = y2), 
+            lwd = 1.5, color = "red", inherit.aes = FALSE) +
+  scale_x_continuous(limits = c(0, 1e4), expand = c(0, 0)) + 
+  scale_y_continuous(limits = c(0, 1), expand = c(0, 0)) + 
+  labs(x = "Distance", y = "Detection Probability") +
+  theme_bw()
+
+#### Examine residuals
+# Residual diagnostics are poor
+# But MLE parameter estimates look reasonable
+r1 <- simulateResiduals(m1)
+r2 <- simulateResiduals(m2) 
+plot(r1)
+plot(r2)
+
 
 ###########################
 ###########################
 #### Record parameters
 
 #### Define 'best-guess' parameters (list)
-pars_model_obs_best <- list(receiver_alpha = 2.25, 
-                       receiver_beta = -0.0022, 
-                       receiver_gamma = 7000)
+pars_model_obs_best <- list(receiver_alpha = receiver_alpha, 
+                            receiver_beta  = receiver_beta, 
+                            receiver_gamma = 7500)
 
 #### Define restrictive/flexible parameter combinations
 # We assume these are known
