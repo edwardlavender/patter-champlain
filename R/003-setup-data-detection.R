@@ -103,6 +103,11 @@ rxy <-
   terra::crds()
 stopifnot(all(!is.na(terra::extract(map, rxy)$map_value)))
 
+#### Receiver depths 
+utils.add::basic_stats(moorings$depth, na.rm = TRUE)
+# min  mean median  max   sd   IQR  MAD
+# 1 3.4 13.56  11.85 45.7 9.06 11.85 8.82
+
 #### Process moorings
 moorings <- 
   moorings |> 
