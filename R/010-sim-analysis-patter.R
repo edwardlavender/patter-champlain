@@ -59,8 +59,9 @@ iteration[, file_output := file_diag]
 # set_vmap(.vmap = here_input("vmap", iteration$mobility[1], "vmap.tif"))
 
 #### Set logs
+dir.create(here_output_sim("logs"))
 log.txt <- here_output_sim("logs", paste0("log-", iteration$mobility[1], ".txt"))
-log.txt <- TRUE
+# log.txt <- TRUE
 # unlink(log.txt)
 
 #### Setup cluster
@@ -97,8 +98,6 @@ parallel::clusterEvalQ(cl = cl, {
 #### Estimate coordinates
 # TO DO
 # * Update constructor function e.g., with xinit 
-# * Develop parallelisation (with julia_connect(.socket = TRUE))
-# * TO DO 
 # * Update .verbose for parallelisation
 iteration <- iteration[1:2L, ]
 coord_list <- 
