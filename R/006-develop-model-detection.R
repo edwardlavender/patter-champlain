@@ -65,12 +65,22 @@ ggplot(data.frame(x = c(0, receiver_gamma)), aes(x = x)) +
 ###########################
 #### Record parameters
 
-pars_model_obs <- list(receiver_alpha = 2.25, 
+#### Define 'best-guess' parameters (list)
+pars_model_obs_best <- list(receiver_alpha = 2.25, 
                        receiver_beta = -0.0022, 
                        receiver_gamma = 7000)
 
-qs::qsave(pars_model_obs, 
-          here_input("pars-model-obs.qs"))
+#### Define restrictive/flexible parameter combinations
+# We assume these are known
+# To minimise computation time, we only explore the effects of uncertainty in movement
+# We find this more interesting
+
+#### Collect all parameters (data.table)
+pars_model_obs_full <- as.data.table(pars_model_obs_best)
+
+#### Write to file
+qs::qsave(pars_model_obs_best, here_input("pars-model-obs-best.qs"))
+qs::qsave(pars_model_obs_full, here_input("pars-model-obs-full.qs"))
 
 
 #### End of code. 

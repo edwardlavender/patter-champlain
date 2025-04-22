@@ -35,7 +35,7 @@ files_source_r(here_src())
 
 #### Load data
 map         <- terra::rast(here_input("map.tif"))
-fish        <- qs::qread(here_input_real("fish.qs"))
+fish        <- qs::qread(here_input("fish.qs"))
 moorings    <- qs::qread(here_input("moorings.qs"))
 detections  <- qs::qread(here_input_real("detections.qs"))
 blanchfield <- qs::qread(here_data("supp", "model-move", "blanchfield.qs"))
@@ -363,10 +363,52 @@ if (requireNamespace("flapper", quietly = TRUE)) {
 ###########################
 #### Synthesise parameters
 
-#### Define parameters
+#### Define 'best-guess' parameters (list)
 # TO DO
-pars_model_move <- list(shape = 3.0, scale = 30.0, mobility = 350, phi = 1.2)
-qs::qsave(pars_model_move, here_input("pars-model-move.qs"))
+pars_model_move_best <- list(shape = 3.0, scale = 30.0, mobility = 350, phi = 1.2)
+
+#### Define restrictive/flexible parameters 
+# Define parameter uncertainty 
+adj <- 0.5
+inflate <- 1 + adj
+deflate <- 1 - adj
+# Collect 'best-guess' parameters
+mobility <- pars_model_move_best$mobility
+shape    <- pars_model_move_best$shape
+scale    <- pars_model_move_best$scale
+phi      <- pars_model_move_best$phi
+# Define more restrictive/flexible models
+restrictive <- gamma_rescale(shape, scale, fact = deflate)
+flexible    <- gamma_rescale(shape, scale, fact = inflate)
+
+#### Collect movement parameters in data.table (best, restrictive, flexible)
+pars_model_move_full <- data.table(mobility = c(mobility, mobility * deflate, mobility * inflate),
+                                   shape = c(shape, restrictive[1], flexible[1]),
+                                   scale = c(scale,  restrictive[2],flexible[2]),
+                                   phi = c(phi, phi * deflate, phi * inflate))
+
+#### Visualise models
+# Best model (step-length)
+plot_dbn("gamma", 
+         xlim = c(0, 300), 
+         pars = list(shape = pars_model_move_full$shape[1],
+                     scale = pars_model_move_full$scale[1]))
+# Restrictive model (step-length)
+plot_dbn("gamma", 
+         xlim = c(0, 300), 
+         pars = list(shape = pars_model_move_full$shape[2], 
+                     scale = pars_movement_full$scale[2]), 
+         add = TRUE, col = "red")
+# Flexible model (step-length)
+plot_dbn("gamma", 
+         xlim = c(0, 300), 
+         pars = list(shape = pars_model_move_full$shape[3], 
+                     scale = pars_movement_full$scale[3]), 
+         add = TRUE, col = "darkgreen")
+
+#### Write parameters to file
+qs::qsave(pars_model_move_best, here_input("pars-model-move.qs"))
+qs::qsave(pars_model_move_full, here_input("pars-model-move-full.qs"))
 
 
 #### End of code. 
