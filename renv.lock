@@ -3416,6 +3416,44 @@
       "Maintainer": "Yihui Xie <xie@yihui.name>",
       "Repository": "CRAN"
     },
+    "lobstr": {
+      "Package": "lobstr",
+      "Version": "1.1.2",
+      "Source": "Repository",
+      "Title": "Visualize R Data Structures with Trees",
+      "Authors@R": "c( person(\"Hadley\", \"Wickham\", , \"hadley@rstudio.com\", role = c(\"aut\", \"cre\")), person(\"RStudio\", role = \"cph\") )",
+      "Description": "A set of tools for inspecting and understanding R data structures inspired by str(). Includes ast() for visualizing abstract syntax trees, ref() for showing shared references, cst() for showing call stack trees, and obj_size() for computing object sizes.",
+      "License": "MIT + file LICENSE",
+      "URL": "https://lobstr.r-lib.org/, https://github.com/r-lib/lobstr",
+      "BugReports": "https://github.com/r-lib/lobstr/issues",
+      "Depends": [
+        "R (>= 3.2)"
+      ],
+      "Imports": [
+        "crayon",
+        "methods",
+        "prettyunits",
+        "rlang (>= 1.0.0)"
+      ],
+      "Suggests": [
+        "covr",
+        "pillar",
+        "pkgdown",
+        "testthat (>= 3.0.0)"
+      ],
+      "LinkingTo": [
+        "cpp11 (>= 0.4.2)"
+      ],
+      "Config/Needs/website": "tidyverse/tidytemplate",
+      "Config/testthat/edition": "3",
+      "Encoding": "UTF-8",
+      "RoxygenNote": "7.2.0",
+      "SystemRequirements": "C++11",
+      "NeedsCompilation": "yes",
+      "Author": "Hadley Wickham [aut, cre], RStudio [cph]",
+      "Maintainer": "Hadley Wickham <hadley@rstudio.com>",
+      "Repository": "CRAN"
+    },
     "lubridate": {
       "Package": "lubridate",
       "Version": "1.9.4",
@@ -3867,6 +3905,64 @@
       "RemoteRef": "main",
       "RemoteSha": "5da34a898aa8c4bd9bf3c5de5f0da2211e138554"
     },
+    "patter.workflows": {
+      "Package": "patter.workflows",
+      "Version": "0.0.9000",
+      "Source": "GitHub",
+      "Title": "patter.workflows",
+      "Authors@R": "person(\"Edward\", \"Lavender\",  email = \"edward.lavender@eawag.ch\",  role = c(\"aut\", \"cre\"), comment = c(ORCID = \"0000-0002-8040-7489\"))",
+      "Description": "Iterative workflows for animal-tracking analyses, with a focus on the `patter` package. The core routines provide an iterative framework for repeated applications of algorithms that estimate the positions of tagged individuals (coordinates) or patterns of space use. This facilitates analyses of multiple individuals, time blocks and algorithm sensitivity (i.e., multiple parameters).",
+      "License": "MIT + file LICENSE",
+      "Imports": [
+        "data.table",
+        "patter (>= 2.0.0)",
+        "proj.build",
+        "rlang",
+        "terra"
+      ],
+      "Suggests": [
+        "actel",
+        "cli",
+        "dplyr",
+        "dtplyr",
+        "glue",
+        "ggplot2",
+        "grDevices",
+        "JuliaCall",
+        "lifecycle",
+        "lubridate",
+        "parallel",
+        "proj.file",
+        "RSP",
+        "qs",
+        "scales",
+        "sf",
+        "proj.lapply",
+        "spatial.extensions",
+        "spelling",
+        "testthat (>= 3.0.0)"
+      ],
+      "Depends": [
+        "R (>= 4.1)"
+      ],
+      "Config/testthat/edition": "3",
+      "URL": "https://github.com/edwardlavender/patter.workflows/",
+      "BugReports": "https://github.com/edwardlavender/patter.workflows/issues/",
+      "Encoding": "UTF-8",
+      "Language": "en-GB",
+      "Roxygen": "list(markdown = TRUE)",
+      "RoxygenNote": "7.3.2",
+      "LazyData": "true",
+      "Author": "Edward Lavender [aut, cre] (ORCID: <https://orcid.org/0000-0002-8040-7489>)",
+      "Maintainer": "Edward Lavender <edward.lavender@eawag.ch>",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "edwardlavender",
+      "RemoteRepo": "patter.workflows",
+      "RemoteRef": "main",
+      "RemoteSha": "a68c9185b94cab0b3bf4eabc7b1b789ff08b7e66",
+      "Remotes": "github::edwardlavender/proj.build, github::edwardlavender/proj.file, github::edwardlavender/proj.lapply, github::edwardlavender/spatial.extensions, github::YuriNiella/RSP"
+    },
     "pbapply": {
       "Package": "pbapply",
       "Version": "1.7-2",
@@ -4241,6 +4337,31 @@
       "RemoteRef": "master",
       "RemoteSha": "115da4580f8a2a872e96713fa319f48ac5c2aeed"
     },
+    "prettyunits": {
+      "Package": "prettyunits",
+      "Version": "1.2.0",
+      "Source": "Repository",
+      "Title": "Pretty, Human Readable Formatting of Quantities",
+      "Authors@R": "c( person(\"Gabor\", \"Csardi\", email=\"csardi.gabor@gmail.com\", role=c(\"aut\", \"cre\")), person(\"Bill\", \"Denney\", email=\"wdenney@humanpredictions.com\", role=c(\"ctb\"), comment=c(ORCID=\"0000-0002-5759-428X\")), person(\"Christophe\", \"Regouby\", email=\"christophe.regouby@free.fr\", role=c(\"ctb\")) )",
+      "Description": "Pretty, human readable formatting of quantities. Time intervals: '1337000' -> '15d 11h 23m 20s'. Vague time intervals: '2674000' -> 'about a month ago'. Bytes: '1337' -> '1.34 kB'. Rounding: '99' with 3 significant digits -> '99.0' p-values: '0.00001' -> '<0.0001'. Colors: '#FF0000' -> 'red'. Quantities: '1239437' -> '1.24 M'.",
+      "License": "MIT + file LICENSE",
+      "URL": "https://github.com/r-lib/prettyunits",
+      "BugReports": "https://github.com/r-lib/prettyunits/issues",
+      "Depends": [
+        "R(>= 2.10)"
+      ],
+      "Suggests": [
+        "codetools",
+        "covr",
+        "testthat"
+      ],
+      "RoxygenNote": "7.2.3",
+      "Encoding": "UTF-8",
+      "NeedsCompilation": "no",
+      "Author": "Gabor Csardi [aut, cre], Bill Denney [ctb] (<https://orcid.org/0000-0002-5759-428X>), Christophe Regouby [ctb]",
+      "Maintainer": "Gabor Csardi <csardi.gabor@gmail.com>",
+      "Repository": "CRAN"
+    },
     "proj.build": {
       "Package": "proj.build",
       "Version": "0.0.1",
@@ -4356,7 +4477,7 @@
       "RemoteUsername": "edwardlavender",
       "RemoteRepo": "proj.lapply",
       "RemoteRef": "main",
-      "RemoteSha": "698ae97aefdccb9fdd17b5354d1666d91a34ab71",
+      "RemoteSha": "423040385105b6dba08419a3e95c6fb690c0c71e",
       "Remotes": "github::edwardlavender/proj.build"
     },
     "proj.templates": {
@@ -6235,6 +6356,42 @@
       "Author": "Patrick O. Perry [aut, cph], Kirill Müller [cre], Unicode, Inc. [cph, dtc] (Unicode Character Database)",
       "Maintainer": "Kirill Müller <kirill@cynkra.com>",
       "Repository": "CRAN"
+    },
+    "utils.add": {
+      "Package": "utils.add",
+      "Version": "0.1.0",
+      "Source": "GitHub",
+      "Type": "Package",
+      "Title": "A Compilation of Additional Utilities for Day-to-Day Coding in R",
+      "Author": "Edward Lavender",
+      "Maintainer": "Edward Lavender <el72@st-andrews.ac.uk>",
+      "Description": "An eclectic and evolving collection of R functions implemented by the author in the course of scientific research.",
+      "Imports": [
+        "plyr",
+        "dplyr",
+        "tidyr",
+        "lubridate",
+        "stringi",
+        "rlist"
+      ],
+      "Suggests": [
+        "mgcv",
+        "rstudioapi",
+        "pacman",
+        "prettyGraphics"
+      ],
+      "License": "GPL-3",
+      "URL": "https://github.com/edwardlavender/utils.add/",
+      "BugReports": "https://github.com/edwardlavender/utils.add/issues/",
+      "Encoding": "UTF-8",
+      "LazyData": "true",
+      "RoxygenNote": "7.3.2",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "edwardlavender",
+      "RemoteRepo": "utils.add",
+      "RemoteRef": "master",
+      "RemoteSha": "cced89b4284acdc4e471533622a815aa9fc4747a"
     },
     "vctrs": {
       "Package": "vctrs",
