@@ -21,6 +21,7 @@ Sys.setenv("JULIA_SESSION" = FALSE)
 
 #### Load essential packages
 library(DHARMa)
+library(ggplot2)
 library(mgcv)
 library(mgcViz)
 library(proj.verse)
@@ -63,28 +64,46 @@ ggplot(data.frame(x = c(0, receiver_gamma)), aes(x = x)) +
 #### Analyse Klinard et al. (2019) datasets
 
 #### Model detection probability
+
 # detections ~ B(n, p)
 # p = logistic(dist) or p = s(dist)
+
+# Unweighted GLM
 m1 <- glm(cbind(success, failure) ~ dist,
-          data = klinard, family = binomial("cloglog"))
-m2 <- gam(cbind(success, failure) ~ s(dist), 
+          data = klinard, family = binomial())
+
+# Weighted GLM
+m2 <- glm(cbind(success, failure) ~ dist,
+          data = klinard, family = binomial(), weights = w)
+
+# Unweighted GAM
+m3 <- gam(cbind(success, failure) ~ s(dist), 
           data = klinard, family = binomial)
 
-#### GLM coefficients
-(receiver_alpha <- coef(m1)[1]) # 2.904267
-(receiver_beta  <- coef(m1)[2]) # -0.001546906
+# Weighted GAM 
+m4 <- gam(cbind(success, failure) ~ s(dist), 
+          data = klinard, family = binomial, weights = w)
+
+#### Extract GLM coefficients
+# Model 2 is our prefered model (weighted GLM)
+(receiver_alpha <- coef(m2)[1]) # 1.885708
+(receiver_beta  <- coef(m2)[2]) # -0.001613148
 
 #### Visualise models
-# The GLM is more 'generous' than our initial guess
-# The GLM and GAM match well
-# The GAM better captures low-probability detections at higher distances
-# The GAM behaves more poorly beyond range of data
-dist <- seq(0, 1e4, length.out = 1e3L)
-nd   <- data.frame(dist = dist)
-y0   <- plogis(2.5 + -0.003 * dist) # initial guess
-y1   <- predict(m1, newdata = nd, type = "response")
-y2   <- predict(m2, newdata = nd, type = "response")
-fit  <- data.frame(dist = dist, y0 = y0, y1 = y1, y2 = y2)
+## (A) Compute predictions
+nd   <- data.frame(dist = seq(0, 1e4, length.out = 1e3L))
+fit  <- data.frame(dist = nd$dist, 
+                   y0 = plogis(2.5 + -0.003 * nd$dist), # initial guess, 
+                   y1 = predict(m1, newdata = nd, type = "response"), 
+                   y2 = predict(m2, newdata = nd, type = "response"), 
+                   y3 = predict(m3, newdata = nd, type = "response"),
+                   y4 = predict(m4, newdata = nd, type = "response"))
+## (B) Visualise models
+# The GLMs are more 'generous' than our initial guess
+# The GLMs and GAMs match well
+# The GAMs better capture low-probability detections at higher distances
+# The GAMs behave more poorly beyond range of data
+# Weighted/unweighted models are similar
 ggplot(klinard, aes(x = dist, y = prop)) +
   geom_bin_2d(bins = 50) +
   scale_fill_viridis_c(name = "Count") +
@@ -92,9 +111,13 @@ ggplot(klinard, aes(x = dist, y = prop)) +
   geom_line(data = fit, aes(x = dist, y = y0),
             lwd = 1.5, color = "grey", inherit.aes = FALSE) +
   geom_line(data = fit, aes(x = dist, y = y1),
-            lwd = 1.5, color = "blue", inherit.aes = FALSE) +
-  geom_line(data = fit, aes(x = dist, y = y2), 
             lwd = 1.5, color = "red", inherit.aes = FALSE) +
+  geom_line(data = fit, aes(x = dist, y = y2), 
+            lwd = 1.5, color = "darkred", inherit.aes = FALSE) +
+  geom_line(data = fit, aes(x = dist, y = y3), 
+            lwd = 1.5, color = "skyblue", inherit.aes = FALSE) +
+  geom_line(data = fit, aes(x = dist, y = y4), 
+            lwd = 1.5, color = "blue", inherit.aes = FALSE) +
   scale_x_continuous(limits = c(0, 1e4), expand = c(0, 0)) + 
   scale_y_continuous(limits = c(0, 1), expand = c(0, 0)) + 
   labs(x = "Distance", y = "Detection Probability") +
@@ -102,9 +125,10 @@ ggplot(klinard, aes(x = dist, y = prop)) +
 
 #### Examine residuals
 # Residual diagnostics are poor
-# But MLE parameter estimates look reasonable
+# But MLE parameter estimates look reasonable (above)
+# and uncertainty quantification is not the aim here
 r1 <- simulateResiduals(m1)
-r2 <- simulateResiduals(m2) 
+r2 <- simulateResiduals(m3) 
 plot(r1)
 plot(r2)
 

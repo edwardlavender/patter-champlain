@@ -21,6 +21,8 @@ Sys.setenv("JULIA_SESSION" = FALSE)
 
 #### Load essential packages
 library(data.table)
+library(dtplyr)
+library(dplyr, warn.conflicts = TRUE)
 library(proj.verse)
 files_source_r(here_src())
 
@@ -101,6 +103,9 @@ detections <- fread(here_data_raw("model-obs", "klinard-et-al-2019",
 
 #### Define transmitter IDs (see above)
 transmitter_ids <- c("57347", "57349", "57350", "30838")
+transmitter_dB <- c(145, 145, 145, 153)
+transmitters    <- data.table(id = transmitter_ids,
+                              dB = transmitter_dB)
 stopifnot(all(transmitter_ids %in% detections$transmitter_id))
 
 #### Identify transmitter depth categories (see above)
@@ -149,6 +154,30 @@ klinard <-
   select(transmitter_id, timestamp, prop, success, failure, dist) |> 
   arrange(transmitter_id, timestamp) |>
   as.data.table()
+
+#### Compute weights
+# We assign weights so that on average, a GLM of detection probability
+# behaves as though all detections came from 147 dB tags (Lake Champlain tags)
+# Thus, we upweight 147 dB tags & downweight 153 tags, 
+# accounting for the number of observations. 
+# Since we have more measurements from 147 dB tags, this utimately involves
+# a downweighting of those measurements and an upweighting of the 153 measurements. 
+klinard <- 
+  klinard |> 
+  mutate(dB = transmitters$dB[match(transmitter_id, transmitters$id)]) |>
+  group_by(dB) %>%
+  mutate(
+    n_obs = n(),
+    # Compute weight, accounting for dB scaling and number of observations
+    w = 10^((147 - first(dB)) / 10) / n_obs
+  ) %>%
+  ungroup() %>%
+  # Normalise weights so average weight is one 
+  mutate(w = w / mean(w)) |> 
+  as.data.table()
+
+# Examine weights
+table(klinard$w)
 
 #### Checks
 # The expected number of transmissions should be >= observed number
