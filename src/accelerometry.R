@@ -15,7 +15,7 @@ sim_SS <- function(data,
                    beta, beta_se,
                    corr,
                    sigma_id, sigma,
-                   n_sim = 100L,
+                   n_sim = 250L,
                    cl = 1L) {
   
   #### Prepare data

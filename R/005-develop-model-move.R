@@ -258,9 +258,7 @@ legend("topright", legend = SS6[, unique(grp)], lty = 1, col = cols)
 #### Compute speeds (m/s or m/ 120 s)
 # We have generated a distribution of swimming speeds (BL/s)
 # We use body sizes to translate this into a distribution in m/s
-# TO DO
-# * Review whether we need to use fork length 
-s <- 120 
+s <- 1 
 xlim <- c(0, max(SS4 * max(fish$len)) * s)
 dmin <- density(SS4 * min(fish$len) * s)
 dmax <- density(SS4 * max(fish$len) * s)
@@ -278,8 +276,28 @@ lines(dmax, col = "dimgrey", lwd = 0.5)
 # plot_dbn("cauchy", xlim = xlim, add = TRUE, pars = list(location = 60, scale = 50), col = "red")
 plot_dbn("gamma", xlim = xlim, add = TRUE, pars = list(shape = 3, scale = 30), col = "blue")
 
-#### Use quantiles to inform mobility
+#### Summary statistics
+# Summary statistics (BL/s)
+mean(SS4)
+sd(SS4)
 quantile(SS4, 0.99)
+# Summary statistics (m/s or m per two min) for small fish 
+s <- 120
+mean(SS4 * min(fish$len)) * s           # 0.4671949, 56.06339 (m per 2 min)
+sd(SS4 * min(fish$len)) * s             # 0.1740966, 20.8916
+quantile(SS4 * min(fish$len) * s, 0.99) # 1.078395,  129.4074
+# Summary statistics (m/s or m per two min) for BIG fish 
+mean(SS4 * max(fish$len)) * s           # 0.7029355, 84.35226 (m per 2 min)
+sd(SS4 * max(fish$len)) * s             # 0.2619436, 31.43323
+quantile(SS4 * max(fish$len) * s, 0.99) # 1.622539,  194.7047
+
+
+###########################
+###########################
+#### VPS analyses of step length
+
+# TO DO 
+# M. Futia to add code
 
 
 ###########################
@@ -315,7 +333,7 @@ if (requireNamespace("flapper", quietly = TRUE)) {
   mvt <- flapper::get_mvt_mobility_from_acoustics(data = detections, 
                                                   fct = "individual_id", 
                                                   moorings = msp, 
-                                                  detection_range = 6000, 
+                                                  detection_range = 7500, 
                                                   calc_distance = "lcp", 
                                                   bathy = raster::raster(grid),
                                                   step = 120,
@@ -328,15 +346,15 @@ if (requireNamespace("flapper", quietly = TRUE)) {
 # --------------------------------------
 #   Estimates (m/s)-----------------------
 #   variable min mean  max
-# 1 speed_min_ms   0 0.03 0.40
+# 1 speed_min_ms   0 0.03 0.33
 # 2 speed_avg_ms   0 0.10 0.90
-# 3 speed_max_ms   0 0.18 1.64
+# 3 speed_max_ms   0 0.18 1.53
 # --------------------------------------
 #   Estimates (m/step)--------------------
 #   variable  min  mean    max
-# 1 speed_min_mstep 0.00  3.92  47.71
-# 2 speed_avg_mstep 0.07 12.52 108.29
-# 3 speed_max_mstep 0.12 21.12 197.28
+# 1 speed_min_mstep 0.00  3.15  39.44
+# 2 speed_avg_mstep 0.08 12.11 108.29
+# 3 speed_max_mstep 0.13 21.07 184.03
 # --------------------------------------
 
 #### Conclusions 
@@ -415,7 +433,9 @@ dirs.create(here_input("vmap", pars_model_move_full$mobility))
 pp <- par(mfrow = c(1, nrow(pars_model_move_full)))
 lapply(split(pars_model_move_full, seq_len(nrow(pars_model_move_full))), function(d) {
   vmap <- patter:::spatVmap(.map = map, .mobility = d$mobility, .plot = TRUE)
-  terra::writeRaster(vmap, here_input("vmap", d$mobility, "vmap.tif"))
+  terra::writeRaster(vmap, 
+                     here_input("vmap", d$mobility, "vmap.tif"), 
+                     overwrite = TRUE)
 })
 par(pp)
 
