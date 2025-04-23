@@ -20,6 +20,9 @@ rm(list = ls())
 Sys.setenv("JULIA_SESSION" = FALSE)
 
 #### Load essential packages
+library(data.table)
+library(dtplyr)
+library(dplyr, warn.conflicts = FALSE)
 library(DHARMa)
 library(ggplot2)
 library(mgcv)
@@ -86,6 +89,7 @@ m4 <- gam(cbind(success, failure) ~ s(dist),
 
 #### Extract GLM coefficients
 # Model 2 is our prefered model (weighted GLM)
+equatiomatic::extract_eq(m2)
 (receiver_alpha <- coef(m2)[1]) # 1.885708
 (receiver_beta  <- coef(m2)[2]) # -0.001613148
 
@@ -131,6 +135,14 @@ r1 <- simulateResiduals(m1)
 r2 <- simulateResiduals(m3) 
 plot(r1)
 plot(r2)
+
+#### Examine receiver_gamma
+klinard |> 
+  group_by(transmitter_id) |> 
+  mutate(max_dist = max(dist)) |> 
+  slice(1L) |>
+  select(transmitter_id, dB, max_dist) |> 
+  as.data.table()
 
 
 ###########################

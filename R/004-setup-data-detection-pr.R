@@ -136,6 +136,11 @@ detections <-
   arrange(transmitter_id, timestamp) |>
   as.data.table()
 
+#### Summarise raw dataset
+nrow(detections) # 293,786
+length(unique(detections$receiver_id))
+range(detections$timestamp)
+
 #### Create daily summarises of observed/expected number of detections for modelling
 klinard <- 
   detections |> 
