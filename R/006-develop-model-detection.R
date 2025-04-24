@@ -92,6 +92,8 @@ m4 <- gam(cbind(success, failure) ~ s(dist),
 equatiomatic::extract_eq(m2)
 (receiver_alpha <- coef(m2)[1]) # 1.885708
 (receiver_beta  <- coef(m2)[2]) # -0.001613148
+dbinom(1, size = 1, prob = plogis(receiver_alpha + receiver_beta * 8000))
+dbinom(1, size = 1, prob = plogis(receiver_alpha + receiver_beta * 8001))
 
 #### Visualise models
 ## (A) Compute predictions
