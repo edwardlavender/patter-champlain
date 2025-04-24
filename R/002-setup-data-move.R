@@ -31,7 +31,7 @@ blanchfield <- fread(here_data_raw("model-move", "blanchfield-et-al-2023",
 
 ###########################
 ###########################
-#### Setup data
+#### Setup Blanchfield dataset
 
 # Examine raw data
 head(blanchfield)
@@ -54,6 +54,13 @@ table(blanchfield$accel > 5)
 
 # Write to file
 qs::qsave(blanchfield, here_data("supp", "model-move", "blanchfield.qs"))
+
+
+###########################
+###########################
+#### Setup VPS data
+
+# TO DO (MF)
 
 
 #### End of code. 
