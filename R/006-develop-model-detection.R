@@ -137,12 +137,16 @@ plot(r1)
 plot(r2)
 
 #### Examine receiver_gamma
-klinard |> 
+kmax <- 
+  klinard |> 
   group_by(transmitter_id) |> 
   mutate(max_dist = max(dist)) |> 
   slice(1L) |>
   select(transmitter_id, dB, max_dist) |> 
   as.data.table()
+# Adjusted max detection ranges for 147 dB tag
+# (Amplitude Distance Law)
+kmax$max_dist * 10^((147 - kmax$dB) / 20)
 
 
 ###########################
