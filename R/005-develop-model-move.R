@@ -382,7 +382,6 @@ if (requireNamespace("flapper", quietly = TRUE)) {
 #### Synthesise parameters
 
 #### Define 'best-guess' parameters (list)
-# TO DO
 pars_model_move_best <- list(shape = 3.25, scale = 25.0, mobility = 216, phi = 1.8)
 
 #### Define restrictive/flexible parameters 

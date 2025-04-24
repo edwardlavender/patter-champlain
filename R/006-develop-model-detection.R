@@ -6,7 +6,7 @@
 # 1) Setup the detection probability model 
 
 #### Prerequisites
-# 1) TO DO
+# 1) Process Klinard et al. (2019) dataset
 
 
 ###########################
