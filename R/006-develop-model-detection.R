@@ -158,7 +158,7 @@ kmax$max_dist * 10^((147 - kmax$dB) / 20)
 #### Define 'best-guess' parameters (list)
 pars_model_obs_best <- list(receiver_alpha = receiver_alpha, 
                             receiver_beta  = receiver_beta, 
-                            receiver_gamma = 7500)
+                            receiver_gamma = 8000)
 
 #### Define restrictive/flexible parameter combinations
 # We assume these are known
@@ -168,7 +168,74 @@ pars_model_obs_best <- list(receiver_alpha = receiver_alpha,
 #### Collect all parameters (data.table)
 pars_model_obs_full <- as.data.table(pars_model_obs_best)
 
+
+###########################
+###########################
+#### Publication-quality plot
+
+png(here_fig("model-obs.png"), 
+    height = 4, width = 6, units = "in", res = 800)
+gg <- 
+  ggplot(klinard, aes(x = dist, y = prop)) +
+  geom_bin_2d(bins = 50) +
+  scale_fill_viridis_c(name = "Count", direction = -1, alpha = 0.95, 
+                       guide     = guide_colorbar(
+                         # draw a frame around the bar
+                         frame.colour    = "black",
+                         frame.linewidth = 0.5,
+                         # draw ticks and labels
+                         ticks           = TRUE,
+                         ticks.colour    = "black",
+                         ticks.linewidth = 0.5,
+                         # size of the bar
+                         barwidth        = unit(0.5, "cm"),
+                         barheight       = unit(4,   "cm"),
+                         # put title on top, labels beneath
+                         title.position  = "top",
+                         label.position  = "right"
+                       )) +
+  geom_point(shape = ".") + 
+  # geom_line(data = fit, aes(x = dist, y = y0),
+  #           lwd = 1.5, color = "grey", inherit.aes = FALSE) +
+  # geom_line(data = fit, aes(x = dist, y = y1),
+  #           lwd = 1.5, color = "red", inherit.aes = FALSE) +
+  geom_line(data = fit, aes(x = dist, y = y2),
+            lwd = 1.25, color = "black", inherit.aes = FALSE) +
+  # geom_line(data = fit, aes(x = dist, y = y3), 
+  #           lwd = 1.5, color = "skyblue", inherit.aes = FALSE) +
+  geom_line(data = fit, aes(x = dist, y = y4), 
+            lwd = 1.25, color = "dimgrey", inherit.aes = FALSE) +
+  scale_x_continuous(limits = c(0, pars_model_obs_best$receiver_gamma), expand = c(0, 0)) + 
+  scale_y_continuous(limits = c(0, 1), expand = c(0, 0)) + 
+  labs(x = "Distance", y = "Detection probability") +
+  theme_bw() + 
+  theme(
+    panel.border = element_blank(),
+    axis.line = element_line(colour = "black"),
+    axis.line.x.top = element_blank(),
+    axis.line.y.right = element_blank(),
+    axis.ticks.x.top = element_blank(),
+    axis.ticks.y.right = element_blank(),
+    axis.text.x.top  = element_blank(),
+    axis.text.y.right = element_blank(),
+    axis.title.x = element_text(size = 14, colour = "black", margin = margin(t = 7.5)),
+    axis.title.y = element_text(size = 14, colour = "black", margin = margin(r = 7.5)),
+    axis.text.x  = element_text(size = 12, colour = "black"),
+    axis.text.y  = element_text(size = 12, colour = "black"), 
+    axis.ticks.length = unit(0.3, "cm"), 
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(), 
+    legend.title = element_text(color = "black"),
+    legend.text  = element_text(color = "black")
+  )
+print(gg)
+dev.off()
+print(gg)
+
+###########################
+###########################
 #### Write to file
+
 qs::qsave(pars_model_obs_best, here_input("pars-model-obs-best.qs"))
 qs::qsave(pars_model_obs_full, here_input("pars-model-obs-full.qs"))
 
