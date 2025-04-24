@@ -130,7 +130,7 @@ The project structure is as follows:
     - `prepare-real.R` prepares an iteration `data.table` and
       directories for real-world analyses;
     - `sim-data.R` simulates trajectories and observations;
-    - `sim-analysis-patter.R` analyses simulated observations using
+    - `sim-analysis-patter-*.R` analyses simulated observations using
       `patter`;
     - `sim-analysis-heuristic.R` analyses simulated observations using
       heuristic methods;
