@@ -147,7 +147,7 @@ sigma    <- 0.04809 # random noise
 
 #### Simulate speeds (BL/s)
 # Simulate speeds ignoring all uncertainty
-cl  <- 6L
+cl  <- 10L
 SS1 <- sim_SS(blanchfield,
               alpha    = alpha,
               alpha_se = 0,
@@ -274,7 +274,7 @@ lines(dmax, col = "dimgrey", lwd = 0.5)
 # Add data-driven models 
 # plot_dbn("norm", xlim = xlim, add = TRUE, pars = list(mean = 60, sd = 50))
 # plot_dbn("cauchy", xlim = xlim, add = TRUE, pars = list(location = 60, scale = 50), col = "red")
-plot_dbn("gamma", xlim = xlim, add = TRUE, pars = list(shape = 3, scale = 30), col = "blue")
+plot_dbn("gamma", xlim = xlim, add = TRUE, pars = list(shape = 3.25, scale = 25), col = "blue")
 
 #### Summary statistics
 # Summary statistics (BL/s)
@@ -383,11 +383,11 @@ if (requireNamespace("flapper", quietly = TRUE)) {
 
 #### Define 'best-guess' parameters (list)
 # TO DO
-pars_model_move_best <- list(shape = 3.0, scale = 30.0, mobility = 350, phi = 1.2)
+pars_model_move_best <- list(shape = 3.25, scale = 25.0, mobility = 216, phi = 1.8)
 
 #### Define restrictive/flexible parameters 
 # Define parameter uncertainty 
-adj <- 0.5
+adj <- 0.25
 inflate <- 1 + adj
 deflate <- 1 - adj
 # Collect 'best-guess' parameters
@@ -403,31 +403,106 @@ flexible    <- gamma_rescale(shape, scale, fact = inflate)
 pars_model_move_full <- data.table(mobility = c(mobility, mobility * deflate, mobility * inflate),
                                    shape = c(shape, restrictive[1], flexible[1]),
                                    scale = c(scale,  restrictive[2],flexible[2]),
-                                   phi = c(phi, phi * deflate, phi * inflate))
+                                   phi = c(phi, phi, phi))
 
-#### Visualise models
+
+###########################
+###########################
+#### Publication-quality visualisation of movement model
+
+#### Precompute observed step length densities (slow)
+# Define speeds (values) for 120 s
+s    <- 120
+vmin <- SS4 * min(fish$len) * s
+vmax <- SS4 * max(fish$len) * s
+# Round values to add as a rug (round for speed)
+# vrug <- unique(c(plyr::round_any(vmin, 5), plyr::round_any(vmax, 5)))
+# Compute densities
+dmin <- density(vmin)
+dmax <- density(vmax)
+
+#### Step lengths
+png(here_fig("model-move-step.png"), 
+    height = 4, width = 4, units = "in", res = 800)
+pp <- par(mgp = c(3, 0.7, 0))
+# Set graphical parameters
+xlim <- c(0, 500)
+ylim <- c(0, 0.025)
+# Observed distributions for small and large fish 
+plot(dmin, 
+     type = "n",
+     xlim = xlim, ylim = ylim,
+     xlab = "", ylab = "", main = "",
+     axes = FALSE)
+# rug(vrug, pos = ylim[2] * 0.9)
+add_poly(dmin, col = scales::alpha("lightgrey", 1))
+add_poly(dmax, col = scales::alpha("dimgrey", 0.5))
 # Best model (step-length)
 plot_dbn("gamma", 
          xlim = c(0, 300), 
          pars = list(shape = pars_model_move_full$shape[1],
-                     scale = pars_model_move_full$scale[1]))
+                     scale = pars_model_move_full$scale[1]), 
+         upper = pars_model_move_full$mobility[1],
+         add = TRUE, lwd = 2)
 # Restrictive model (step-length)
 plot_dbn("gamma", 
          xlim = c(0, 300), 
          pars = list(shape = pars_model_move_full$shape[2], 
                      scale = pars_model_move_full$scale[2]), 
-         add = TRUE, col = "red")
+         upper = pars_model_move_full$mobility[2],
+         add = TRUE, col = "red", lty = 3, lwd = 1)
 # Flexible model (step-length)
 plot_dbn("gamma", 
          xlim = c(0, 300), 
          pars = list(shape = pars_model_move_full$shape[3], 
                      scale = pars_model_move_full$scale[3]), 
-         add = TRUE, col = "darkgreen")
+         upper = pars_model_move_full$mobility[3],
+         add = TRUE, col = "darkgreen", lty = 3, lwd = 1)
+# Mark mobility
+mark_mobility(pars_model_move_full$mobility[1])
+mark_mobility(pars_model_move_full$mobility[2], col = "red")
+mark_mobility(pars_model_move_full$mobility[3], col = "darkgreen")
+# Add axes (m/s, m per two min, density )
+axis(side = 1, c(xlim[1], xlim[2]), labels = c("", ""), lwd.tick = 0, pos = ylim[1])
+axis(side = 1, (0:4) * s, labels = 0:4, pos = ylim[1])
+axis(side = 1, seq(xlim[1], xlim[2], by = 100), pos = -0.005) 
+axis(side = 2, ylim, labels = FALSE, lwd.ticks = 0, pos = xlim[1])
+axis(side = 2, c(0, 0.01, 0.02), pos = xlim[1], las = TRUE)
+par(pp)
+dev.off()
 
+#### Turning angle
+# For speed, for this plot we just amend code from patter-flapper
+png(here_fig("model-move-turning-angle.png"), 
+    height = 4, width = 4, units = "in", res = 800)
+pp <- par(mgp = c(3, 0.7, 0))
+x <- seq(-pi*1.1, pi*1.1, length.out = 1e5)
+y <- dnorm(x, 0, pars_model_move_full$phi)
+ylim <- c(0, 0.4)
+plot(x, y,
+     ylim = ylim,
+     xlab = "", ylab = "",
+     type = "l", 
+     axes = FALSE)
+axis(side = 1, at = c(-pi * 1.1, pi * 1.1), labels = FALSE, lwd.tick = 0, pos = 0)
+axis(side = 1, 
+     at = c(-pi, -pi/2, 0, pi/2, pi), 
+     labels = c(expression(-pi), expression(-pi/2), expression(0), expression(pi/2), expression(pi)), 
+     pos = 0)
+yat <- seq(ylim[1], ylim[2], by = 0.1)
+axis(side = 2, prettyGraphics:::add_lagging_point_zero(yat), las = TRUE, pos = -pi*1.1)
+par(pp)
+dev.off()
+
+
+###########################
+###########################
 #### Write parameters to file
+
 # Parameters
 qs::qsave(pars_model_move_best, here_input("pars-model-move.qs"))
 qs::qsave(pars_model_move_full, here_input("pars-model-move-full.qs"))
+
 # vmaps
 dirs.create(here_input("vmap", pars_model_move_full$mobility))
 pp <- par(mfrow = c(1, nrow(pars_model_move_full)))
