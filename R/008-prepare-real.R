@@ -4,12 +4,12 @@
 
 #### Aims
 # 1) Prepare inputs for real-world analyses 
+# * Detection data
 # * Iteration data.tables
 # * Folder structure
-# * TO DO
 
 #### Prerequisites
-# 1) TO DO
+# 1) Process detection data
 
 
 ###########################
@@ -23,11 +23,14 @@ rm(list = ls())
 Sys.setenv("JULIA_SESSION" = FALSE)
 
 #### Load essential packages
+library(data.table)
+library(dtplyr)
+library(dplyr, warn.conflicts = FALSE)
 library(proj.verse)
 files_source_r(here_src())
 
 #### Load data
-# TO DO
+detections <- qs::qread(here_input_real("detections.qs"))
 
 
 ###########################
@@ -35,11 +38,11 @@ files_source_r(here_src())
 #### Batch datasets
 
 #### Method
-# Batch the detection datasets to manage memory (see also explore-real.R)
-# This should also mitigate potential convergence issues
+# Batch the detection datasets:
+# * Mitigate convergence issues
+# * Improved memory handling 
 # Split at the moment of a detection, roughly into one-month batches 
-# Join batches detections (last time step, first time step)
-# Then we can treat the time series as if they are from different individuals
+# Join batches @ detections (last time step, first time step)
 
 #### Define individuals/months
 detections <- 
@@ -111,13 +114,20 @@ nobs <-
   group_by(unit_id) |> 
   summarise(n = n(), 
             duration = as.numeric(difftime(max(timestamp), min(timestamp)),
-                                  units = "mins")) |> 
+                                  units = "days")) |> 
   arrange(n) |>
   as.data.table()
 head(sort(nobs$n))
 head(sort(nobs$duration)) 
 
+
+###########################
+###########################
+#### Define unitsets
+
 #### Record mapping between individual_id and unit_id
+# TO DO 
+# Clean this code & define unitsets 
 detections_units <- 
   detections |> 
   select(individual_id, unit_id) |> 
@@ -131,16 +141,15 @@ detections_units <-
   as.data.table()
 # View(detections_units)
 
-#### Set individual_id = unit_id (backwards compatibility)
-# We implement the algorithms for each 'individual'
-# To compute residency:
-# - We iterate over individuals in detections_units
-# - For each individual, we read the data for each batch
-# - We process (shrink) the data for that batch
-# - For batchs 2:N, we drop the first row to avoid douple counting 
-# - see analysis-real.R (TO DO)
-detections[, individual_id := unit_id]
-detections[, unit_id := NULL]
+#### Build directories
+# TO DO
+
+
+###########################
+###########################
+#### Write to file
+
+# TO DO
 
 
 #### End of code. 
