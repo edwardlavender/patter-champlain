@@ -18,14 +18,15 @@ constructor_ac_sim <- function(.sim, .datasets, .verbose, ...) {
   n_sim_smo         <- 100L
   if (test) {
     warning("test = TRUE!", immediate. = TRUE)
-    n_particle_smo <- 100L
-    n_sim_smo      <- 30L
+    n_particle_filter <- 5e3L
+    n_particle_smo    <- 100L
+    n_sim_smo         <- 30L
   }
   
   # Define timeline
   timeline <- qs::qread(here_input_sim("timeline.qs"))
   if (test) {
-    timeline <- timeline[1:500L]
+    timeline <- timeline[1:250L]
   }
   
   # Define movement model

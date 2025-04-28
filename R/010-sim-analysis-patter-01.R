@@ -35,12 +35,20 @@ iteration       <- qs::qread(here_input_sim("iteration-patter-optim.qs"))
 ###########################
 #### Run analysis 
 
+#### (optional) Clean up
+if (FALSE) {
+  unlink(iteration$file_output)
+}
+
 #### (optional) Set up cluster
 # TO DO Set up cluster
 map <- here_input("map.tif")
 set_map(map)
 
 #### Run filter & optimisation
+# We currently use optim()
+# This is more scalable for mutliple parameters
+# With just two parameters, a grid search approach may be quicker
 cl_lapply_workflow(.iteration = iteration[1, ], 
                    .datasets = NULL, 
                    .constructor = constructor_pf_filter_loglik_optim, 
