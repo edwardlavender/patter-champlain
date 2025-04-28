@@ -71,8 +71,10 @@ model_obs <- model_obs_champlain(moorings, pars_model_obs)
 plot(model_obs)
 
 #### Define tagging locations
-xinit <- model_move_xinit(.map = map, 
-                          .xinit = fish[sample.int(n_sim, replace = TRUE), ])
+xinit <- fish[sample.int(n_sim, replace = TRUE), ]
+xinit[, map_value := terra::extract(map, cbind(x, y))]
+xinit <- xinit[, .(map_value, x, y)]
+xinit <- model_move_xinit(.xinit = xinit, .n_particle = NULL)
 
 #### Simulate movement paths (~7 s)
 # This returns a data.table with trajectories
