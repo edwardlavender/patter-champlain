@@ -38,26 +38,48 @@ detections <- qs::qread(here_input_real("detections.qs"))
 #### Batch datasets
 
 #### Method
-# Batch the detection datasets:
-# * Mitigate convergence issues
-# * Improved memory handling 
-# Split at the moment of a detection, roughly into one-month batches 
+# Split into approximate individual/month batches
+# Split at the moment of a detection
 # Join batches @ detections (last time step, first time step)
+# (optional) Drop batches with limited data
+
+#### (optional) Focus on select individuals with good data
+# Number of individuals 
+length(unique(detections$individual_id))
+# Frequency distribution for duration of detection time series
+durations <- 
+  detections |> 
+  group_by(individual_id) |> 
+  summarise(days = as.numeric(difftime(max(timestamp), min(timestamp), units = "days")), 
+            ndays = length(unique(lubridate::floor_date(timestamp, "days")))) |> 
+  as.data.table()
+# Summary statistics 
+# * 75 % of individuals were tracked for more than 167 days
+plot(ecdf(durations$days))
+quantile(durations$days, prob = 0.2)
+quantile(durations$days, prob = 0.25)
+# Focus on individuals tracked for longer than one month
+ids        <- durations$individual_id[durations$days > 31]
+detections <- detections[individual_id %in% ids, ]
+length(unique(detections$individual_id))
+# Focus on individuals with more than 31 days with detections
+ids        <- durations$individual_id[durations$ndays > 31]
+detections <- detections[individual_id %in% ids, ]
+length(unique(detections$individual_id))
 
 #### Define individuals/months
 detections <- 
   detections |> 
   group_by(individual_id) |> 
-  mutate(unit_id = as.character(cut(timestamp, "months")), 
-         unit_id = stringr::str_replace_all(unit_id, "-", "")) |> 
-  select(individual_id, unit_id, timestamp, receiver_id) |>
+  mutate(time_id = lubridate::floor_date(timestamp, "months")) |>
+  select(individual_id, time_id, timestamp, receiver_id) |>
   as.data.table()
 
-#### Update detections 
+#### Split detections into individual/month blocks, merging small batches
 detections <- 
   lapply(split(detections, detections$individual_id), function(d_id) {
     # d_id <- split(detections, detections$individual_id)[[1]]
-    d_batch <- split(d_id, d_id$unit_id)
+    d_batch <- split(d_id, d_id$time_id)
     n_batch <- length(d_batch)
     # (optional) Merge batches
     # * Merge batches if subsequent batches only contain a few additional observations
@@ -67,10 +89,10 @@ detections <-
         duration <- difftime(max(d_batch[[i]]$timestamp), 
                              min(d_batch[[i]]$timestamp), 
                              units = "weeks")
-        # If duration is less than threshold (e.g., 1 week), merge with previous batch
-        if (duration < 1) {
-          # Combine datasets, using unit_id of preceeding batch
-          d_batch[[i]][, unit_id := d_batch[[i - 1]]$unit_id[1]]
+        # If duration is less than threshold (e.g., 2 weeks), merge with previous batch
+        if (duration < 2) {
+          # Combine datasets, using time_id of preceding batch
+          d_batch[[i]][, time_id := d_batch[[i - 1]]$time_id[1]]
           d_batch[[i - 1]] <- rbind(d_batch[[i - 1]], d_batch[[i]])
           d_batch[[i]] <- NULL
         }
@@ -88,10 +110,10 @@ detections <-
         d_batch[[i + 1]] <- rbind(last_row, d_batch[[i + 1]])
       }
     }
-    # Update unit_id
-    # (use last unit_id as first one for batches 2:N is different)
+    # Update time_id
+    # (use first time_id as first one for batches 2:N is different)
     for (i in 1:n_batch) {
-      d_batch[[i]][, unit_id := paste0(individual_id, "_", unit_id[.N])]
+      d_batch[[i]][, time_id := paste0(individual_id, "_", time_id[1])]
     }
     # Rejoin batches
     rbindlist(d_batch)
@@ -99,7 +121,7 @@ detections <-
 
 #### Check code works
 det_1 <- detections[individual_id == 26786, ]
-det_1 <- split(det_1, det_1$unit_id)
+det_1 <- split(det_1, det_1$time_id)
 length(det_1)
 (det_1a <- det_1[[1]][.N, ])
 (det_1b <- det_1[[2]][1, ])
@@ -108,38 +130,46 @@ stopifnot(all.equal(det_1a$individual_id, det_1b$individual_id))
 stopifnot(all.equal(det_1a$timestamp, det_1b$timestamp))
 stopifnot(all.equal(det_1a$receiver_id, det_1b$receiver_id))
 
-#### Check the number of observations & time range per batch
-nobs <- 
+#### Define unit_id
+detections[, unit_id := .GRP, by = c("individual_id", "time_id")]
+detections <- detections[, .(unit_id, individual_id, time_id, timestamp, receiver_id)]
+# Checks
+stopifnot(
+  length(unique(detections$unit_id)) ==
+  length(unique(paste(detections$individual_id, detections$time_id)))
+)
+
+#### Update unit_id
+# Compute statistics for each unit_id
+# * Number of observations
+# * Number of weeks with observations
+# * Duration between first and last observation 
+unitstats <- 
   detections |> 
   group_by(unit_id) |> 
-  summarise(n = n(), 
-            duration = as.numeric(difftime(max(timestamp), min(timestamp)),
-                                  units = "days")) |> 
+  summarise(
+    n = n(), 
+    n_day = length(unique(lubridate::floor_date(timestamp, "days"))),
+    n_week = length(unique(lubridate::floor_date(timestamp, "weeks"))),
+    duration = as.numeric(difftime(max(timestamp), min(timestamp)),
+                          units = "days")) |> 
   arrange(n) |>
   as.data.table()
-head(sort(nobs$n))
-head(sort(nobs$duration)) 
+# Examine summary statistics
+head(sort(unitstats$n))
+head(sort(unitstats$duration)) 
+hist(unitstats$n, breaks = 50)
+hist(unitstats$duration, breaks = 50)
+# Drop any unit_ids with insufficient data 
+head(unitstats)
 
 
 ###########################
 ###########################
 #### Define unitsets
 
-#### Record mapping between individual_id and unit_id
+#### Define unitsets
 # TO DO 
-# Clean this code & define unitsets 
-detections_units <- 
-  detections |> 
-  select(individual_id, unit_id) |> 
-  group_by(unit_id) |> 
-  slice(1L) |> 
-  ungroup() |> 
-  group_by(individual_id) |>
-  mutate(n_batch = n()) |> 
-  ungroup() |>
-  arrange(individual_id, unit_id) |>
-  as.data.table()
-# View(detections_units)
 
 #### Build directories
 # TO DO
