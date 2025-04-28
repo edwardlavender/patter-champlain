@@ -30,9 +30,9 @@ library(proj.verse)
 files_source_r(here_src())
 
 #### Load data
-map             <- terra::rast(here_input("map.tif"))
-pars_model_move <- qs::qread(here_input("pars-model-move-best.qs"))
-detections      <- qs::qread(here_input_real("detections.qs"))
+map        <- terra::rast(here_input("map.tif"))
+pars       <- qs::qread(here_input("pars-patter.qs"))
+detections <- qs::qread(here_input_real("detections.qs"))
 
 
 ###########################
@@ -90,7 +90,7 @@ detections <-
 # - Even at slower speeds, locations are uncertain after relatively short times
 # - Without regular detections, locations are uncertain
 ydim <- terra::ext(map)[4] - terra::ext(map)[3] # 174928.5 m
-ydim / (24 * 60/2 * pars_model_move$mobility)   # 1 day to cross area
+ydim / (24 * 60/2 * pars$mobility[1])   # 1 day to cross area
 
 # Compute the proportion of days per month with detections
 durations <- 
@@ -146,15 +146,45 @@ dirs.create(unitsets$folder_home)
 dirs.create(unitsets$folder_home_patter)
 
 #### Write to file
+# unitsets
 qs::qsave(unitsets, here_input_real("unitsets.qs"))
+# detection datasets for each unit_id
+cl_lapply(split(unitsets, seq_len(nrow(unitsets))), function(d) {
+  qs::qsave(detections[unit_id == d$unit_id, ], 
+            d$file_detections)
+})
 
 
 ###########################
 ###########################
 #### Prepare iteration patter: main analysis
 
-# TO DO Prepare iteration patter
-# following prepare-sim.R 
+#### Define iteration 
+# TO DO Limit iteration rows
+# * The number of rows in this data.table is too high
+# * We should restrict this
+#   - A) Restrict sensitivity analyses
+#        on the basis of simulation results the sensitivity analysis 
+#   - B) Reconsider simulation priorities 
+iteration <- 
+  unitsets |> 
+  select(unit_id, individual_id, time_id, 
+         file_detections,
+         folder_home = folder_home_patter) |>
+  cross_join(pars) |> 
+  mutate(index = row_number(),
+         folder_coord = file.path(folder_home, "coord", parameter_id)) |> 
+  as.data.table()
+
+#### Build directories 
+if (FALSE) {
+  unlink(iteration$folder_coord)
+}
+nrow(iteration)
+dirs.create(iteration$folder_coord)
+
+#### Record iteration
+qs::qsave(iteration, here_input_real("iteration-patter.qs"))
 
 
 ###########################
