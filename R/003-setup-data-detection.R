@@ -36,7 +36,7 @@ map        <- terra::rast(here_input("map.tif"))
 map_bbox   <- qs::qread(here_input("map-bbox.qs"))
 moorings   <- readRDS(here_data_raw_mf("OriginalReceiverSummary_2013-2017.rds"))
 detections <- readRDS(here_data_raw_mf("lkt_detections_2013-2017.rds"))
-# surgery    <- fread(here_data_raw("mfutia", "model_comparison", "surgery_log.csv"))
+surgery    <- fread(here_data_raw("mfutia", "model_comparison", "surgery_log.csv"))
 
 
 ###########################
@@ -44,9 +44,7 @@ detections <- readRDS(here_data_raw_mf("lkt_detections_2013-2017.rds"))
 #### Identify fish 
 
 #### Define fish (id, size, tagging location)
-# * TO DO
-# * Tagging dates are recorded in survey_log.csv (cap_d)
-# * (We should focus on fish within the time span of detections)
+# Define fish 
 fish <- 
   detections |> 
   group_by(animal_id) |> 
@@ -72,6 +70,12 @@ fish[, y := xy[, 2]]
 stopifnot(all(!is.na(terra::extract(map, xy)[, 1])))
 terra::plot(map)
 points(xy)
+# Check tagging dates
+# * Note that fish were tagged at different times
+# * TO DO
+# * Confirm format %m/%d/%Y
+range(detections$detection_timestamp_utc)
+range(as.Date(surgery$cap_date, format = "%m/%d/%Y"))
 
 #### Checks
 # Each individual is associated with one length (presumably length @ tagging)
@@ -197,6 +201,7 @@ study_end   <- max(detections$timestamp)
 study_int   <- lubridate::interval(study_start, study_end)
 
 #### Clean up fish 
+
 # TO DO
 # (Focus on fish tagged in study period)
 
