@@ -163,9 +163,10 @@ cl_lapply(split(unitsets, seq_len(nrow(unitsets))), function(d) {
 # TO DO Limit iteration rows
 # * The number of rows in this data.table is too high
 # * We should restrict this
-#   - A) Restrict sensitivity analyses
-#        on the basis of simulation results the sensitivity analysis 
+#   - A) Restrict individual inclusion criteria 
 #   - B) Reconsider simulation priorities 
+#   - C) Restrict sensitivity analyses
+#        on the basis of simulation results the sensitivity analysis 
 iteration <- 
   unitsets |> 
   select(unit_id, individual_id, time_id, 
