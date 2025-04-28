@@ -46,8 +46,10 @@ map <- here_input("map.tif")
 set_map(map)
 
 #### Run filter & optimisation
-# We currently use optim()
-# This is more scalable for mutliple parameters
+# Iterate over iteration and run optimisation
+# We assume the function can be initialised at the initial parameters in this data.table!
+# For optimsiation, we currently use optim()
+# This is more scalable for multiple parameters
 # With just two parameters, a grid search approach may be quicker
 cl_lapply_workflow(.iteration = iteration[1, ], 
                    .datasets = NULL, 

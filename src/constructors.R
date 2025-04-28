@@ -33,14 +33,24 @@ constructor_ac_sim <- function(.sim, .datasets, .verbose, ...) {
   state      <- state_trout()
   model_move <- model_move_trout(.sim)
   
-  # TO DO (optional) Define initial states
-  #
+  # (optional) Define initial states
+  # (For convenience, xinits for all individuals are stored in one list)
+  caprecap  <- qs::qread(here_input_sim("xinits.qs"))[[.sim$unit_id]]
+  cap       <- caprecap[1, list(map_value, x, y)]
+  recap     <- caprecap[2, list(map_value, x, y)]
+  xinit_fwd <- model_move_xinit(.xinit = cap, .n_particle = n_particle_filter)
+  xinit_bwd <- model_move_xinit(.xinit = cap, .n_particle = n_particle_filter)
   
-  # TO DO (optional) Assemble capture/recapture containers
-  #
+  # Assemble capture/recapture containers
+  map_bbox   <- qs::qread(here_input("map-bbox.qs"))
+  containers <- xinit_containers <- 
+    assemble_xinit_containers(.timeline = timeline, 
+                              .xinit = list(forward = cap, backward = recap), 
+                              .radius = .sim$mobility, 
+                              .mobility = .sim$mobility,
+                              .map = map_bbox)
   
   # Assemble acoustic observations
-  # (We could also read datasets for .sim$unit_id from file)
   moorings   <- qs::qread(here_input_sim("moorings.qs"))
   moorings   <- model_obs_champlain(.moorings = moorings,
                                     .pars = .sim, 
@@ -53,14 +63,16 @@ constructor_ac_sim <- function(.sim, .datasets, .verbose, ...) {
   
   # Assemble acoustic containers
   if (length(which(acoustics$obs == 1L) > 2L)) {
-    map_bbox   <- qs::qread(here_input("map-bbox.qs"))
-    containers <- assemble_acoustics_containers(.timeline = timeline, 
+    acoustic_containers <- assemble_acoustics_containers(.timeline = timeline, 
                                                 .acoustics = acoustics, 
                                                 .mobility = .sim$mobility, 
                                                 .map = map_bbox)
-    yobs_fwd$ModelObsContainer <- containers$forward
-    yobs_bwd$ModelObsContainer <- containers$backward
+    containers <- assemble_containers(xinit_containers, acoustic_containers)
   }
+  
+  # Collate containers
+  yobs_fwd$ModelObsContainer <- containers$forward
+  yobs_bwd$ModelObsContainer <- containers$backward
   
   # Define arguments for forward filter run
   # * With batching, we can keep .collect = TRUE to record diagnostics/callstats

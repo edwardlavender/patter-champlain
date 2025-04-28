@@ -33,8 +33,8 @@ files_source_r(here_src())
 map             <- terra::rast(here_input("map.tif"))
 fish            <- qs::qread(here_input("fish.qs"))
 moorings        <- qs::qread(here_input_sim("moorings-xy.qs"))
-pars_model_move <- qs::qread(here_input("pars-model-move.qs"))
-pars_model_obs  <- qs::qread(here_input("pars-model-obs.qs"))
+pars_model_move <- qs::qread(here_input("pars-model-move-best.qs"))
+pars_model_obs  <- qs::qread(here_input("pars-model-obs-best.qs"))
 unitsets        <- qs::qread(here_input_sim("unitsets.qs"))
 
 
@@ -98,6 +98,18 @@ stopifnot(dplyr::all_equal(
     as.data.table()
 ))
 
+#### Collate capture/recapture locations for each unit_id
+# Select capture/recapture locations
+xinits <- 
+  paths |> 
+  group_by(path_id) |> 
+  slice(c(1, n())) |> 
+  select(path_id, timestep, map_value, x, y) |> 
+  as.data.table()
+# Convert to list
+xinits <- split(xinits, xinits$path_id)
+lobstr::obj_size(xinits)
+
 #### Simulate observations for each path
 # ETA: 30 s x n_sim = 15 mins!
 # TO DO: Improve speed of Patter.jl.sim_observations()
@@ -137,6 +149,7 @@ sapply(detections_by_path, nrow) |> sort()
 #### Write datasets to file
 
 qs::qsave(timeline, here_input_sim("timeline.qs"))
+qs::qsave(xinits, here_input_sim("xinits.qs"))
 qs::qsave(paths, here_input_sim("paths.qs"))
 qs::qsave(moorings, here_input_sim("moorings.qs"))
 qs::qsave(acoustics_by_path, here_input_sim("acoustics-by-path.qs"))

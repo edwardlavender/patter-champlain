@@ -16,17 +16,22 @@ model_move_trout <- function(.pars) {
 }
 
 # Initialise the movement process
-if (patter:::julia_session()) {
-  model_move_xinit <- function(.map, .xinit) {
-    # Copy data.table (x, y coordinates)
-    xinit <- copy(.xinit)
-    # Add map value 
-    x <- y <- heading <- NULL
-    xinit[, map_value := terra::extract(.map, cbind(x, y))[, 1]]
-    stopifnot(all(!is.na(xinit$map_value)))
-    # Simulate heading 
-    xinit[, heading := runif(.N, 0, 2 * pi)]
-    # Organise
-    xinit[, .(map_value, x, y, heading)]
+# * xinit is a data.table with map_value, x, y
+model_move_xinit <- function(.xinit, .n_particle) {
+  # Check inputs
+  proj.build::check_names(.xinit, c("map_value", "x", "y"))
+  if ((nrow(.xinit) > 1L) & .n_particle > 1L) {
+    stop("If .n_particle > 1, nrow(.xinit) should be 1.")
   }
+  # Duplicate data.table for .n_particle(s)
+  map_value <- x <- y <- NULL
+  .xinit <- copy(.xinit[, list(map_value, x, y)])
+  out <- lapply(seq_len(.n_particle), function(d) {
+    d <- copy(.xinit)
+  }) |> rbindlist()
+  # Add random variables
+  heading <- NULL
+  out[, heading := runif(.N, 0, 2 * pi)]
+  out[, list(map_value, x, y, heading)]
+  out
 }
