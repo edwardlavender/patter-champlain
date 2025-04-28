@@ -125,6 +125,7 @@ The project structure is as follows:
       movement model;
     - `develop-model-detection.R` analyses detection probability
       datasets and develops the acoustic observation model;
+    - `develop-model.R` collates state-space model parameters;
     - `prepare-sim.R` prepares an iteration `data.table` and directories
       for simulation analyses;
     - `prepare-real.R` prepares an iteration `data.table` and

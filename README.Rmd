@@ -79,6 +79,7 @@ The project structure is as follows:
     - `setup-data-detection-pr.R` processes detection probability data, used to inform the acoustic observation model;
     - `develop-model-move.R` analyses movement datasets and develops the movement model;
     - `develop-model-detection.R` analyses detection probability datasets and develops the acoustic observation model;
+    - `develop-model.R` collates state-space model parameters;
     - `prepare-sim.R` prepares an iteration `data.table` and directories for simulation analyses;
     - `prepare-real.R` prepares an iteration `data.table` and directories for real-world analyses;
     - `sim-data.R` simulates trajectories and observations;
