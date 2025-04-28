@@ -73,6 +73,9 @@ qs::qsave(unitsets, here_input_sim("unitsets.qs"))
 stopifnot(nrow(pars_model_move) == 3L)
 stopifnot(nrow(pars_model_obs) == 1L)
 # Define parameters 
+# TO DO
+# * Update parameter data.tables & cross_join to include uncertainty in phi#
+# * use step(-), step(+), phi(-), phi(+)
 pars <- 
   rbind(
     cbind(sensitivity = "best", pars_model_move[1, ], pars_model_obs[1, ]),
