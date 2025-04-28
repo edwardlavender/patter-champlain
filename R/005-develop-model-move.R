@@ -498,7 +498,7 @@ dev.off()
 #### Write parameters to file
 
 # Parameters
-qs::qsave(pars_model_move_best, here_input("pars-model-move.qs"))
+qs::qsave(pars_model_move_best, here_input("pars-model-move-best.qs"))
 qs::qsave(pars_model_move_full, here_input("pars-model-move-full.qs"))
 
 # vmaps
