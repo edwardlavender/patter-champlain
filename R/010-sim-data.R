@@ -127,6 +127,8 @@ for (i in seq_len(n_sim)) {
   detections <- detections_by_path[[i]]
   detections_by_path[[i]] <- detections[obs == 1L, ]
 }
+( ndet <- sapply(detections_by_path, nrow) )
+stopifnot(all(ndet > 0))
 # C) Validation
 # (i) We should only record detections within receiver_gamma of receiver
 cl_lapply(seq_len(n_sim), function(i) {
@@ -144,6 +146,29 @@ cl_lapply(seq_len(n_sim), function(i) {
 })
 # (ii) Check the number of detections per simulation
 sapply(detections_by_path, nrow) |> sort()
+
+
+###########################
+###########################
+#### Filter simulations
+
+#### Check which simulated datasets meet criteria for modelling
+sapply(detections_by_path, function(d) {
+  d <- detections_by_path[[1]]
+  d |>
+  summarise(
+    duration = as.numeric(difftime(max(timestamp), min(timestamp), units = "days")), 
+    ndays = length(unique(lubridate::floor_date(timestamp, "days"))),
+    pdays = ndays / duration
+  ) |> 
+  pull(pdays) > 0.75
+})
+
+
+#### TO DO Focus on time series that pass criteria for modelling
+# TO DO
+# * Define criteria & implement as function
+# * Implement function in both sim-data.R (here) and prepare-real.R
 
 
 ###########################
