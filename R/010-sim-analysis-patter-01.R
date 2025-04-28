@@ -22,14 +22,8 @@ patter::julia_connect()
 
 #### Load essential packages
 library(data.table)
-library(dtplyr)
-library(dplyr, warn.conflicts = FALSE)
-library(ggplot2)
-library(JuliaCall)
 library(patter)
-library(patter.workflows)
 library(proj.verse)
-library(tictoc)
 files_source_r(here_src())
 
 #### Load data
@@ -47,7 +41,6 @@ map <- here_input("map.tif")
 set_map(map)
 
 #### Run filter & optimisation
-# debug(constructor_ac_sim)
 cl_lapply_workflow(.iteration = iteration[1, ], 
                    .datasets = NULL, 
                    .constructor = constructor_pf_filter_loglik_optim, 
