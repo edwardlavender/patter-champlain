@@ -1,4 +1,9 @@
 #### Define custom estimate_coord constructor function 
+# .sim must contain:
+# * file_detections, 
+# * shape, scale, mobility, phi for model_move_trout()
+# * file_detections, receiver_alpha, receiver_beta, receiver_gamma for model_obs_champlain()
+# * file_output for output files
 constructor_ac_sim <- function(.sim, .datasets, .verbose, ...) {
   
   # Checks 
@@ -98,4 +103,10 @@ constructor_ac_sim <- function(.sim, .datasets, .verbose, ...) {
   # - `smooth`    (if smoothing desired, NULL otherwise)
   list(forward = args_fwd, backward = args_bwd, smooth = args_smo, verbose = .verbose)
   
+}
+
+# pf_filter_loglik_optim() constructor
+constructor_pf_filter_loglik_optim <- function(.sim, .datasets, .verbose, ...) {
+  # pf_filter_loglik_optim() only requires a .sim argument
+  list(.sim = copy(.sim))
 }
