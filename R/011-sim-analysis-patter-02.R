@@ -1,6 +1,6 @@
 ###########################
 ###########################
-#### sim-analysis-patter.R
+#### sim-analysis-patter-02.R
 
 #### Aims
 # 1) Analyses simulated observations using patter
