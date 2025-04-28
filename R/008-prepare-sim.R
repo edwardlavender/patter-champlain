@@ -79,6 +79,9 @@ iteration <-
   as.data.table()
 
 #### Build directories 
+if (FALSE) {
+  unlink(iteration$folder_coord)
+}
 nrow(iteration)
 dirs.create(iteration$folder_coord)
 
