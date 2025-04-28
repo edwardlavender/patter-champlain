@@ -36,6 +36,7 @@ map        <- terra::rast(here_input("map.tif"))
 map_bbox   <- qs::qread(here_input("map-bbox.qs"))
 moorings   <- readRDS(here_data_raw_mf("OriginalReceiverSummary_2013-2017.rds"))
 detections <- readRDS(here_data_raw_mf("lkt_detections_2013-2017.rds"))
+# surgery    <- fread(here_data_raw("mfutia", "model_comparison", "surgery_log.csv"))
 
 
 ###########################
@@ -43,8 +44,8 @@ detections <- readRDS(here_data_raw_mf("lkt_detections_2013-2017.rds"))
 #### Identify fish 
 
 #### Define fish (id, size, tagging location)
-# TO DO
-# * Where are tagging dates recorded?
+# * TO DO
+# * Tagging dates are recorded in survey_log.csv (cap_d)
 # * (We should focus on fish within the time span of detections)
 fish <- 
   detections |> 
@@ -95,12 +96,14 @@ fish |>
 #### Prepare moorings
 
 #### Define receiver coordinates (UTM)
+# Note that re-projection requires an internet connection! 
 head(moorings)
 rxy <- 
   cbind(moorings$deploy_lon, moorings$deploy_lat) |> 
   terra::vect(crs = "EPSG:4326") |> 
   terra::project("EPSG:3175") |>
   terra::crds()
+stopifnot(nrow(rxy) > 0L)
 stopifnot(all(!is.na(terra::extract(map, rxy)$map_value)))
 
 #### Receiver depths 
@@ -111,7 +114,8 @@ utils.add::basic_stats(moorings$depth, na.rm = TRUE)
 #### Process moorings
 moorings <- 
   moorings |> 
-  mutate(receiver_id = row_number(),
+  mutate(receiver_station = StationName, 
+         receiver_id = row_number(),
          receiver_sn = as.integer(as.character(receiver_sn)),
          receiver_start = as.POSIXct(paste0(deploy_date_time, "00:00:00"), tz = "UTC"), 
          receiver_end = as.POSIXct(paste0(recover_date_time, "00:00:00"), tz = "UTC"), 
@@ -204,9 +208,30 @@ moorings <-
   as.data.frame() |>
   mutate(int = lubridate::interval(receiver_start, receiver_end)) |> 
   filter(int_overlaps(int, study_int)) |> 
-  select(receiver_id, receiver_start, receiver_end, receiver_x, receiver_y) |> 
+  select(receiver_station, receiver_id, receiver_start, receiver_end, receiver_x, receiver_y) |> 
   as.data.table()
 nrow(moorings)
+# Define moorings for simulation analyses
+# * We average the locations of the receivers in each Station
+# * (Receivers were redeployed in the same area (station) after servicing)
+# * The receiver_start and receiver_end columns will be replaced later
+#   in line with the simulation timeline (see sim-data.R)
+moorings_sim <- 
+  moorings |> 
+  group_by(receiver_station) |> 
+  mutate(receiver_x = mean(receiver_y), 
+         receiver_y = mean(receiver_y)) |> 
+  slice(1L) |> 
+  mutate(receiver_id = row_number()) |> 
+  select(-receiver_station) |> 
+  as.data.table()
+nrow(moorings_sim)
+# Define moorings for real-world analyses
+moorings_real <- 
+  moorings |> 
+  select(-receiver_station) |> 
+  as.data.table()
+rm(moorings)
 
 #### Clean up detections
 head(detections)
@@ -221,7 +246,8 @@ detections <-
 #### Write outputs
 
 qs::qsave(fish, here_input("fish.qs"))
-qs::qsave(moorings, here_input("moorings.qs"))
+qs::qsave(moorings_sim, here_input_sim("moorings-xy.qs"))
+qs::qsave(moorings_real, here_input_real("moorings.qs"))
 qs::qsave(detections, here_input_real("detections.qs"))
 
 

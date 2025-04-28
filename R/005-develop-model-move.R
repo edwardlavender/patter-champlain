@@ -36,7 +36,7 @@ files_source_r(here_src())
 #### Load data
 map         <- terra::rast(here_input("map.tif"))
 fish        <- qs::qread(here_input("fish.qs"))
-moorings    <- qs::qread(here_input("moorings.qs"))
+moorings    <- qs::qread(here_input_real("moorings.qs"))
 detections  <- qs::qread(here_input_real("detections.qs"))
 blanchfield <- qs::qread(here_data("supp", "model-move", "blanchfield.qs"))
 

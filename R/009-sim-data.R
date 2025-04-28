@@ -32,7 +32,7 @@ files_source_r(here_src())
 #### Load data
 map             <- terra::rast(here_input("map.tif"))
 fish            <- qs::qread(here_input("fish.qs"))
-moorings        <- qs::qread(here_input("moorings.qs"))
+moorings        <- qs::qread(here_input_sim("moorings-xy.qs"))
 pars_model_move <- qs::qread(here_input("pars-model-move.qs"))
 pars_model_obs  <- qs::qread(here_input("pars-model-obs.qs"))
 unitsets        <- qs::qread(here_input_sim("unitsets.qs"))
@@ -59,8 +59,12 @@ model_move <- model_move_trout(pars_model_move)
 plot(model_move)
 
 #### Define observation model
-# We assume all receivers were active over the simulated study period
-# This is a 'best-case' scenario! 
+# * We consider the average receiver positions in each StationName
+#   following Futia et al. (2024). 
+# * This is a better representation of the study design than 
+#   assuming all 153 rows in moorings represent available receivers.
+# * We update receiver_start and receiver_end for the simulation timeline. 
+stopifnot(nrow(moorings) == 31L)
 moorings[, receiver_start := min(timeline) -  24 * 60 * 60]
 moorings[, receiver_end := max(timeline) + 24 * 60 * 60]
 model_obs <- model_obs_champlain(moorings, pars_model_obs)
