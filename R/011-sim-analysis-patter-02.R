@@ -71,33 +71,10 @@ ncl <- 2L
 lobstr::mem_used() * ncl
 # Initialise cluster
 cl  <- parallel::makeCluster(ncl)
-parallel::clusterExport(cl = cl, varlist = ls())
-parallel::clusterEvalQ(cl = cl, {
-  
-  # Load packages 
-  library(data.table)
-  library(dtplyr)
-  library(dplyr, warn.conflicts = FALSE)
-  library(JuliaCall)
-  library(patter)
-  library(patter.workflows)
-  library(proj.verse)
-  library(tictoc)
-  files_source_r(here_src())
-  
-  # Initialise Julia 
-  particle_startup(.sim = NULL, .cl = ncl)
-  expect_no_geospatial()
-  
-  # Set maps
-  set_map(here_input("map.tif"))
-  set_vmap(.vmap = here_input("vmap", iteration$mobility[1], "vmap.tif"))
-  invisible(NULL)
-})
+cl_init(iteration = iteration, cl = cl, varlist = ls())
 
 #### Estimate coordinates
-# TO DO Update constructor function e.g., with xinit 
-# * Update .verbose for parallelisation
+# TO DO In patter.workflows, update .verbose for parallelisation
 iteration <- iteration[1:2L, ]
 coord_list <- 
   cl_lapply_workflow(.iteration   = iteration,
