@@ -223,7 +223,7 @@ nrow(moorings)
 moorings_sim <- 
   moorings |> 
   group_by(receiver_station) |> 
-  mutate(receiver_x = mean(receiver_y), 
+  mutate(receiver_x = mean(receiver_x), 
          receiver_y = mean(receiver_y)) |> 
   slice(1L) |> 
   mutate(receiver_id = row_number()) |> 
@@ -236,6 +236,11 @@ moorings_real <-
   select(-receiver_station) |> 
   as.data.table()
 rm(moorings)
+# Validate positions
+terra::plot(map)
+points(moorings_sim$receiver_x, moorings_sim$receiver_y, pch = ".")
+terra::plot(map)
+points(moorings_real$receiver_x, moorings_real$receiver_y, pch = ".")
 
 #### Clean up detections
 head(detections)
