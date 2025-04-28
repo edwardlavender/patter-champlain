@@ -26,11 +26,11 @@ constructor_ac_sim <- function(.sim, .datasets, .verbose, ...) {
   state      <- state_trout()
   model_move <- model_move_trout(.sim)
   
-  # (optional) Define initial states
-  # TO DO
+  # TO DO (optional) Define initial states
+  #
   
-  # (optional) Assemble capture/recapture containers
-  # TO DO
+  # TO DO (optional) Assemble capture/recapture containers
+  #
   
   # Assemble acoustic observations
   # (We could also read datasets for .sim$unit_id from file)

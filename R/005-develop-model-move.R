@@ -296,7 +296,7 @@ quantile(SS4 * max(fish$len) * s, 0.99) # 1.622539,  194.7047
 ###########################
 #### VPS analyses of step length
 
-# TO DO 
+# TO DO (MF)
 # M. Futia to add code
 
 
@@ -328,8 +328,7 @@ if (requireNamespace("flapper", quietly = TRUE)) {
   msp <- sp::SpatialPoints(moorings[, c("receiver_x", "receiver_y")], sp::CRS(terra::crs(map)))
   msp <- sp::SpatialPointsDataFrame(msp, data.frame(receiver_id = moorings$receiver_id))
   # Compute speeds
-  # TO DO 
-  # * Repeat with best-guess detection range
+  # TO DO Repeat with best-guess detection range
   mvt <- flapper::get_mvt_mobility_from_acoustics(data = detections, 
                                                   fct = "individual_id", 
                                                   moorings = msp, 
@@ -373,7 +372,7 @@ if (requireNamespace("flapper", quietly = TRUE)) {
 ###########################
 #### Analyse turning angles
 
-# TO DO
+# TO DO (MF)
 # M. Futia to add code. 
 
 

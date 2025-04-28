@@ -96,8 +96,7 @@ parallel::clusterEvalQ(cl = cl, {
 })
 
 #### Estimate coordinates
-# TO DO
-# * Update constructor function e.g., with xinit 
+# TO DO Update constructor function e.g., with xinit 
 # * Update .verbose for parallelisation
 iteration <- iteration[1:2L, ]
 coord_list <- 
