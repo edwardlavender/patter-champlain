@@ -30,8 +30,7 @@ library(proj.verse)
 files_source_r(here_src())
 
 #### Load data
-pars_model_move <- qs::qread(here_input("pars-model-move-full.qs"))
-pars_model_obs  <- qs::qread(here_input("pars-model-obs-full.qs"))
+pars <- qs::qread(here_input("pars-patter.qs"))
 
 
 ###########################
@@ -67,23 +66,6 @@ qs::qsave(unitsets, here_input_sim("unitsets.qs"))
 ###########################
 ###########################
 #### Prepare iteration patter: main analysis
-
-#### Define parameter combinations
-# Check formatting
-stopifnot(nrow(pars_model_move) == 3L)
-stopifnot(nrow(pars_model_obs) == 1L)
-# Define parameters 
-# TO DO
-# * Update parameter data.tables & cross_join to include uncertainty in phi#
-# * use step(-), step(+), phi(-), phi(+)
-pars <- 
-  rbind(
-    cbind(sensitivity = "best", pars_model_move[1, ], pars_model_obs[1, ]),
-    cbind(sensitivity = "move(-)", pars_model_move[2, ], pars_model_obs[1, ]),
-    cbind(sensitivity = "move(+)", pars_model_move[3, ], pars_model_obs[1, ])
-  ) |> 
-  mutate(parameter_id = row_number()) |> 
-  as.data.table()
 
 #### Define iteration 
 iteration <- 
@@ -133,22 +115,22 @@ iteration <-
 CJ(shape = seq(1, 10, by = 2),
    scale = seq(20, 30, by = 1)) |>
   mutate(row = paste(shape, scale, sep = ", ")) |> 
-  tidyr::expand_grid(x = seq(0, pars_model_move$mobility[1], length.out = 100)) |> 
+  tidyr::expand_grid(x = seq(0, pars$mobility[1], length.out = 100)) |> 
   ggplot(aes(x, dgamma(x, shape = shape, scale = scale))) +
   geom_line() +
   facet_wrap(~row, scales = "free_y")
 # Select suitable parameters for sampling distribution 
-hist(rnorm(100, mean = pars_model_move$shape[1], sd = 2))
-hist(rnorm(100, mean = pars_model_move$scale[1], sd = 2))
+hist(rnorm(100, mean = pars$shape[1], sd = 2))
+hist(rnorm(100, mean = pars$scale[1], sd = 2))
 # Simulate init parameters 
-iteration[, shape := rnorm(.N, mean = pars_model_move$shape[1], sd = 2)]
-iteration[, scale := rnorm(.N, mean = pars_model_move$scale[1], sd = 2)]
+iteration[, shape := rnorm(.N, mean = pars$shape[1], sd = 2)]
+iteration[, scale := rnorm(.N, mean = pars$scale[1], sd = 2)]
 stopifnot(all(iteration$shape > 0) & all(iteration$scale > 0))
 # Examine distributions
 iteration |>
   select(shape, scale) |> 
   mutate(row = paste0(shape, scale, ", ")) |> 
-  tidyr::expand_grid(x = seq(0, pars_model_move$mobility[1], length.out = 200)) |> 
+  tidyr::expand_grid(x = seq(0, pars$mobility[1], length.out = 200)) |> 
   ggplot(aes(x, dgamma(x, shape = shape, scale = scale))) +
   geom_line() +
   facet_wrap(~row, scales = "free_y")
