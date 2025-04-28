@@ -401,7 +401,7 @@ flexible    <- gamma_rescale(shape, scale, fact = inflate)
 pars_model_move_full <- data.table(mobility = c(mobility, mobility * deflate, mobility * inflate),
                                    shape = c(shape, restrictive[1], flexible[1]),
                                    scale = c(scale,  restrictive[2],flexible[2]),
-                                   phi = c(phi, phi, phi))
+                                   phi = c(phi, phi * deflate, phi * inflate))
 
 
 ###########################
@@ -475,13 +475,17 @@ png(here_fig("model-move-turning-angle.png"),
     height = 4, width = 4, units = "in", res = 800)
 pp <- par(mgp = c(3, 0.7, 0))
 x <- seq(-pi*1.1, pi*1.1, length.out = 1e5)
-y <- dnorm(x, 0, pars_model_move_full$phi)
+y <- dnorm(x, 0, pars_model_move_full$phi[1])
 ylim <- c(0, 0.4)
 plot(x, y,
      ylim = ylim,
      xlab = "", ylab = "",
-     type = "l", 
+     type = "l", lwd = 2,
      axes = FALSE)
+y <- dnorm(x, 0, pars_model_move_full$phi[2])
+lines(x, y, col = "red", lty = 3, lwd = 1)
+y <- dnorm(x, 0, pars_model_move_full$phi[3])
+lines(x, y, col = "darkgreen", lty = 3, lwd = 1)
 axis(side = 1, at = c(-pi * 1.1, pi * 1.1), labels = FALSE, lwd.tick = 0, pos = 0)
 axis(side = 1, 
      at = c(-pi, -pi/2, 0, pi/2, pi), 
