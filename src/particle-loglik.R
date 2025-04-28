@@ -36,5 +36,6 @@ pf_filter_loglik_optim <- function(.sim) {
   # pf_filter_loglik(.theta = c(.sim$shape, .sim$scale), .sim = .sim)
   optim(par = c(.sim$shape, .sim$scale),
         fn = pf_filter_loglik, .sim = .sim,
+        hessian = TRUE,
         control = list(fnscale = -1))
 }
