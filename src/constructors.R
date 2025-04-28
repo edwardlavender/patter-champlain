@@ -12,6 +12,7 @@ constructor_ac_sim <- function(.sim, .datasets, .verbose, ...) {
   n_particle_smo    <- 1e3L
   n_sim_smo         <- 100L
   if (test) {
+    warning("test = TRUE!", immediate. = TRUE)
     n_particle_smo <- 100L
     n_sim_smo      <- 30L
   }
