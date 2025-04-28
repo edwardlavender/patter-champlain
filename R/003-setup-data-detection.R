@@ -72,8 +72,10 @@ terra::plot(map)
 points(xy)
 # Check tagging dates
 # * Note that fish were tagged at different times
+# * If we analyse the data in blocks e.g., months, we need to account for this
 # * TO DO
 # * Confirm format %m/%d/%Y
+# * We could check that each fish is only associated with detections after tagging
 range(detections$detection_timestamp_utc)
 range(as.Date(surgery$cap_date, format = "%m/%d/%Y"))
 
