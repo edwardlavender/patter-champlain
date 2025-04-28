@@ -129,7 +129,8 @@ moorings <-
          receiver_int = lubridate::interval(receiver_start, receiver_end),
          receiver_x = rxy[, 1],
          receiver_y = rxy[, 2]) |> 
-  select(receiver_id, receiver_sn, receiver_start, receiver_end, 
+  select(receiver_station, 
+         receiver_id, receiver_sn, receiver_start, receiver_end, 
          receiver_int, receiver_x, receiver_y) |>
   as.data.frame()
 
