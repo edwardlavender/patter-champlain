@@ -59,11 +59,13 @@ fish <-
             ) |> 
   as.data.table()
 # Define tagging locations (UTM)
+# * This code requires internet
 xy <- 
   cbind(fish$lon, fish$lat) |> 
   terra::vect(crs = "EPSG:4326") |> 
   terra::project(epsg_utm) |> 
   terra::crds()
+stopifnot(nrow(xy) > 0L)
 fish[, x := xy[, 1]]
 fish[, y := xy[, 2]]
 # Check tagging locations
