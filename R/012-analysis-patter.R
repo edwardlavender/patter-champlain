@@ -34,10 +34,32 @@ expect_no_geospatial()
 
 ###########################
 ###########################
-#### Select analysis type
+#### Customise workflow 
 
+# Select analysis type ("sim", "real")
 analysis <- "sim"
-analysis <- "real"
+
+# Select iterations by mobility (162, 216, 270)
+analysis_mobility <- 216
+
+# Set development mode
+# * Use one core
+# * Set maps 
+dev <- TRUE
+
+# (optional) commandArgs() override for server deployments
+cmd_args <- commandArgs(trailingOnly = TRUE)
+if (length(cmd_args) > 0L) {
+  stopifnot(length(cmd_args) == 3L)
+  analysis <- args[1]
+  mobility <- as.numeric(args[2])
+  dev      <- as.logical(args[3])
+}
+
+
+###########################
+###########################
+#### Select analysis type
 
 if (analysis == "sim") {
 
@@ -61,24 +83,20 @@ nrow(iteration)
 ###########################
 #### Estimate coordinates
 
-#### (optional) Set development mode
-# * Use one core
-# * Set maps 
-dev <- TRUE
-
 #### (optional) Reset directories
-if (TRUE) {
+if (FALSE) {
   # unlink(dirname(iteration$folder_coord), recursive = TRUE)
   unlink(iteration$folder_coord, recursive = TRUE)
   dirs.create(iteration$folder_coord)
 }
 
-#### Select iterations 
+#### Select iterations (by mobility)
 stopifnot(!any(duplicated(iteration$index)))
 table(iteration$mobility)
-iteration <- iteration[sensitivity == "best", ]
+iteration <- iteration[mobility == analysis_mobility, ]
 iteration[, file_diag := file.path(folder_coord, "diagnostics.qs")]
 iteration[, file_output := file_diag]
+nrow(iteration)
 
 #### Set maps
 if (dev) {
@@ -91,22 +109,23 @@ if (dev) {
 if (dev) {
   log.txt <- TRUE
 } else {
-  dir.create(here_output_analysis("logs"))
-  log.txt <- here_output_analysis("logs", paste0("log-", iteration$mobility[1], ".txt"))
+  dir.create(here_output_analysis("logs", "R"))
+  log.txt <- here_output_analysis("logs", "R", paste0("log-", iteration$mobility[1], ".txt"))
   # unlink(log.txt)
 }
 
 #### Setup cluster
 if (!dev) {
   # Define number of workers
-  ncl <- 2L
+  ncl <- min(c(nrow(iteration), 100L, parallel::detectCores() - 1L))
   # Define required memory for export
   lobstr::mem_used() * ncl
   # Initialise cluster
   cl  <- parallel::makeCluster(ncl)
   cl_init(iteration = iteration, cl = cl, varlist = ls())
 } else {
-  cl <- NULL
+  ncl <- 1L
+  cl  <- NULL
 }
 
 #### Estimate coordinates: time trials
@@ -117,7 +136,8 @@ if (!dev) {
 #### Estimate coordinates
 # TO DO In patter.workflows, update .verbose for parallelisation
 # debug(constructor_ac_core)
-iteration <- iteration[1:1L, ]
+# iteration <- iteration[1:1L, ]
+print(glue::glue("Using {ncl} core(s) for {nrow(iteration)} iteration row(s) (mobility = {iteration$mobility[1]})."))
 coord_list <- 
   cl_lapply_workflow(.iteration   = iteration,
                      .datasets    = list(),
@@ -127,6 +147,14 @@ coord_list <-
                      .cleanup     = particle_cleanup,
                      .cl          = cl,
                      .verbose     = log.txt)
+
+#### Progress:
+# sim-1   : TO DO
+# sim-2   : TO DO
+# sim-3   : TO DO
+# real-1  : TO DO
+# real-2  : TO DO
+# real-3  : TO DO
 
 #### Collate coordinates across batches
 list.files(iteration$folder_coord)
