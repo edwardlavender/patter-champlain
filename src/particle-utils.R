@@ -1,3 +1,12 @@
+# Use containers
+use_containers <- function(.containers, .direction) {
+  !is.null(.containers) && 
+    rlang::has_name(.containers, .direction) && 
+    !is.null(.containers[[.direction]]) && 
+    nrow(.containers[[.direction]]) > 0L
+}
+
+
 # Define batches for particle algorithm
 particle_batch <- function(.sim, .type = c("fwd", "bwd", "smo")) {
   .type <- match.arg(.type)
