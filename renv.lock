@@ -5277,7 +5277,7 @@
       "RemoteUsername": "edwardlavender",
       "RemoteRepo": "patter.workflows",
       "RemoteRef": "main",
-      "RemoteSha": "a1debe53f2d89893bcdbee1c24833b2ea8160b68",
+      "RemoteSha": "c498daa1a7e17d063d9ebd82a867348a164eb4f7",
       "Remotes": "github::edwardlavender/proj.build, github::edwardlavender/proj.file, github::edwardlavender/proj.lapply, github::edwardlavender/spatial.extensions, github::YuriNiella/RSP"
     },
     "pbapply": {
