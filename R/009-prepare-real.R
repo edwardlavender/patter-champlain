@@ -77,6 +77,8 @@ detections <-
   select(individual_id, time_id, timestamp, receiver_id) |>
   as.data.table()
 
+length(unique(paste(detections$individual_id, detections$time_id))) # 1519
+
 #### Focus on individual/month units with sufficient data
 
 # cf. patter-flapper criteria:
@@ -111,12 +113,12 @@ durations[pdays > 0.75, ]
 # Select individual/month combinations with detections 75 % of days
 detections[, unit_id := .GRP, by = c("individual_id", "time_id")]
 durations[, unit_id := .GRP, by = c("individual_id", "time_id")]
-length(unique(detections$unit_id))
+length(unique(detections$unit_id)) # 1519
 detections <- detections[unit_id %in% durations$unit_id[durations$pdays >= 0.75], ]
 
 # Redefine unit_ids
 detections[, unit_id := .GRP, by = c("individual_id", "time_id")]
-length(unique(detections$unit_id))
+length(unique(detections$unit_id)) # 658
 
 
 ###########################
