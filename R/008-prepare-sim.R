@@ -55,6 +55,9 @@ unitsets <-
   as.data.table()
 
 #### Build directories
+if (FALSE) {
+  unlink(file.path("data", "output", "sim", "main", "runs"))
+}
 dirs.create(dirname(unitsets$file_detections))
 dirs.create(unitsets$folder_home)
 dirs.create(unitsets$folder_home_patter)
