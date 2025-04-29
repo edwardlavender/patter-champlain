@@ -57,6 +57,7 @@ if (length(cmd_args) > 0L) {
   dev      <- as.logical(args[3])
 }
 
+print(glue("Arguments: analysis = '{analysis}'; analysis_mobility = {analysis_mobility}; dev = {dev}."))
 
 ###########################
 ###########################
