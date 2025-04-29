@@ -1,7 +1,7 @@
 # Deploy analysis-patter.R on siam-linux20
 
 # Instructions
-# * Ensure test <- FALSE
+# * Ensure test <- FALSE in constructor_ac_core() (!)
 # * (optional) Clean up output folders, including logs/ and runs/
 # * Customise arguments below as required
 # * Run tmux code below to deploy script
@@ -14,8 +14,8 @@
 # tmux ctr-b d            (detach)
 
 # Start tmux session
-cd ~/documents/projects/patter-champlain
-tmux new -s champlain-1
+# cd ~/documents/projects/patter-champlain
+# tmux new -s champlain-1
 
 # Define arguments
 analysis="sim"
