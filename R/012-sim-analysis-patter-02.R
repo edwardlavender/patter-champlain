@@ -69,8 +69,8 @@ if (dev) {
 if (dev) {
   log.txt <- TRUE
 } else {
-  dir.create(here_output_sim("logs"))
-  log.txt <- here_output_sim("logs", paste0("log-", iteration$mobility[1], ".txt"))
+  dir.create(here_output_sim_main("logs"))
+  log.txt <- here_output_sim_main("logs", paste0("log-", iteration$mobility[1], ".txt"))
   # unlink(log.txt)
 }
 

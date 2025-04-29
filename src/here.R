@@ -32,6 +32,14 @@ here_output_sim <- function(...) {
   here_output("sim", ...)
 }
 
+here_output_sim_main <- function(...) {
+  here_output("sim", "main", ...)
+}
+
 here_output_real <- function(...) {
   here_output("real", ...)
+}
+
+here_output_real_main <- function(...) {
+  here_output("real", "main", ...)
 }
