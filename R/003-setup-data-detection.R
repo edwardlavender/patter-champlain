@@ -226,6 +226,7 @@ moorings_sim <-
   mutate(receiver_x = mean(receiver_x), 
          receiver_y = mean(receiver_y)) |> 
   slice(1L) |> 
+  ungroup() |> 
   mutate(receiver_id = row_number()) |> 
   select(-receiver_station) |> 
   as.data.table()
@@ -236,11 +237,16 @@ moorings_real <-
   select(-receiver_station) |> 
   as.data.table()
 rm(moorings)
-# Validate positions
+# Validation: receiver_ids
+stopifnot(length(unique(moorings_sim$receiver_id)) == 31L)
+stopifnot(length(unique(moorings_real$receiver_id)) == 153L)
+# Validation: positions
+pp <- par(mfrow = c(1, 2))
 terra::plot(map)
 points(moorings_sim$receiver_x, moorings_sim$receiver_y, pch = ".")
 terra::plot(map)
 points(moorings_real$receiver_x, moorings_real$receiver_y, pch = ".")
+par(pp)
 
 #### Clean up detections
 head(detections)
@@ -248,6 +254,11 @@ detections <-
   detections |> 
   select(individual_id, timestamp, receiver_id) |> 
   as.data.table()
+
+#### Checks
+# number of receivers with detections
+(nr <- length(unique(detections$receiver_id))) # 137
+stopifnot(nr > 1L)
 
 
 ###########################
