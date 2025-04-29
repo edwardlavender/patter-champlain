@@ -1,6 +1,7 @@
 # Deploy analysis-patter.R on siam-linux20
 
 # Instructions
+# * Ensure test <- FALSE
 # * (optional) Clean up output folders, including logs/ and runs/
 # * Customise arguments below as required
 # * Run tmux code below to deploy script
@@ -24,10 +25,7 @@ DIRECTORY_LOG="data/output/$analysis/main/logs/R-CMD-BATCH"
 mkdir -p "$DIRECTORY_LOG"
 
 # Run R code
-R CMD BATCH \
-  --no-save \
-  --no-restore \
-  ./R/012-analysis-patter.R \
-  "$DIRECTORY_LOG/log-$mobility.Rout" \
-  --args "$analysis" "$mobility" "$dev"
+Rscript --verbose ./R/012-analysis-patter.R \
+  "$analysis" "$mobility" "$dev" \
+  > "$DIRECTORY_LOG/log-$mobility.Rout" 2>&1
 
