@@ -23,4 +23,6 @@ cl_init <- function(iteration, cl, varlist) {
     invisible(NULL)
   })
   
+  invisible(NULL)
+  
 }
