@@ -66,6 +66,8 @@ print(glue("Arguments: analysis = '{analysis}'; analysis_mobility = {analysis_mo
 ###########################
 #### Select analysis type
 
+# TO DO Revise code in line with prepare-analysis.R
+
 if (analysis == "sim") {
 
   here_input_analysis     <- here_input_sim
