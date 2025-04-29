@@ -51,6 +51,8 @@ dev <- TRUE
 # (optional) commandArgs() override for server deployments
 cmd_args <- commandArgs(trailingOnly = TRUE)
 if (length(cmd_args) > 0L) {
+  print("Using command arguments:")
+  print(cmd_args)
   stopifnot(length(cmd_args) == 3L)
   analysis <- cmd_args[1]
   mobility <- as.numeric(cmd_args[2])
