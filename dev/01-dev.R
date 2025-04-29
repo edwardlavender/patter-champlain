@@ -38,6 +38,10 @@ if (!requireNamespace("Rfast", quietly = TRUE)) {
   renv::install("Rfast", prompt = FALSE)
 }
 # Utilities
+if (!requireNamespace("spatial.extensions", quietly = TRUE)) {
+  # This is required to restore patter.workflows
+  renv::install("edwardlavender/spatial.extensions", prompt = FALSE)
+}
 if (!requireNamespace("utils.add", quietly = TRUE)) {
   renv::install("edwardlavender/utils.add", prompt = FALSE)
 }

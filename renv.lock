@@ -7028,6 +7028,38 @@
       "Maintainer": "Reinhard Furrer <reinhard.furrer@math.uzh.ch>",
       "Repository": "CRAN"
     },
+    "spatial.extensions": {
+      "Package": "spatial.extensions",
+      "Version": "0.0.1",
+      "Source": "GitHub",
+      "Title": "Spatial Extensions",
+      "Authors@R": "person(\"Edward\", \"Lavender\",  email = \"edward.lavender@eawag.ch\",  role = c(\"aut\", \"cre\"), comment = c(ORCID = \"0000-0002-8040-7489\"))",
+      "Description": "Extensions to r-spatial packages.",
+      "License": "MIT + file LICENSE",
+      "Imports": [
+        "terra"
+      ],
+      "Suggests": [],
+      "Depends": [
+        "R (>= 4.1)"
+      ],
+      "Config/testthat/edition": "3",
+      "URL": "https://github.com/edwardlavender/spatial.extensions/",
+      "BugReports": "https://github.com/edwardlavender/spatial.extensionss/issues/",
+      "Encoding": "UTF-8",
+      "Language": "en-GB",
+      "Roxygen": "list(markdown = TRUE)",
+      "RoxygenNote": "7.3.2",
+      "LazyData": "true",
+      "Author": "Edward Lavender [aut, cre] (ORCID: <https://orcid.org/0000-0002-8040-7489>)",
+      "Maintainer": "Edward Lavender <edward.lavender@eawag.ch>",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "edwardlavender",
+      "RemoteRepo": "spatial.extensions",
+      "RemoteRef": "main",
+      "RemoteSha": "aa9ece36ce0459badea67a3c80916a14bfcc2e24"
+    },
     "spelling": {
       "Package": "spelling",
       "Version": "2.3.1",
