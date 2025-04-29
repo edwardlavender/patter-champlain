@@ -37,39 +37,14 @@ detections <- qs::qread(here_input_real("detections.qs"))
 
 ###########################
 ###########################
-#### Filter dataset
+#### Define unitsets
 
-#### Number of individuals in full dataset
-length(unique(detections$individual_id))
+# We define unitsets, then the datasets, then iteration
+# This matches the simulation workflow
+# Not all units (individual/time blocks) pass quality control proceedures
+# so not all units appear in the iteration data.table
 
-#### Focus on individuals with sufficient data
-# This code is no longer implemented
-# We include all individuals
-# But focus on individual/month blocks that meet selected criteria (below)
-if (FALSE) {
-  # Compute metrics of data volume
-  durations <- 
-    detections |> 
-    group_by(individual_id) |> 
-    summarise(days = as.numeric(difftime(max(timestamp), min(timestamp), units = "days")), 
-              ndays = length(unique(lubridate::floor_date(timestamp, "days")))) |> 
-    as.data.table()
-  # Summary statistics 
-  # * 75 % of individuals were tracked for more than 167 days
-  plot(ecdf(durations$days))
-  quantile(durations$days, prob = 0.2)
-  quantile(durations$days, prob = 0.25)
-  # Focus on individuals tracked for longer than one month
-  ids        <- durations$individual_id[durations$days > 31]
-  detections <- detections[individual_id %in% ids, ]
-  length(unique(detections$individual_id))
-  # Focus on individuals with more than 31 days with detections
-  ids        <- durations$individual_id[durations$ndays > 31]
-  detections <- detections[individual_id %in% ids, ]
-  length(unique(detections$individual_id))
-}
-
-#### Define individual/month units
+#### Define units (individual/month combinations)
 detections <- 
   detections |> 
   group_by(individual_id) |> 
@@ -77,60 +52,14 @@ detections <-
   select(individual_id, time_id, timestamp, receiver_id) |>
   as.data.table()
 
-length(unique(paste(detections$individual_id, detections$time_id))) # 1519
-
-#### Focus on individual/month units with sufficient data
-
-# cf. patter-flapper criteria:
-# - individuals must be detected in at least two different weeks 
-# - on a total of seven days in a given month
-# - (NB: this study included depth observations)
-
-# patter-champlain criteria development:
-# - Trout mobility is reasonable relative to the size of the study area
-# - It would take a trout one day at top speed to cross the study area
-# - Even at slower speeds, locations are uncertain after relatively short times
-# - Without regular detections, locations are uncertain
-ydim <- terra::ext(map)[4] - terra::ext(map)[3] # 174928.5 m
-ydim / (24 * 60/2 * pars$mobility[1])   # 1 day to cross area
-
-# Compute the proportion of days per month with detections
-durations <- 
-  detections |> 
-  group_by(individual_id, time_id) |> 
-  summarise(
-    duration = as.numeric(difftime(max(timestamp), min(timestamp), units = "days")), 
-    ndays = length(unique(lubridate::floor_date(timestamp, "days"))),
-    pdays = ndays / duration
-  ) |> 
-  as.data.table()
-
-# Examine the proportion of days with detections
-quantile(durations$pdays)
-plot(ecdf(durations$pdays), xlim = c(0, 1))
-durations[pdays > 0.75, ]
-
-# Select individual/month combinations with detections 75 % of days
-detections[, unit_id := .GRP, by = c("individual_id", "time_id")]
-durations[, unit_id := .GRP, by = c("individual_id", "time_id")]
-length(unique(detections$unit_id)) # 1519
-detections <- detections[unit_id %in% durations$unit_id[durations$pdays >= 0.75], ]
-
-# Redefine unit_ids
-detections[, unit_id := .GRP, by = c("individual_id", "time_id")]
-length(unique(detections$unit_id)) # 658
-
-
-###########################
-###########################
-#### Define unitsets
-
 #### Define unitsets
 unitsets <- 
   detections |> 
-  group_by(unit_id) |> 
-  select(unit_id, individual_id, time_id, timestamp) |> 
+  group_by(individual_id, time_id) |> 
   slice(1L) |> 
+  ungroup() |> 
+  mutate(unit_id = row_number()) |> 
+  select(unit_id, individual_id, time_id, timestamp, receiver_id) |>
   mutate(
     file_detections = file.path("data", "input", "real", 
                                 individual_id, time_id, "detection.qs"),
@@ -148,13 +77,33 @@ dirs.create(unitsets$folder_home)
 dirs.create(unitsets$folder_home_patter)
 
 #### Write to file
-# unitsets
 qs::qsave(unitsets, here_input_real("unitsets.qs"))
-# detection datasets for each unit_id
-cl_lapply(split(unitsets, seq_len(nrow(unitsets))), function(d) {
-  qs::qsave(detections[unit_id == d$unit_id, ], 
-            d$file_detections)
+
+
+###########################
+###########################
+#### Filter dataset
+
+#### Number of individuals in full dataset
+length(unique(detections$individual_id))
+
+#### (optional) Focus on individuals with sufficient data
+# This is no longer implemented
+# We include all individuals
+# But focus on individual/month blocks that meet selected criteria (below)
+
+#### Focus on individual/month units with sufficient data
+# Check the number of unit_ids in the raw data:
+detections[, unit_id := .GRP, by = c("individual_id", "time_id")]
+detections <- filter_detections(detections)
+
+#### Write to file
+# unlink(unitsets$file_detections)
+detections[, file_detections := unitsets$file_detections[match(unit_id, unitsets$unit_id)]]
+cl_lapply(split(detections, detections$unit_id), function(d) {
+  qs::qsave(d, d$file_detections[1])
 })
+detections[, file_detections := NULL]
 
 
 ###########################
@@ -171,6 +120,7 @@ cl_lapply(split(unitsets, seq_len(nrow(unitsets))), function(d) {
 #        on the basis of simulation results the sensitivity analysis 
 iteration <- 
   unitsets |> 
+  filter(unit_id %in% detections$unit_id) |> 
   select(unit_id, individual_id, time_id, 
          file_detections,
          folder_home = folder_home_patter) |>
