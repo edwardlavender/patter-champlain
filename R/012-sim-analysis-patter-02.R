@@ -87,6 +87,11 @@ if (!dev) {
   cl <- NULL
 }
 
+#### Estimate coordinates: time trials
+# iteration[1, ], 1 thread, 2.5e4 filter particles, 1e3 smoothing particles, 1e2 smoothing sims
+# * 26.8 min XX min: 6.95 min (filter) + 6.82 min (filter) + 11.98 min (smoother)
+# * Warning: All smoothing weights (from xbwd[k, t] to xfwd[j, t - 1]) are zero at 8 time step(s) (0.04 %).
+
 #### Estimate coordinates
 # TO DO In patter.workflows, update .verbose for parallelisation
 # debug(constructor_ac_core)
@@ -108,7 +113,7 @@ list.files(iteration$folder_coord)
 stopifnot(all(file.exists(iteration$file_output)))
 iteration[, file_coord := file.path(folder_coord, "coord.qs")]
 timeline    <- qs::qread(here_input_sim("timeline.qs"))
-timeline    <- timeline[1:500L]
+# timeline    <- timeline[1:500L]
 convergence <- cl_lapply(split(iteration, seq_len(nrow(iteration))), function(.sim) {
   # Collate particles across batches and write file_coord
   convergence <- particle_collate(.sim = .sim,
