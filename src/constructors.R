@@ -11,7 +11,7 @@ constructor_ac_core <- function(.sim, .datasets, .verbose, ...) {
     
     # Checks 
     stopifnot(length(list(...)) == 0L)
-    proj.build::check_names(.sim, c( "mobility", "file_output"))
+    proj.build::check_names(.sim, c( "mobility", "file_detections", "file_output"))
     
     # Enable testing & define tuning settings 
     test              <- FALSE
@@ -25,17 +25,15 @@ constructor_ac_core <- function(.sim, .datasets, .verbose, ...) {
       n_sim_smo         <- 30L
     }
     
-    # Extract datasets
-    proj.build::check_names(.datasets, c("timeline", "cap_recap", "moorings", 
-                                         "detections", "map_bbox"))
-    timeline   <- .datasets$timeline
+    # Read datasets
+    proj.build::check_names(.datasets, c("cap_recap", "moorings"))
     cap_recap  <- .datasets$cap_recap
     moorings   <- .datasets$moorings
-    detections <- .datasets$detections
-    map_bbox   <- .datasets$map_bbox
+    detections <- qs::qread(.sim$file_detections)
+    map_bbox   <- qs::qread(here_input("map-bbox.qs"))
     
     # Define timeline
-    # * This is defined above
+    timeline <- get_dataset_timeline(.sim = .sim)
     if (test) {
       timeline <- timeline[1:200L]
     }
@@ -171,11 +169,7 @@ constructor_ac_core <- function(.sim, .datasets, .verbose, ...) {
 call_constructor_ac_core <- function(.sim, 
                                      .timeline, .cap_recap, .moorings, .detections, .map_bbox,
                                      .verbose, ...) {
-  datasets <- list(timeline   = .timeline, 
-                   cap_recap  = .cap_recap, 
-                   moorings   = .moorings, 
-                   detections = .detections, 
-                   map_bbox   = .map_bbox)
+  datasets <- list(cap_recap  = .cap_recap, moorings   = .moorings)
   args <- list(.sim = .sim, .datasets = datasets, .verbose = .verbose, ...)
   do.call(constructor_ac_core, args)
 }
@@ -191,26 +185,16 @@ constructor_ac_sim <- function(.sim, .datasets, .verbose, ...) {
   
   # Checks
   stopifnot(length(.datasets) == 0L)
-  proj.build::check_names(.sim, "file_detections")
-  stopifnot(file.exists(.sim$file_detections))
   
   # Read datasets
   # * For convenience, cap_recap for all individuals is stored in one list
   cap_recap  <- qs::qread(here_input_sim("xinits.qs"))[[.sim$unit_id]]
   moorings   <- qs::qread(here_input_sim("moorings.qs"))
-  detections <- qs::qread(.sim$file_detections)
-  map_bbox   <- qs::qread(here_input("map-bbox.qs"))
-
-  # Define timeline
-  timeline   <- qs::qread(here_input_sim("timeline.qs"))
   
   # Call constructor_ac_core()
   call_constructor_ac_core(.sim        = .sim, 
-                           .timeline   = timeline, 
                            .cap_recap  = cap_recap, 
                            .moorings   = moorings,
-                           .detections = detections, 
-                           .map_bbox   = map_bbox,
                            .verbose    = .verbose, ...)
 
 }
@@ -219,27 +203,15 @@ constructor_ac_real <- function(.sim, .datasets, .verbose, ...) {
   
   # Checks
   stopifnot(length(.datasets) == 0L)
-  proj.build::check_names(.sim, "file_detections")
-  stopifnot(file.exists(.sim$file_detections))
   
-  # Read datasets
+  # Read type-specific datasets
   cap_recap  <- NULL
   moorings   <- qs::qread(here_input_real("moorings.qs"))
-  detections <- qs::qread(.sim$file_detections)
-  map_bbox   <- qs::qread(here_input("map-bbox.qs"))
-  
-  # Define timeline
-  # A) Model movements over the same time period for each month
-  # B) Model movements over the duration of the observations each month
-  timeline <- assemble_timeline(.datasets = list(detections), .step = "2 mins")
   
   # Run constructor_ac_core()
   call_constructor_ac_core(.sim        = .sim, 
-                           .timeline   = timeline, 
                            .cap_recap  = cap_recap, 
                            .moorings   = moorings,
-                           .detections = detections, 
-                           .map_bbox   = map_bbox,
                            .verbose    = .verbose, ...)
   
 }

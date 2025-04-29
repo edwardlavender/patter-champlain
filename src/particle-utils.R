@@ -90,3 +90,41 @@ particle_collate <- function(.sim, .timeline) {
   TRUE
 }
 
+# Iterative workflow
+# * constructor_ac_sim() implements batching
+# * For each iteration, we should collate the estimated coordinates across batches
+# * This function expects the .iteration and .timeline
+# * A subsetted timeline may be required if used for testing
+cl_lapply_particle_collate <- function(.iteration) {
+  
+  # Check inputs
+  # * file_output required by particle_collate -> particle_batch()
+  proj.build::check_names(.iteration, c("folder_coord", "file_output"))
+  stopifnot(all(file.exists(.iteration$file_output)))
+  .iteration   <- copy(.iteration)
+  
+  # For each simulation, collate particles across batches & cleanup smo-{i}.jld2 files
+  convergence <- cl_lapply(split(.iteration, seq_len(nrow(.iteration))), function(.sim) {
+    
+    # Define timeline for simulation
+    timeline <- get_dataset_timeline(.sim = .sim)
+    # timeline <- timeline[1:500L]
+    
+    # Collate particles across batches and write file_coord
+    convergence <- particle_collate(.sim = .sim,
+                                    .timeline = timeline)
+    
+    # (optional)  Clean up smo-{i}.jld2 files to save space
+    if (TRUE) {
+      batches <- list.files(.sim$folder_coord, 
+                            pattern = "^smo-\\d+\\.jld2$", 
+                            full.names = TRUE)
+      unlink(batches)
+    }
+    
+    # Return convergence
+    convergence
+  })
+  
+  unlist(convergence)
+}

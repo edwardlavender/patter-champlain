@@ -31,8 +31,29 @@ library(tictoc)
 files_source_r(here_src())
 expect_no_geospatial()
 
-#### Load data
-iteration <- qs::qread(here_input_sim("iteration-patter.qs"))
+
+###########################
+###########################
+#### Select analysis type
+
+analysis <- "sim"
+# analysis <- "real"
+
+if (analysis == "sim") {
+
+  here_input_analysis     <- here_input_sim
+  here_output_analysis    <- here_output_sim_main
+  constructor_ac_analysis <- constructor_ac_sim
+  
+} else if (analysis == "real") {
+  
+  here_input_analysis     <- here_input_real
+  here_output_analysis    <- here_output_real_main
+  constructor_ac_analysis <- constructor_ac_real
+  
+}
+
+iteration <- qs::qread(here_input_analysis("iteration-patter.qs"))
 
 
 ###########################
@@ -69,8 +90,8 @@ if (dev) {
 if (dev) {
   log.txt <- TRUE
 } else {
-  dir.create(here_output_sim_main("logs"))
-  log.txt <- here_output_sim_main("logs", paste0("log-", iteration$mobility[1], ".txt"))
+  dir.create(here_output_analysis("logs"))
+  log.txt <- here_output_analysis("logs", paste0("log-", iteration$mobility[1], ".txt"))
   # unlink(log.txt)
 }
 
@@ -99,7 +120,7 @@ iteration <- iteration[1:1L, ]
 coord_list <- 
   cl_lapply_workflow(.iteration   = iteration,
                      .datasets    = list(),
-                     .constructor = constructor_ac_sim, 
+                     .constructor = constructor_ac_analysis, 
                      .algorithm   = estimate_coord_particle, 
                      .success     = particle_success, 
                      .cleanup     = particle_cleanup,
@@ -107,26 +128,10 @@ coord_list <-
                      .verbose     = log.txt)
 
 #### Collate coordinates across batches
-# constructor_ac_sim() implements batching
-# For each iteration, we should collate the estimated coordinates across batches
 list.files(iteration$folder_coord)
 stopifnot(all(file.exists(iteration$file_output)))
 iteration[, file_coord := file.path(folder_coord, "coord.qs")]
-timeline    <- qs::qread(here_input_sim("timeline.qs"))
-# timeline    <- timeline[1:500L]
-convergence <- cl_lapply(split(iteration, seq_len(nrow(iteration))), function(.sim) {
-  # Collate particles across batches and write file_coord
-  convergence <- particle_collate(.sim = .sim,
-                                  .timeline = timeline)
-  # (optional)  Clean up smo-{i}.jld2 files to save space
-  if (TRUE) {
-    batches <- list.files(.sim$folder_coord, 
-                          pattern = "^smo-\\d+\\.jld2$", 
-                          full.names = TRUE)
-    unlink(batches)
-  }
-  convergence
-})
+convergence <- cl_lapply_particle_collate(.iteration = iteration)
 # Check the number of algorithm runs for which convergence was achieved 
 table(unlist(convergence))
 
@@ -144,6 +149,7 @@ if (FALSE) {
   lapply_qplot_coord(iteration, 
                      .datasets = list(coordinates = function(smo) smo$states),
                      .map = map)
+  
 }
 
 
