@@ -40,7 +40,7 @@ pars <- qs::qread(here_input("pars-patter.qs"))
 
 #### Define analysis 
 # analysis <- "sim"
-analysis <- "real"
+# analysis <- "real"
 
 #### Define analysis-specific routines
 here_input_analysis <- switch_here_input_analysis(analysis)
