@@ -11,3 +11,4 @@ R/deprecated/
 R/dev/
 fig/
 .Rprofile
+.Renviron
