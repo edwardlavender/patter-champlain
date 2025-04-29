@@ -14,7 +14,7 @@ constructor_ac_core <- function(.sim, .datasets, .verbose, ...) {
     proj.build::check_names(.sim, c( "mobility", "file_detections", "file_output"))
     
     # Enable testing & define tuning settings 
-    test              <- FALSE
+    test <- FALSE
     n_particle_filter <- 2.5e4
     n_particle_smo    <- 1e3L
     n_sim_smo         <- 100L
