@@ -23,6 +23,7 @@ patter::julia_connect()
 library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
+library(glue)
 library(JuliaCall)
 library(patter)
 library(patter.workflows)
@@ -137,7 +138,7 @@ if (!dev) {
 # TO DO In patter.workflows, update .verbose for parallelisation
 # debug(constructor_ac_core)
 # iteration <- iteration[1:1L, ]
-print(glue::glue("Using {ncl} core(s) for {nrow(iteration)} iteration row(s) (mobility = {iteration$mobility[1]})."))
+print(glue("Using {ncl} core(s) for {nrow(iteration)} iteration row(s) (mobility = {iteration$mobility[1]})."))
 coord_list <- 
   cl_lapply_workflow(.iteration   = iteration,
                      .datasets    = list(),
