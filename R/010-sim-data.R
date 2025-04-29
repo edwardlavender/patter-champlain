@@ -112,16 +112,16 @@ xinits <-
 xinits <- split(xinits, xinits$path_id)
 lobstr::obj_size(xinits)
 
-#### Simulate observations for each path
+#### Simulate acoustic observations for each path
 # ETA: 30 s x n_sim = 15 mins!
 # TO DO: Improve speed of Patter.jl.sim_observations()
-# A) Simulate acoustic observations 
 tic()
 acoustics_by_path <- sim_observations(.timeline = timeline, 
                                       .model_obs = model_obs)
 acoustics_by_path <- acoustics_by_path$ModelObsAcousticLogisTrunc
 toc()
-# B) Focus on detections
+
+#### Isolate detections
 detections_by_path <- acoustics_by_path
 for (i in seq_len(n_sim)) {
   detections <- detections_by_path[[i]]
@@ -129,8 +129,9 @@ for (i in seq_len(n_sim)) {
 }
 ( ndet <- sapply(detections_by_path, nrow) )
 stopifnot(all(ndet > 0))
-# C) Validation
-# (i) We should only record detections within receiver_gamma of receiver
+
+#### Validation
+# We should only record detections within receiver_gamma of receiver
 cl_lapply(seq_len(n_sim), function(i) {
   # Join path and detection data.tables
   path       <- paths[path_id == i, ][, .(timestamp, x, y)]
@@ -144,8 +145,6 @@ cl_lapply(seq_len(n_sim), function(i) {
   # Verify all distances are less than the detection threshold
   stopifnot(all(positions$dist <= positions$receiver_gamma))
 })
-# (ii) Check the number of detections per simulation
-sapply(detections_by_path, nrow) |> sort()
 
 
 ###########################
