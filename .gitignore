@@ -5,7 +5,8 @@
 .DS_Store
 ._*
 data-raw/
-data/
+data/*
+!data/inst/
 doc/
 R/deprecated/
 R/dev/
