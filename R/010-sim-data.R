@@ -113,7 +113,7 @@ xinits <- split(xinits, xinits$path_id)
 lobstr::obj_size(xinits)
 
 #### Simulate acoustic observations for each path
-# ETA: 30 s x n_sim = 15 mins!
+# ETA: 4-15 mins
 # TO DO: Improve speed of Patter.jl.sim_observations()
 tic()
 acoustics_by_path <- sim_observations(.timeline = timeline, 
