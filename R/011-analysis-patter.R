@@ -66,7 +66,7 @@ print(glue("Arguments: analysis = '{analysis}'; analysis_mobility = {analysis_mo
 
 #### Define analysis 
 # analysis <- "sim"
-analysis <- "real"
+# analysis <- "real"
 
 #### Define analysis-specific routines
 here_input_analysis       <- switch_here_input_analysis(analysis)
