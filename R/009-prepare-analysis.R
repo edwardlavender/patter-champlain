@@ -41,6 +41,7 @@ pars <- qs::qread(here_input("pars-patter.qs"))
 #### Define analysis 
 # analysis <- "sim"
 # analysis <- "real"
+stopifnot(analysis %in% c("sim", "real"))
 
 #### Define analysis-specific routines
 here_input_analysis <- switch_here_input_analysis(analysis)
@@ -104,6 +105,13 @@ detections[, unit_id := .GRP, by = c("individual_id", "time_id")]
 detections <- filter_detections(detections)
 unitsets   <- unitsets[unit_id %in% detections$unit_id, ]
 
+#### Write unitsets/detections
+qs::qsave(unitsets, here_input_analysis("unitsets.qs"))
+detections[, file_detections := unitsets$file_detections[match(unit_id, unitsets$unit_id)]]
+cl_lapply(split(detections, detections$unit_id), function(d) {
+  qs::qsave(d, d$file_detections[1])
+})
+
 
 ###########################
 ###########################
@@ -137,6 +145,8 @@ if (FALSE) {
 nrow(iteration)
 dirs.create(iteration$folder_coord)
 
+#### Write 
+qs::qsave(iteration, here_input_analysis("iteration-patter.qs"))
 
 ###########################
 ###########################
@@ -208,14 +218,7 @@ if (analysis == "sim") {
 ###########################
 #### Write outputs
 
-qs::qsave(unitsets, here_input_analysis("unitsets.qs"))
 
-detections[, file_detections := unitsets$file_detections[match(unit_id, unitsets$unit_id)]]
-cl_lapply(split(detections, detections$unit_id), function(d) {
-  qs::qsave(d, d$file_detections[1])
-})
-
-qs::qsave(iteration, here_input_analysis("iteration-patter.qs"))
 
 
 #### End of code. 

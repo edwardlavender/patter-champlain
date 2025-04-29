@@ -38,7 +38,9 @@ expect_no_geospatial()
 #### Customise workflow 
 
 # Select analysis type ("sim", "real")
-analysis <- "sim"
+# analysis <- "sim"
+# analysis <- "real"
+stopifnot(analysis %in% c("sim", "real"))
 
 # Select iterations by mobility (162, 216, 270)
 analysis_mobility <- 216
