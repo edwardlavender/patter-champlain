@@ -1,6 +1,6 @@
 ###########################
 ###########################
-#### sim-analysis-patter-01.R
+#### analysis-optimisation.R
 
 #### Aims
 # 1) Analyses simulated observations using patter
@@ -48,7 +48,7 @@ set_map(map)
 #### Run filter & optimisation
 # Iterate over iteration and run optimisation
 # We assume the function can be initialised at the initial parameters in this data.table!
-# For optimsiation, we currently use optim()
+# For optimisation, we currently use optim()
 # This is more scalable for multiple parameters
 # With just two parameters, a grid search approach may be quicker
 cl_lapply_workflow(.iteration = iteration[1, ], 

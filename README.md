@@ -131,18 +131,14 @@ The project structure is as follows:
     - `prepare-real.R` prepares an iteration `data.table` and
       directories for real-world analyses;
     - `sim-data.R` simulates trajectories and observations;
-    - `sim-analysis-patter-*.R` analyses simulated observations using
+    - `analysis-optimistion.R` explores joint estimation of latent
+      locations and static parameters;
+    - `analysis-patter.R` analyses simulation/real-world datasets using
       `patter`;
-    - `sim-analysis-heuristic.R` analyses simulated observations using
-      heuristic methods;
-    - `sim-analysis-synthesis.R` synthesises the results of simulation
-      analyses;
-    - `real-analysis-patter.R` analyses real-world datasets using
-      `patter`;
-    - `real-analysis-heuristic.R` analyses real-world datasets using
-      heuristic methods;
-    - `real-analysis-synthesis.R` synthesises the results of simulation
-      analyses;
+    - `analysis-heuristics.R` analyses simulation/real-world datasets
+      using heuristic methods;
+    - `analysis-synthesis.R` synthesises the results of
+      simulation/real-world analyses;
 
 8.  **`renv/`** implements local dependency management for
     [R](https://www.r-project.org/).

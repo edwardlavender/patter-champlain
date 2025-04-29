@@ -1,9 +1,9 @@
 ###########################
 ###########################
-#### sim-analysis-patter-02.R
+#### analysis-patter.R
 
 #### Aims
-# 1) Analyses simulated observations using patter
+# 1) This script provides a generic workflow for analysing simulated/real-world datasets with patter
 
 #### Prerequisites
 # 1) Run simulations
