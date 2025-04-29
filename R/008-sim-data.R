@@ -35,7 +35,6 @@ fish            <- qs::qread(here_input("fish.qs"))
 moorings        <- qs::qread(here_input_sim("moorings-xy.qs"))
 pars_model_move <- qs::qread(here_input("pars-model-move-best.qs"))
 pars_model_obs  <- qs::qread(here_input("pars-model-obs-best.qs"))
-unitsets        <- qs::qread(here_input_sim("unitsets.qs"))
 
 
 ###########################
@@ -47,7 +46,7 @@ set_seed()
 set_map(map)
 
 #### Define n_sim
-n_sim <- nrow(unitsets)
+n_sim <- 30L
 
 #### Define timeline (one-month)
 timeline <- seq(as.POSIXct("2025-01-01 00:00:00", tz = "UTC"), 
@@ -130,6 +129,11 @@ for (i in seq_len(n_sim)) {
 ( ndet <- sapply(detections_by_path, nrow) )
 stopifnot(all(ndet > 0))
 
+#### Collate detections data.table (to match real-world data structure)
+# TO DO
+# Combine with above
+# Optionally streamline code below
+
 #### Validation
 # We should only record detections within receiver_gamma of receiver
 cl_lapply(seq_len(n_sim), function(i) {
@@ -149,29 +153,6 @@ cl_lapply(seq_len(n_sim), function(i) {
 
 ###########################
 ###########################
-#### Filter simulations
-
-#### Check which simulated datasets meet criteria for modelling
-sapply(detections_by_path, function(d) {
-  d <- detections_by_path[[1]]
-  d |>
-  summarise(
-    duration = as.numeric(difftime(max(timestamp), min(timestamp), units = "days")), 
-    ndays = length(unique(lubridate::floor_date(timestamp, "days"))),
-    pdays = ndays / duration
-  ) |> 
-  pull(pdays) > 0.75
-})
-
-
-#### TO DO Focus on time series that pass criteria for modelling
-# TO DO
-# * Define criteria & implement as function
-# * Implement function in both sim-data.R (here) and prepare-real.R
-
-
-###########################
-###########################
 #### Write datasets to file
 
 qs::qsave(timeline, here_input_sim("timeline.qs"))
@@ -180,10 +161,6 @@ qs::qsave(paths, here_input_sim("paths.qs"))
 qs::qsave(moorings, here_input_sim("moorings.qs"))
 qs::qsave(acoustics_by_path, here_input_sim("acoustics-by-path.qs"))
 qs::qsave(detections_by_path, here_input_sim("detections-by-path.qs"))
-for (i in 1:nrow(unitsets)) {
-  detections <- detections_by_path[[i]]
-  qs::qsave(detections, unitsets$file_detection[i])
-}
 
 
 #### End of code. 
