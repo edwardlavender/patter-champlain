@@ -52,9 +52,9 @@ dev <- TRUE
 cmd_args <- commandArgs(trailingOnly = TRUE)
 if (length(cmd_args) > 0L) {
   stopifnot(length(cmd_args) == 3L)
-  analysis <- args[1]
-  mobility <- as.numeric(args[2])
-  dev      <- as.logical(args[3])
+  analysis <- cmd_args[1]
+  mobility <- as.numeric(cmd_args[2])
+  dev      <- as.logical(cmd_args[3])
 }
 
 print(glue("Arguments: analysis = '{analysis}'; analysis_mobility = {analysis_mobility}; dev = {dev}."))
