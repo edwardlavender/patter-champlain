@@ -83,8 +83,7 @@ The project structure is as follows:
     - `develop-model-detection.R` analyses detection probability datasets and develops the acoustic observation model;
     - `develop-model.R` collates state-space model parameters;
     - `sim-data.R` simulates trajectories and observations;
-    - `prepare-analysis-sim.R` prepares an iteration `data.table` and directories for simulation analyses;
-    - `prepare-analysis-real.R` prepares an iteration `data.table` and directories for real-world analyses;
+    - `prepare-analysis.R` prepares iteration `data.table`s and directories for simulation/real-world analyses;
     - `analysis-optimistion.R` explores joint estimation of latent locations and static parameters;
     - `analysis-patter.R` analyses simulation/real-world datasets using `patter`;
     - `analysis-heuristics.R` analyses simulation/real-world datasets using heuristic methods;
