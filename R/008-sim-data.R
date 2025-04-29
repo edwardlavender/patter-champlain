@@ -120,35 +120,27 @@ acoustics_by_path <- sim_observations(.timeline = timeline,
 acoustics_by_path <- acoustics_by_path$ModelObsAcousticLogisTrunc
 toc()
 
-#### Isolate detections
-detections_by_path <- acoustics_by_path
-for (i in seq_len(n_sim)) {
-  detections <- detections_by_path[[i]]
-  detections_by_path[[i]] <- detections[obs == 1L, ]
-}
-( ndet <- sapply(detections_by_path, nrow) )
-stopifnot(all(ndet > 0))
-
 #### Collate detections data.table (to match real-world data structure)
-# TO DO
-# Combine with above
-# Optionally streamline code below
+detections <- lapply(seq_len(n_sim), function(i) {
+  acoustics_by_path[[i]] |> 
+    filter(obs == 1L) |> 
+    mutate(individual_id = i, time_id = lubridate::floor_date(timestamp, "months")) |> 
+    select(individual_id, time_id, timestamp, receiver_id = sensor_id, 
+           receiver_x, receiver_y, receiver_alpha, receiver_beta, receiver_gamma) |> 
+    as.data.table()
+}) |> rbindlist()
 
 #### Validation
 # We should only record detections within receiver_gamma of receiver
-cl_lapply(seq_len(n_sim), function(i) {
-  # Join path and detection data.tables
-  path       <- paths[path_id == i, ][, .(timestamp, x, y)]
-  detections <- detections_by_path[[i]][, .(timestamp, receiver_x, receiver_y, receiver_gamma)]
-  positions  <- right_join(path, detections, by = "timestamp") |> as.data.table()
-  # Compute distances between individual and receiver @ which it was detected
-  positions[, dist := terra::distance(cbind(x, y), 
-                                      cbind(receiver_x, receiver_y),
-                                      lonlat = FALSE,
-                                      pairwise = TRUE)]
-  # Verify all distances are less than the detection threshold
-  stopifnot(all(positions$dist <= positions$receiver_gamma))
-})
+positions <- 
+  paths |> 
+  right_join(detections, by = c("path_id" = "individual_id", "timestamp")) |> 
+  mutate(dist = terra::distance(cbind(x, y), 
+                                cbind(receiver_x, receiver_y),
+                                lonlat = FALSE,
+                                pairwise = TRUE)) |> 
+  as.data.table()
+stopifnot(all(positions$dist <= positions$receiver_gamma))
 
 
 ###########################
@@ -160,7 +152,7 @@ qs::qsave(xinits, here_input_sim("xinits.qs"))
 qs::qsave(paths, here_input_sim("paths.qs"))
 qs::qsave(moorings, here_input_sim("moorings.qs"))
 qs::qsave(acoustics_by_path, here_input_sim("acoustics-by-path.qs"))
-qs::qsave(detections_by_path, here_input_sim("detections-by-path.qs"))
+qs::qsave(detections, here_input_sim("detections.qs"))
 
 
 #### End of code. 
