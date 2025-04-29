@@ -37,7 +37,7 @@ expect_no_geospatial()
 #### Select analysis type
 
 analysis <- "sim"
-# analysis <- "real"
+analysis <- "real"
 
 if (analysis == "sim") {
 
@@ -54,6 +54,7 @@ if (analysis == "sim") {
 }
 
 iteration <- qs::qread(here_input_analysis("iteration-patter.qs"))
+nrow(iteration)
 
 
 ###########################
