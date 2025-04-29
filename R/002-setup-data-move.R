@@ -22,6 +22,8 @@ Sys.setenv("JULIA_SESSION" = FALSE)
 #### Load essential packages
 library(proj.verse)
 library(data.table)
+library(dtplyr)
+library(dplyr, warn.conflicts = TRUE)
 files_source_r(here_src())
 
 #### Load data
