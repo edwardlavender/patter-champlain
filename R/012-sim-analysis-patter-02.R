@@ -39,6 +39,11 @@ iteration <- qs::qread(here_input_sim("iteration-patter.qs"))
 ###########################
 #### Estimate coordinates
 
+#### (optional) Set development mode
+# * Use one core
+# * Set maps 
+dev <- TRUE
+
 #### (optional) Reset directories
 if (TRUE) {
   # unlink(dirname(iteration$folder_coord), recursive = TRUE)
@@ -54,27 +59,37 @@ iteration[, file_diag := file.path(folder_coord, "diagnostics.qs")]
 iteration[, file_output := file_diag]
 
 #### Set maps
-# This is implemented below on each node. 
-# set_map(here_input("map.tif"))
-# set_vmap(.vmap = here_input("vmap", iteration$mobility[1], "vmap.tif"))
+if (dev) {
+  # This is implemented below on each node. 
+  set_map(here_input("map.tif"))
+  set_vmap(.vmap = here_input("vmap", iteration$mobility[1], "vmap.tif"))
+}
 
 #### Set logs
-dir.create(here_output_sim("logs"))
-log.txt <- here_output_sim("logs", paste0("log-", iteration$mobility[1], ".txt"))
-# log.txt <- TRUE
-# unlink(log.txt)
+if (dev) {
+  log.txt <- TRUE
+} else {
+  dir.create(here_output_sim("logs"))
+  log.txt <- here_output_sim("logs", paste0("log-", iteration$mobility[1], ".txt"))
+  # unlink(log.txt)
+}
 
 #### Setup cluster
-# Define number of workers
-ncl <- 2L
-# Define required memory for export
-lobstr::mem_used() * ncl
-# Initialise cluster
-cl  <- parallel::makeCluster(ncl)
-cl_init(iteration = iteration, cl = cl, varlist = ls())
+if (!dev) {
+  # Define number of workers
+  ncl <- 2L
+  # Define required memory for export
+  lobstr::mem_used() * ncl
+  # Initialise cluster
+  cl  <- parallel::makeCluster(ncl)
+  cl_init(iteration = iteration, cl = cl, varlist = ls())
+} else {
+  cl <- NULL
+}
 
 #### Estimate coordinates
 # TO DO In patter.workflows, update .verbose for parallelisation
+# debug(constructor_ac_core)
 iteration <- iteration[1:2L, ]
 coord_list <- 
   cl_lapply_workflow(.iteration   = iteration,
