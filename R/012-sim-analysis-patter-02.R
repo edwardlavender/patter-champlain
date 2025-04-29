@@ -90,7 +90,7 @@ if (!dev) {
 #### Estimate coordinates
 # TO DO In patter.workflows, update .verbose for parallelisation
 # debug(constructor_ac_core)
-iteration <- iteration[1:2L, ]
+iteration <- iteration[1:1L, ]
 coord_list <- 
   cl_lapply_workflow(.iteration   = iteration,
                      .datasets    = list(),
