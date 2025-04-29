@@ -42,9 +42,11 @@ pars <- qs::qread(here_input("pars-patter.qs"))
 # analysis <- "sim"
 analysis <- "real"
 
+#### Define analysis-specific routines
+here_input_analysis <- switch_here_input_analysis(analysis)
 
 #### Define analysis-specific data
-detections <- qs::qread(here_input_analysis(analysis, "detections.qs"))
+detections <- qs::qread(here_input_analysis("detections.qs"))
 
 
 ###########################
@@ -187,7 +189,7 @@ if (analysis == "sim") {
     geom_line() +
     facet_wrap(~row, scales = "free_y")
   # Record iteration
-  qs::qsave(iteration, here_input_analysis(analysis, "iteration-patter-optim.qs"))
+  qs::qsave(iteration, here_input_analysis("iteration-patter-optim.qs"))
   
   #### Build directories
   dirs.create(dirname(iteration$file_output))
@@ -206,14 +208,14 @@ if (analysis == "sim") {
 ###########################
 #### Write outputs
 
-qs::qsave(unitsets, here_input_analysis(analysis, "unitsets.qs"))
+qs::qsave(unitsets, here_input_analysis("unitsets.qs"))
 
 detections[, file_detections := unitsets$file_detections[match(unit_id, unitsets$unit_id)]]
 cl_lapply(split(detections, detections$unit_id), function(d) {
   qs::qsave(d, d$file_detections[1])
 })
 
-qs::qsave(iteration, here_input_analysis(analysis, "iteration-patter.qs"))
+qs::qsave(iteration, here_input_analysis("iteration-patter.qs"))
 
 
 #### End of code. 

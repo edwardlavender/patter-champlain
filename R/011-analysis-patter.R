@@ -64,22 +64,16 @@ print(glue("Arguments: analysis = '{analysis}'; analysis_mobility = {analysis_mo
 ###########################
 #### Select analysis type
 
-# TO DO Revise code in line with prepare-analysis.R
+#### Define analysis 
+# analysis <- "sim"
+analysis <- "real"
 
-if (analysis == "sim") {
+#### Define analysis-specific routines
+here_input_analysis       <- switch_here_input_analysis(analysis)
+here_output_analysis_main <- switch_here_output_analysis_main(analysis)
+constructor_ac_analysis   <- switch_constructor_ac_analysis(analysis)
 
-  here_input_analysis     <- here_input_sim
-  here_output_analysis    <- here_output_sim_main
-  constructor_ac_analysis <- constructor_ac_sim
-  
-} else if (analysis == "real") {
-  
-  here_input_analysis     <- here_input_real
-  here_output_analysis    <- here_output_real_main
-  constructor_ac_analysis <- constructor_ac_real
-  
-}
-
+#### Define analysis-specific data
 iteration <- qs::qread(here_input_analysis("iteration-patter.qs"))
 nrow(iteration)
 
@@ -114,8 +108,8 @@ if (dev) {
 if (dev) {
   log.txt <- TRUE
 } else {
-  dir.create(here_output_analysis("logs", "R"))
-  log.txt <- here_output_analysis("logs", "R", paste0("log-", iteration$mobility[1], ".txt"))
+  dir.create(here_output_analysis_main("logs", "R"))
+  log.txt <- here_output_analysis_main("logs", "R", paste0("log-", iteration$mobility[1], ".txt"))
   # unlink(log.txt)
 }
 

@@ -24,16 +24,6 @@ here_input_real <- function(...) {
   here_input("real", ...)
 }
 
-here_input_analysis <- function(analysis = c("sim", "real"), ...) {
-  analysis <- match.arg(analysis)
-  switch(
-    analysis,
-    sim  = here_input_sim(...),
-    real = here_input_real(...),
-    stop("`analysis` must be 'sim' or 'real'")
-  )
-}
-
 here_output <- function(...) {
   here::here("data", "output", ...)
 }
