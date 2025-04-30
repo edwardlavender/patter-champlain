@@ -214,19 +214,80 @@ if (FALSE) {
 #### Examine coordinates
 if (FALSE) {
   
-  # Examine example file
-  # * Each file_coord file is an standard pf_particles output from the smoother
-  # * $states, $diagnostics, $callstats (for smoothing)
+  #### Examine example file
+  # Each file_coord file is an standard pf_particles output from the smoother
+  # $states, $diagnostics, $callstats (for smoothing)
   list.files(iteration$folder_coord)
   eg <- qs::qread(iteration$file_coord[1])
   summary(eg)
   # View(eg)
+
+  #### Visual checks
   
-  # Visualise coordinates
-  map <- terra::rast(here_input("map.tif"))
-  lapply_qplot_coord(iteration[1:4, ], 
+  # Visually check 'best' maps for a few individuals
+  map      <- terra::rast(here_input("map.tif"))
+  unit_ids <- unique(iteration$unit_id)[1:9L]
+  lapply_qplot_coord(iteration[unit_id %in% unit_ids & sensitivity == "best", ], 
+                     .datasets = list(coordinates = function(smo) smo$states),
+                     .map = map, 
+                     .n_plot = 9L)
+
+  # Visually check 'sensitivity' for a few individuals
+  lapply_qplot_coord(iteration[unit_id == 1L, ], 
                      .datasets = list(coordinates = function(smo) smo$states),
                      .map = map)
+  lapply_qplot_coord(iteration[unit_id == 2L, ], 
+                     .datasets = list(coordinates = function(smo) smo$states),
+                     .map = map)
+  
+  #### Quantitative checks
+  # (A) Check distances between individual/receiver @ moment of detections
+  cl_lapply_iteration_file(
+    iteration[1:5], 
+    .file = "file_coord", 
+    .fun = function(.sim, .input) {
+      # Define states/detections
+      states     <- .input$states
+      detections <- qs::qread(.sim$file_detections)
+      # Compute distances 
+      distances  <- 
+        right_join(states, detections, by = "timestamp", relationship = "many-to-many") |> 
+        select(x, y, receiver_x, receiver_y) |> 
+        mutate(dist = terra::distance(cbind(x, y), cbind(receiver_x, receiver_y), 
+                                      lonlat = FALSE, pairwise = TRUE)) |>
+        as.data.table()
+      # Validate distances
+      stopifnot(all(distances$dist < .sim$receiver_gamma))
+    })
+  
+}
+
+#### Examine diagnostics
+if (FALSE) {
+  
+  #### Summarise convergence 
+  # (see above)
+  
+  #### Summarise ESS
+  # Compute the average mean ess for selected algorithm runs 
+  ess_mean <- cl_lapply_iteration_file(
+    iteration[sensitivity == "best", ], 
+    .file = "file_coord", 
+    .fun = function(.sim, .input) {
+      mean(.input$diagnostics$ess, na.rm = TRUE)
+    }, .cl = 10L, .combine = unlist) 
+  mean(ess_mean)
+  
+  #### Summarise the area spanned by 95 % of the distribution
+  # This provides information on how well an animal has been localised 
+  areas <- cl_lapply_iteration_file(
+    iteration[sensitivity == "best", ], 
+    .file = "file_coord", 
+    .fun = function(.sim, .input) {
+      # TO DO
+    }, .cl = 10L, .combine = unlist)  
+  mean(ess_mean)
+  
   
 }
 
