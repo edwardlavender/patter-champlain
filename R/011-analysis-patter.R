@@ -129,10 +129,13 @@ if (!dev) {
   cl  <- NULL
 }
 
-#### Estimate coordinates: time trials
-# iteration[1, ], 1 thread, 2.5e4 filter particles, 1e3 smoothing particles, 1e2 smoothing sims
+#### Estimate coordinates: time trials (simulations)
+# iteration[1, ] on SIA-LAVENDED-M
+# * iteration[1, ], 1 thread, 2.5e4 filter particles, 1e3 smoothing particles, 1e2 smoothing sims
 # * 26.8 min XX min: 6.95 min (filter) + 6.82 min (filter) + 11.98 min (smoother)
 # * Warning: All smoothing weights (from xbwd[k, t] to xfwd[j, t - 1]) are zero at 8 time step(s) (0.04 %).
+# iteration[1:90, ] on siam-linux20
+# * 1 hour, 90 cl
 
 #### Estimate coordinates
 # TO DO In patter.workflows, update .verbose for parallelisation
@@ -158,7 +161,26 @@ coord_list <-
 # real-3  : TO DO
 
 #### Review file sizes (storage requirements) 
-# TO DO Review file sizes
+# Each iteration records callstats, diagnostics, smo (particles)
+# We record 1000 particles (4 state dimensions) for _up to_ one month
+# This is ~714 MB per iteration
+nr <- 1000L
+ns <- 4L
+nt <- length(qs::qread(here_input_sim("timeline.qs")))
+(nr * ns * nt * 8) / 1e6
+# Check output file sizes for iteration[1, ]: 
+# * "callstats.qs"                           : < 0.1 MB
+# * "diagnostics.qs"                         : 0.7 MB
+# * "smo-1.jld2", "smo-2.jld2", "smo-3.jld2" : 238 MB each 
+files <- list.files(iteration$folder_coord[1], full.names = TRUE)
+sapply(files, file.size) / 1e6
+# As an approximation of the total storage requirements (GB) is:
+# > 107 GB for 150 simulations
+# > 2.35 TB for 3290 real-world analyses 
+nrow(qs::qread(here_input_analysis("iteration-patter.qs"))) * 714 / 1000
+# TO DO Consider reducing storage requirements:
+# * Batch particles appropriately & output summary statistics rather than particles
+# * Periodically summarise and cleanup particles (run iteration in batches)
 
 #### Collate coordinates across batches
 if (FALSE) {
