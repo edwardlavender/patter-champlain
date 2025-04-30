@@ -184,18 +184,39 @@ nrow(qs::qread(here_input_analysis("iteration-patter.qs"))) * 714 / 1000
 
 #### Collate coordinates across batches
 if (FALSE) {
-  list.files(iteration$folder_coord)
-  stopifnot(all(file.exists(iteration$file_output)))
+  
+  # All iterations should output a callstats.qs file
+  # * This is derived from cl_lapply:::workflow()
+  stopifnot(all(file.exists(file.path(dirname(iteration$file_output), "callstats.qs"))))
+  
+  # Iterations that converged should output a iteration$file_output (diagnostics.qs) file
+  # * This contains the output of estimate_coord_particle()
+  # * $forward$states = NULL, forward$diagnostics, foward$callstats
+  # * $backward$states = NULL, backward$diagnostics, backward$callstats
+  # * $smooth$states = NULL, smooth$diagnostics, smooth$callstats
+  # > The states elements are NULL because we implemented batching
+  # > Filter/smoother files are written to file
+  # > We clean up fwd/bwd files on the fly & only retain smo states
+  # qs::qread(iteration$file_output[1])
+  table(file.exists(iteration$file_output))
+  
+  # Collate smoothed states 
+  # * ETA: ~5 s per row on 1 cl (07m 03s for 84 rows)
   iteration[, file_coord := file.path(folder_coord, "coord.qs")]
-  convergence <- cl_lapply_particle_collate(.iteration = iteration)
-  # Check the number of algorithm runs for which convergence was achieved 
+  success <- cl_lapply_particle_collate(.iteration = iteration[file.exists(file_output), ])
+  
+  # Check all files were successfully created
+  # * For file structure, see below
   table(unlist(convergence))
+  
 }
 
 #### Examine coordinates
 if (FALSE) {
   
   # Examine example file
+  # * Each file_coord file is an standard pf_particles output from the smoother
+  # * $states, $diagnostics, $callstats (for smoothing)
   list.files(iteration$folder_coord)
   eg <- qs::qread(iteration$file_coord[1])
   summary(eg)
@@ -203,7 +224,7 @@ if (FALSE) {
   
   # Visualise coordinates
   map <- terra::rast(here_input("map.tif"))
-  lapply_qplot_coord(iteration, 
+  lapply_qplot_coord(iteration[1:4, ], 
                      .datasets = list(coordinates = function(smo) smo$states),
                      .map = map)
   
