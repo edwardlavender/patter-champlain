@@ -6,7 +6,7 @@ expect_no_geospatial <- function() {
   invisible(NULL)
 }
 
-if (!patter:::julia_session()) {
+if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
   
   # Convert shapefile to SpatRaster
   as_SpatRaster <- function(.x, .simplify = NULL, .utm = NULL,

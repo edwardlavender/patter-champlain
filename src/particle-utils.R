@@ -129,41 +129,45 @@ cl_lapply_particle_collate <- function(.iteration) {
   unlist(convergence)
 }
 
-# Compute area spanned by 95 % of particles via 2D histogram
-# (Computation via ks::kde() and ks::contourSizes() is too slow)
-particle_hr <- function(.map, .coord) {
+if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
   
-  # Compute area of grid cell (assuming UTM grid)
-  A <- prod(terra::res(.map))
-  
-  # Compute average area spanned by 95 % of particles
-  .coord |>
-    lazy_dt() |>
-    select(timestep, x, y) |>
-    # filter(timestep %in% seq(1, max(timestep), by = 100)) |> 
-    # Discretise coordinates
-    mutate(id = terra::cellFromXY(.map, cbind(.data$x, .data$y)),
-           x = terra::xFromCell(.map, .data$id),
-           y = terra::yFromCell(.map, .data$id)) |>
-    # Assign equal weights (marks)
-    group_by(.data$timestep) |>
-    mutate(mark = 1 / n()) |>
-    ungroup() |>
-    # Calculate the total weight of each location within time steps (2D histogram)
-    group_by(.data$timestep, .data$id) |>
-    summarise(mark = sum(.data$mark)) |>
-    ungroup() |>
-    # Calculate for each timestep the area containing 95 % of probability mass
-    # * Sum weights
-    # * Identify the number of cells required to put us above 95 % probability mass * A
-    group_by(.data$timestep) |> 
-    arrange(desc(mark), .by_group = TRUE) |> 
-    mutate(cmark = cumsum(mark)) |>
-    summarise(area = which(cmark >= 0.95)[1] * A ) |>
-    ungroup() |> 
-    # Compute mean area over all time steps
-    summarise(area_mean = mean(area)) |>
-    ungroup() |>
-    pull(area_mean)
+  # Compute area spanned by 95 % of particles via 2D histogram
+  # (Computation via ks::kde() and ks::contourSizes() is too slow)
+  particle_hr <- function(.map, .coord) {
+    
+    # Compute area of grid cell (assuming UTM grid)
+    A <- prod(terra::res(.map))
+    
+    # Compute average area spanned by 95 % of particles
+    .coord |>
+      lazy_dt() |>
+      select(timestep, x, y) |>
+      # filter(timestep %in% seq(1, max(timestep), by = 100)) |> 
+      # Discretise coordinates
+      mutate(id = terra::cellFromXY(.map, cbind(.data$x, .data$y)),
+             x = terra::xFromCell(.map, .data$id),
+             y = terra::yFromCell(.map, .data$id)) |>
+      # Assign equal weights (marks)
+      group_by(.data$timestep) |>
+      mutate(mark = 1 / n()) |>
+      ungroup() |>
+      # Calculate the total weight of each location within time steps (2D histogram)
+      group_by(.data$timestep, .data$id) |>
+      summarise(mark = sum(.data$mark)) |>
+      ungroup() |>
+      # Calculate for each timestep the area containing 95 % of probability mass
+      # * Sum weights
+      # * Identify the number of cells required to put us above 95 % probability mass * A
+      group_by(.data$timestep) |> 
+      arrange(desc(mark), .by_group = TRUE) |> 
+      mutate(cmark = cumsum(mark)) |>
+      summarise(area = which(cmark >= 0.95)[1] * A ) |>
+      ungroup() |> 
+      # Compute mean area over all time steps
+      summarise(area_mean = mean(area)) |>
+      ungroup() |>
+      pull(area_mean)
+    
+  }
   
 }
