@@ -157,13 +157,18 @@ coord_list <-
 # real-2  : TO DO
 # real-3  : TO DO
 
+#### Review file sizes (storage requirements) 
+# TO DO Review file sizes
+
 #### Collate coordinates across batches
-list.files(iteration$folder_coord)
-stopifnot(all(file.exists(iteration$file_output)))
-iteration[, file_coord := file.path(folder_coord, "coord.qs")]
-convergence <- cl_lapply_particle_collate(.iteration = iteration)
-# Check the number of algorithm runs for which convergence was achieved 
-table(unlist(convergence))
+if (FALSE) {
+  list.files(iteration$folder_coord)
+  stopifnot(all(file.exists(iteration$file_output)))
+  iteration[, file_coord := file.path(folder_coord, "coord.qs")]
+  convergence <- cl_lapply_particle_collate(.iteration = iteration)
+  # Check the number of algorithm runs for which convergence was achieved 
+  table(unlist(convergence))
+}
 
 #### Examine coordinates
 if (FALSE) {
