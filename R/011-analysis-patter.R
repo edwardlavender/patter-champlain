@@ -280,14 +280,51 @@ if (FALSE) {
   
   #### Summarise the area spanned by 95 % of the distribution
   # This provides information on how well an animal has been localised 
-  areas <- cl_lapply_iteration_file(
+  # TO DO Review method (AS)
+  # ETA: ~4 mins for 30 rows
+  areas_mean <- cl_lapply_iteration_file(
     iteration[sensitivity == "best", ], 
     .file = "file_coord", 
     .fun = function(.sim, .input) {
-      # TO DO
-    }, .cl = 10L, .combine = unlist)  
-  mean(ess_mean)
-  
+      # Compute average area spanned by 95 % probability mass via kde
+      # (averaged over all time steps
+      
+      # .input <- qs::qread(iteration$file_coord[1])
+      states <- .input$states
+      
+      # Discretise coordinates
+      # * This takes ~20 s
+      # * But it speeds up kde fitting 
+      # * (0.161 s per iteration versus from 1.372 s per iteration)
+      coord <- kde_coord(.map = map, .coord = states)
+      
+      # Time trials for kde fitting with/without coordinate discretisation
+      # x <- coord$x[coord$timestep == 1L]
+      # y <- coord$y[coord$timestep == 1L]
+      # system.time(hr_area(x, y))           # 0.161 s
+      # x <- states$x[states$timestep == 1L]
+      # y <- states$y[states$timestep == 1L]
+      # system.time(hr_area(x, y))           # 1.379
+      
+      # Estimate computation time ETA
+      # * 0.161 * 22310 / 60        : 60 min for full month 
+      # * 0.161 * 22310 / 60 / 10   : 6 min for every 10th observation 
+      # * 0.161 * 22310 / 60 / 100  : 1 min for every 100th observation
+      
+      # Estimate areas
+      coord |> 
+        lazy_dt() |>
+        select(timestep, x, y) |>
+        filter(timestep %in% seq(1, max(timestep), by = 100)) |> 
+        group_by(timestep) |>
+        summarise(area = hr_area(x, y)) |> 
+        ungroup() |> 
+        summarise(mean_area = mean(area)) |> 
+        pull(mean_area)
+      
+    }, .cl = 10L, .combine = unlist)
+  # Compute average mean area (km2) across iterations
+  mean(areas_mean / 1e6)
   
 }
 
