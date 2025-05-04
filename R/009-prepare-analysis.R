@@ -28,6 +28,7 @@ library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
 library(ggplot2)
 library(proj.verse)
+library(truncdist)
 files_source_r(here_src())
 
 #### Load data
@@ -148,60 +149,139 @@ dirs.create(iteration$folder_coord)
 #### Write 
 qs::qsave(iteration, here_input_analysis("iteration-patter.qs"))
 
+
 ###########################
 ###########################
 #### Prepare iteration patter: optimisation analysis
 
+# We will explore estimation of latent locations & static parameters
+# (focusing on shape/scale parameters of gamma distribution)
+
+# We explore two optimisation routines:
+# A) optim()
+# - programmatically quick & easy to extend for multiple parameters
+# - but did not work not work well in initial tests 
+# - see analysis-optimisation.R
+# * grid-search
+# - scales poorly with increasing numbers of parameters
+# - but parallelisable
+
+# We'll run optimisation for the following settings:
+# * We consider a subset of N individuals
+# * For each individual, we run the filter/optimisation 3 times 
+# * We'll record outputs in:
+# * sim/optim/individual_id/rep_id/parameter_id (parameter_id = 1)
+# * sim/grid/individual_id/rep_id/parameter_id  (multiple parameters)
+
 if (analysis == "sim") {
   
-  #### Define iteration
-  # We consider a subset of N individuals
-  # For each individual, we run the filter/optimisation 3 times 
-  # We save optim() outputs in sim/optimisation/individual_id/rep_id/
+  #### Copy iterations
+  iteration_main <- copy(iteration)
+  
+  #### Define parameters
   n_id  <- 3L
   n_rep <- 3L
-  iteration <- 
-    iteration |> 
-    filter(sensitivity == "best") |> 
-    slice(1:n_id) |> 
-    cross_join(data.table(rep_id = 1:n_rep)) |> 
-    mutate(index = row_number()) |> 
-    mutate(file_output = file.path("data", "output", analysis, "optim", "runs", 
-                                   individual_id, rep_id, "optim.qs")) |> 
-    # Select columns, including parameters required by constructor_ac_core()
-    select(index, unit_id, individual_id, rep_id, 
-           phi, mobility, receiver_alpha, receiver_beta, receiver_gamma, , 
-           file_detections, file_output) |> 
-    as.data.table()
   
-  #### Update iteration with initial parameter values
-  # Explore possible step length distributions 
+  #### Explore possible step length distributions 
   CJ(shape = seq(1, 10, by = 2),
      scale = seq(20, 30, by = 1)) |>
     mutate(row = paste(shape, scale, sep = ", ")) |> 
     tidyr::expand_grid(x = seq(0, pars$mobility[1], length.out = 100)) |> 
     ggplot(aes(x, dgamma(x, shape = shape, scale = scale))) +
     geom_line() +
-    facet_wrap(~row, scales = "free_y")
-  # Select suitable parameters for sampling distribution 
-  hist(rnorm(100, mean = pars$shape[1], sd = 2))
-  hist(rnorm(100, mean = pars$scale[1], sd = 2))
-  # Simulate init parameters 
-  iteration[, shape := rnorm(.N, mean = pars$shape[1], sd = 2)]
-  iteration[, scale := rnorm(.N, mean = pars$scale[1], sd = 2)]
-  stopifnot(all(iteration$shape > 0) & all(iteration$scale > 0))
-  # Examine distributions
+    facet_wrap(~row, scales = "free_y") + 
+    theme(axis.text.y = element_blank())
+  # Examine sampling distributions
+  hist(rtrunc(100, "norm", lower = 0, mean = pars$shape[1], sd = 2))
+  hist(rtrunc(100, "norm", lower = 0, mean = pars$scale[1], sd = 2))
+  
+  
+  ###########################
+  #### optim analysis
+  
+  #### Define iteration
+  iteration <- 
+    iteration_main |> 
+    filter(sensitivity == "best") |> 
+    slice(1:n_id) |> 
+    cross_join(data.table(rep_id = 1:n_rep)) |> 
+    mutate(index = row_number(), 
+           parameter_id = 1L, 
+           # Simulate starting values for shape/scale for optimisation
+           shape = rtrunc(n(), "norm", lower = 0, mean = pars$shape[1], sd = 2),
+           scale = rtrunc(n(), "norm", lower = 0, mean = pars$scale[1], sd = 2),
+           file_output = file.path("data", "output", analysis, "optim", "runs", 
+                                   individual_id, rep_id, parameter_id, "optim.qs")) |> 
+    # Select columns, including parameters required by constructor_ac_core()
+    select(index, unit_id, individual_id, rep_id, 
+           shape, scale, phi, mobility, 
+           receiver_alpha, receiver_beta, receiver_gamma, 
+           file_detections, file_output) |> 
+    as.data.table()
+  
+  # Examine starting distributions for optimisation
   iteration |>
     select(shape, scale) |> 
     mutate(row = paste0(shape, scale, ", ")) |> 
     tidyr::expand_grid(x = seq(0, pars$mobility[1], length.out = 200)) |> 
-    ggplot(aes(x, dgamma(x, shape = shape, scale = scale))) +
+    ggplot(aes(x, dgamma(x, shape = shape, scale = scale), 
+               colour = row, group = row)) +
     geom_line() +
-    facet_wrap(~row, scales = "free_y")
+    theme(axis.text.y = element_blank(), 
+          legend.position = "none")
+  
   # Record iteration
   qs::qsave(iteration, here_input_analysis("iteration-patter-optim.qs"))
   
-  #### Build directories
+  # Build directories
+  dirs.create(dirname(iteration$file_output))
+  
+  
+  ###########################
+  #### Grid-search
+
+  # Define parameter grid
+  # * We know the true parameter values
+  # * We could consider the same bounds of uncertainty as in real-world analyses
+  # * This is relatively well defined 
+  shapes <- sort(c(pars$shape[1], seq(min(pars$shape), max(pars$shape), length.out = 10)))
+  scales <- sort(c(pars$scale[1], seq(min(pars$scale), max(pars$scale), length.out = 10)))
+  grid   <- CJ(shape = shapes, scale = scales) |> 
+    mutate(parameter_id = row_number(), 
+           row =  paste(shape, scale, sep = ", ")) |>
+    select(parameter_id, row, shape, scale) |>
+    as.data.table()
+  # Visualise parameter grid
+  grid |>
+    tidyr::expand_grid(x = seq(0, max(pars$mobility[1]), length.out = 100)) |> 
+    ggplot(aes(x, dgamma(x, shape = shape, scale = scale), 
+               colour = row, group = row)) +
+    geom_line() +
+    theme(axis.text.y = element_blank(), 
+          legend.position = "none")
+  
+  # Define iteration data.table
+  iteration <- 
+    iteration_main |> 
+    filter(sensitivity == "best") |> 
+    select(-parameter_id, -shape, -scale) |> 
+    slice(1:n_id) |> 
+    cross_join(data.table(rep_id = 1:n_rep)) |> 
+    cross_join(grid) |> 
+    mutate(index = row_number()) |> 
+    mutate(file_output = file.path("data", "output", analysis, "grid", "runs", 
+                                   individual_id, rep_id, parameter_id, "grid.qs")) |> 
+    # Select columns, including parameters required by constructor_ac_core()
+    select(index, unit_id, individual_id, rep_id, parameter_id, 
+           shape, scale, mobility, phi, 
+           receiver_alpha, receiver_beta, receiver_gamma,
+           file_detections, file_output) |> 
+    as.data.table()
+  
+  # Record iteration
+  qs::qsave(iteration, here_input_analysis("iteration-patter-grid.qs"))
+  
+  # Build directories
   dirs.create(dirname(iteration$file_output))
   
 }
