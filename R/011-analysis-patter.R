@@ -40,7 +40,6 @@ expect_no_geospatial()
 # Select analysis type ("sim", "real")
 # analysis <- "sim"
 # analysis <- "real"
-stopifnot(analysis %in% c("sim", "real"))
 
 # Select iterations by mobility (162, 216, 270)
 analysis_mobility <- 216
@@ -54,11 +53,13 @@ dev <- TRUE
 cmd_args <- commandArgs(trailingOnly = TRUE)
 if (length(cmd_args) > 0L) {
   stopifnot(length(cmd_args) == 3L)
-  analysis <- cmd_args[1]
-  mobility <- as.numeric(cmd_args[2])
-  dev      <- as.logical(cmd_args[3])
+  analysis          <- cmd_args[1]
+  analysis_mobility <- as.numeric(cmd_args[2])
+  dev               <- as.logical(cmd_args[3])
 }
 
+# Check input settings
+stopifnot(analysis %in% c("sim", "real"))
 print(glue("Arguments: analysis = '{analysis}'; analysis_mobility = {analysis_mobility}; dev = {dev}."))
 
 #### Define analysis-specific routines
@@ -94,6 +95,7 @@ if (FALSE) {
   iteration <- iteration[1:min(c(.N, 100L)), ]
 }
 nrow(iteration)
+stopifnot(nrow(iteration) > 0L)
 
 #### Set maps
 if (dev) {
