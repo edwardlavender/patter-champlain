@@ -88,6 +88,11 @@ table(iteration$mobility)
 iteration <- iteration[mobility == analysis_mobility, ]
 iteration[, file_diag := file.path(folder_coord, "diagnostics.qs")]
 iteration[, file_output := file_diag]
+# (optional) Further subset for testing
+if (FALSE) {
+  iteration <- iteration[sensitivity == "best", ]
+  iteration <- iteration[1:min(c(.N, 100L)), ]
+}
 nrow(iteration)
 
 #### Set maps
@@ -178,6 +183,7 @@ if (FALSE) {
   
   # All iterations should output a callstats.qs file
   # * This is derived from cl_lapply:::workflow()
+  # qs::qread(file.path(dirname(iteration$file_output), "callstats.qs"))
   stopifnot(all(file.exists(file.path(dirname(iteration$file_output), "callstats.qs"))))
   
   # Iterations that converged should output a iteration$file_output (diagnostics.qs) file
