@@ -132,31 +132,39 @@ constructor_ac_core <- function(.sim, .datasets, .verbose, ...) {
                      .collect    = TRUE,
                      .verbose    = .verbose, 
                      .progress   = julia_progress(enabled = test))
-    
-    # Define arguments for backward filter run
-    args_bwd            <- args_fwd
-    args_bwd$.yobs      <- yobs_bwd
-    args_bwd$.direction <- "backward"
-    args_bwd$.batch     <- particle_batch(.sim = .sim, .type = "bwd")
-    
-    # Define smoother arguments
-    # * Note .collect = TRUE is required for particle_success()
-    args_smo <- list(.n_particle = n_particle_smo, 
-                     .n_sim = n_sim_smo, 
-                     .cache = TRUE, 
-                     .batch = particle_batch(.sim = .sim, .type = "smo"),
-                     .progress = julia_progress(enabled = test), 
-                     .collect = TRUE, 
-                     .verbose = .verbose)
-    stopifnot(args_smo$.collect)
-    
-    # Checks
     stopifnot(all(names(args_fwd) %in% names(formals(pf_filter))))
-    stopifnot(all(names(args_bwd) %in% names(formals(pf_filter))))
-    stopifnot(all(names(args_smo) %in% names(formals(pf_smoother_two_filter))))
     
-    # Collate filter arguments
-    # * particle_algorithm() requires the following arguments:
+    # Prepare smoothing outputs unless .sim$smooth = FALSE explicitly specified 
+    if (!rlang::has_name(.sim, "smooth") | (rlang::has_name(.sim, "smooth") & .sim$smooth)) {
+      
+      # Define arguments for backward filter run
+      args_bwd            <- args_fwd
+      args_bwd$.yobs      <- yobs_bwd
+      args_bwd$.direction <- "backward"
+      args_bwd$.batch     <- particle_batch(.sim = .sim, .type = "bwd")
+      
+      # Define smoother arguments
+      # * Note .collect = TRUE is required for particle_success()
+      args_smo <- list(.n_particle = n_particle_smo, 
+                       .n_sim = n_sim_smo, 
+                       .cache = TRUE, 
+                       .batch = particle_batch(.sim = .sim, .type = "smo"),
+                       .progress = julia_progress(enabled = test), 
+                       .collect = TRUE, 
+                       .verbose = .verbose)
+      stopifnot(args_smo$.collect)
+      
+      # Checks
+      stopifnot(all(names(args_bwd) %in% names(formals(pf_filter))))
+      stopifnot(all(names(args_smo) %in% names(formals(pf_smoother_two_filter))))
+      
+    } else {
+      # Set args_bwd and args_smo to NULL to suppress backward filter/smoother
+      args_bwd <- args_smo <- NULL
+    }
+    
+    # Collate arguments
+    # * estimate_coord_particle() requires the following arguments:
     # - `forward`
     # - `backward`  (if smoothing desired, NULL otherwise)
     # - `smooth`    (if smoothing desired, NULL otherwise)
