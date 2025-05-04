@@ -385,9 +385,10 @@ pars_model_move_best <- list(shape = 3.25, scale = 25.0, mobility = 216, phi = 1
 
 #### Define restrictive/flexible parameters 
 # Define parameter uncertainty 
-adj <- 0.25
-inflate <- 1 + adj
-deflate <- 1 - adj
+adj      <- 0.25
+inflate  <- 1 + adj
+deflate  <- 1 - adj
+pars_adj <- list(inflate = inflate, deflate = deflate)
 # Collect 'best-guess' parameters
 mobility <- pars_model_move_best$mobility
 shape    <- pars_model_move_best$shape
@@ -448,14 +449,14 @@ plot_dbn("gamma",
          pars = list(shape = pars_model_move_full$shape[2], 
                      scale = pars_model_move_full$scale[2]), 
          upper = pars_model_move_full$mobility[2],
-         add = TRUE, col = "red", lty = 3, lwd = 1)
+         add = TRUE, col = "red", lty = 1, lwd = 1)
 # Flexible model (step-length)
 plot_dbn("gamma", 
          xlim = c(0, 300), 
          pars = list(shape = pars_model_move_full$shape[3], 
                      scale = pars_model_move_full$scale[3]), 
          upper = pars_model_move_full$mobility[3],
-         add = TRUE, col = "darkgreen", lty = 3, lwd = 1)
+         add = TRUE, col = "darkgreen", lty = 1, lwd = 1)
 # Mark mobility
 mark_mobility(pars_model_move_full$mobility[1])
 mark_mobility(pars_model_move_full$mobility[2], col = "red")
@@ -483,9 +484,9 @@ plot(x, y,
      type = "l", lwd = 2,
      axes = FALSE)
 y <- dnorm(x, 0, pars_model_move_full$phi[2])
-lines(x, y, col = "red", lty = 3, lwd = 1)
+lines(x, y, col = "red", lty = 1, lwd = 1)
 y <- dnorm(x, 0, pars_model_move_full$phi[3])
-lines(x, y, col = "darkgreen", lty = 3, lwd = 1)
+lines(x, y, col = "darkgreen", lty = 1, lwd = 1)
 axis(side = 1, at = c(-pi * 1.1, pi * 1.1), labels = FALSE, lwd.tick = 0, pos = 0)
 axis(side = 1, 
      at = c(-pi, -pi/2, 0, pi/2, pi), 
@@ -502,6 +503,7 @@ dev.off()
 #### Write parameters to file
 
 # Parameters
+qs::qsave(pars_adj, here_input("pars-adj.qs"))
 qs::qsave(pars_model_move_best, here_input("pars-model-move-best.qs"))
 qs::qsave(pars_model_move_full, here_input("pars-model-move-full.qs"))
 
