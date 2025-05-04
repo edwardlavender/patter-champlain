@@ -15,11 +15,11 @@
 
 # Start tmux session
 # cd ~/documents/projects/patter-champlain
-# tmux new -s champlain-1
+# tmux new -s ch-1
 
 # Define arguments
-analysis="sim"
-mobility="116"
+analysis="real"
+mobility="216"
 dev="FALSE"
 DIRECTORY_LOG="data/output/$analysis/main/logs/R-CMD-BATCH"
 mkdir -p "$DIRECTORY_LOG"
