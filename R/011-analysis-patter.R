@@ -35,7 +35,7 @@ expect_no_geospatial()
 
 ###########################
 ###########################
-#### Customise workflow 
+#### Select analysis type
 
 # Select analysis type ("sim", "real")
 # analysis <- "sim"
@@ -60,15 +60,6 @@ if (length(cmd_args) > 0L) {
 }
 
 print(glue("Arguments: analysis = '{analysis}'; analysis_mobility = {analysis_mobility}; dev = {dev}."))
-
-
-###########################
-###########################
-#### Select analysis type
-
-#### Define analysis 
-# analysis <- "sim"
-# analysis <- "real"
 
 #### Define analysis-specific routines
 here_input_analysis       <- switch_here_input_analysis(analysis)
