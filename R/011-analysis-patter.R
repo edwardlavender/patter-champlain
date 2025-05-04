@@ -114,6 +114,21 @@ if (dev) {
 }
 
 #### Setup cluster
+# Quick check on Linux
+if (FALSE) {
+  # On siam-linux20, julia_connect() may fail on individual nodes
+  # Updating package versions can solve errors 
+  # This code is a quick check to see if it works with current package versions
+  cl <- parallel::makeCluster(2L)
+  parallel::clusterEvalQ(cl, {
+    patter::julia_connect(.socket = TRUE)
+  })
+  pbapply::pblapply(1:2, function(i) {
+    JuliaCall::julia_eval(glue::glue('{i} + {i}'))
+  }, cl = cl)
+  parallel::stopCluster(cl)
+}
+# Setup cluster
 if (!dev) {
   # Define number of workers
   ncl <- min(c(nrow(iteration), 100L, parallel::detectCores() - 1L))
