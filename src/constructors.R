@@ -135,7 +135,7 @@ constructor_ac_core <- function(.sim, .datasets, .verbose, ...) {
     stopifnot(all(names(args_fwd) %in% names(formals(pf_filter))))
     
     # Prepare smoothing outputs unless .sim$smooth = FALSE explicitly specified 
-    if (!rlang::has_name(.sim, "smooth") | (rlang::has_name(.sim, "smooth") & .sim$smooth)) {
+    if (!rlang::has_name(.sim, "smooth") || (rlang::has_name(.sim, "smooth") & .sim$smooth)) {
       
       # Define arguments for backward filter run
       args_bwd            <- args_fwd
