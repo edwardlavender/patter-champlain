@@ -31,7 +31,8 @@ library(proj.verse)
 files_source_r(here_src())
 
 #### Load data
-klinard <- qs::qread(here_data("supp", "model-obs", "klinard.qs"))
+klinard  <- qs::qread(here_data("supp", "model-obs", "klinard.qs"))
+pars_adj <- qs::qread(here_input("pars-adj.qs"))
 
 
 ###########################
@@ -97,8 +98,8 @@ dbinom(1, size = 1, prob = plogis(receiver_alpha + receiver_beta * 8001))
 
 #### Visualise models
 ## (A) Compute predictions
-nd   <- data.frame(dist = seq(0, 1e4, length.out = 1e3L))
-fit  <- data.frame(dist = nd$dist, 
+nd   <- data.table(dist = seq(0, 1e4, length.out = 1e3L))
+fit  <- data.table(dist = nd$dist, 
                    y0 = plogis(2.5 + -0.003 * nd$dist), # initial guess, 
                    y1 = predict(m1, newdata = nd, type = "response"), 
                    y2 = predict(m2, newdata = nd, type = "response"), 
@@ -156,23 +157,46 @@ kmax$max_dist * 10^((147 - kmax$dB) / 20)
 #### Record parameters
 
 #### Define 'best-guess' parameters (list)
-pars_model_obs_best <- list(receiver_alpha = receiver_alpha, 
-                            receiver_beta  = receiver_beta, 
-                            receiver_gamma = 8000)
-
-#### Define restrictive/flexible parameter combinations
-# We assume these are known
-# To minimise computation time, we only explore the effects of uncertainty in movement
-# We find this more interesting
+# Define parameters
+a <- receiver_alpha
+b <- receiver_beta
+g <- 8000.0
+# Collate in list
+pars_model_obs_best <- list(receiver_alpha = a, 
+                            receiver_beta  = b, 
+                            receiver_gamma = g)
 
 #### Collect all parameters (data.table)
-pars_model_obs_full <- as.data.table(pars_model_obs_best)
+# We use the same degree of uncertainty as for the movement model
+# For restrictive model: deflate alpha, inflate beta
+# For flexible model: inflate alpha, deflate beta
+inflate <- pars_adj$inflate
+deflate <- pars_adj$deflate
+pars_model_obs_full <- data.table(receiver_alpha = c(a, a * deflate, a * inflate), 
+                                  receiver_beta = c(b, b * inflate, b * deflate), 
+                                  receiver_gamma = c(g, g * deflate, g * inflate))
 
 
 ###########################
 ###########################
 #### Publication-quality plot
 
+#### Define datasets
+# Best-guess (based on weighted GLM): y2
+# GAM (comparison)                  : y4
+# * Define above b
+# Restrictive model                 : y5
+# Flexible model                    : y6
+head(fit)
+p <- pars_model_obs_full
+fit[dist > p$receiver_gamma[1], y2 := 0]
+fit[, y5 := plogis(p$receiver_alpha[2] + p$receiver_beta[2] * dist)]
+fit[dist > p$receiver_gamma[2], y5 := NA]
+fit[, y6 := plogis(p$receiver_alpha[3] + p$receiver_beta[3] * dist)]
+fit[dist > p$receiver_gamma[3], y5 := NA]
+rm(p)
+
+#### Make plot
 png(here_fig("model-obs.png"), 
     height = 4, width = 6, units = "in", res = 800)
 gg <- 
@@ -195,18 +219,31 @@ gg <-
                          label.position  = "right"
                        )) +
   geom_point(shape = ".") + 
-  # geom_line(data = fit, aes(x = dist, y = y0),
-  #           lwd = 1.5, color = "grey", inherit.aes = FALSE) +
-  # geom_line(data = fit, aes(x = dist, y = y1),
-  #           lwd = 1.5, color = "red", inherit.aes = FALSE) +
-  geom_line(data = fit, aes(x = dist, y = y2),
-            lwd = 1.25, color = "black", inherit.aes = FALSE) +
-  # geom_line(data = fit, aes(x = dist, y = y3), 
-  #           lwd = 1.5, color = "skyblue", inherit.aes = FALSE) +
+  # Weighted GAM (baseline)
   geom_line(data = fit, aes(x = dist, y = y4), 
-            lwd = 1.25, color = "dimgrey", inherit.aes = FALSE) +
-  scale_x_continuous(limits = c(0, pars_model_obs_best$receiver_gamma), expand = c(0, 0)) + 
-  scale_y_continuous(limits = c(0, 1), expand = c(0, 0)) + 
+            lwd = 1, colour = "dimgrey", inherit.aes = FALSE) +
+  # Best model (weighted GLM, truncated)
+  geom_line(data = fit, aes(x = dist, y = y2),
+            lwd = 1.25, colour = "black", inherit.aes = FALSE) +
+  # Restrictive and flexible models (truncated)
+  geom_line(data = fit, aes(x = dist, y = y5), 
+            lwd = 0.75, colour = "red", inherit.aes = FALSE) +
+  geom_line(data = fit, aes(x = dist, y = y6), 
+            lwd = 0.75, colour = "darkgreen", inherit.aes = FALSE) +
+  # Axes
+  scale_x_continuous(limits = c(0, max(pars_model_obs_full$receiver_gamma)), expand = c(0, 0)) + 
+  scale_y_continuous(expand = c(0, 0)) +
+  coord_cartesian(ylim = c(0, 1.025), clip = "off") +
+  # receiver_gamma (added after axes)
+  annotate(
+    "segment",
+    x     = pars_model_obs_full$receiver_gamma,
+    xend  = pars_model_obs_full$receiver_gamma,
+    y     = -0.04, 
+    yend  = -0.0075,
+    arrow = arrow(length = unit(0.15, "cm")),
+    colour = c("black", "red", "darkgreen")
+  ) +
   labs(x = "Distance", y = "Detection probability") +
   theme_bw() + 
   theme(
