@@ -24,13 +24,14 @@ patter::julia_connect()
 library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
+library(JuliaCall)
 library(patter)
 library(proj.verse)
 library(tictoc)
 files_source_r(here_src())
+expect_no_geospatial()
 
 #### Load data
-map             <- terra::rast(here_input("map.tif"))
 fish            <- qs::qread(here_input("fish.qs"))
 moorings        <- qs::qread(here_input_sim("moorings-xy.qs"))
 pars_model_move <- qs::qread(here_input("pars-model-move-best.qs"))
@@ -43,7 +44,7 @@ pars_model_obs  <- qs::qread(here_input("pars-model-obs-best.qs"))
 
 #### Setup Julia
 set_seed()
-set_map(map)
+set_map(here_input("map.tif"))
 
 #### Define n_sim
 n_sim <- 30L
@@ -70,24 +71,26 @@ model_obs <- model_obs_champlain(moorings, pars_model_obs)
 plot(model_obs)
 
 #### Define tagging locations
+# (Extract map_value via Patter for linux handling)
 xinit <- fish[sample.int(n_sim, replace = TRUE), ]
-xinit[, map_value := terra::extract(map, cbind(x, y))]
-xinit <- xinit[, .(map_value, x, y)]
+julia_assign("x0", xinit$x)
+julia_assign("y0", xinit$y)
+xinit[, map_value := julia_eval('[Patter.extract(env, x0[i], y0[i]) for i in eachindex(x0)]')]
 xinit <- model_move_xinit(.xinit = xinit, .n_particle = NULL)
+stopifnot(all(xinit$map_value == 1L))
 
 #### Simulate movement paths (~7 s)
 # This returns a data.table with trajectories
 tic()
-paths <- sim_path_walk(.map        = map, 
-                       .timeline   = timeline, 
+paths <- sim_path_walk(.timeline   = timeline, 
                        .state      = state_trout(), 
                        .model_move = model_move,
                        .xinit      = xinit,
                        .n_path     = n_sim)
 toc()
-# (optional) Visualise moorings on plot
-points(model_obs$ModelObsAcousticLogisTrunc$receiver_x, 
-       model_obs$ModelObsAcousticLogisTrunc$receiver_y)
+# (optional) Visualise moorings on plot, if .map specified
+# points(model_obs$ModelObsAcousticLogisTrunc$receiver_x, 
+#        model_obs$ModelObsAcousticLogisTrunc$receiver_y)
 # Validate that each path starts with the simulated xinit
 stopifnot(dplyr::all_equal(
   xinit[, .(x, y, heading)],
@@ -112,7 +115,7 @@ xinits <- split(xinits, xinits$path_id)
 lobstr::obj_size(xinits)
 
 #### Simulate acoustic observations for each path
-# ETA: 4-15 mins
+# ETA: ~ 6.5 mins (siam-linux20)
 # TO DO: Improve speed of Patter.jl.sim_observations()
 tic()
 acoustics_by_path <- sim_observations(.timeline = timeline, 
@@ -135,10 +138,9 @@ detections <- lapply(seq_len(n_sim), function(i) {
 positions <- 
   paths |> 
   right_join(detections, by = c("path_id" = "individual_id", "timestamp")) |> 
-  mutate(dist = terra::distance(cbind(x, y), 
-                                cbind(receiver_x, receiver_y),
-                                lonlat = FALSE,
-                                pairwise = TRUE)) |> 
+  mutate(dist = patter:::dist_2d(cbind(x, y), 
+                                 cbind(receiver_x, receiver_y),
+                                 pairwise = TRUE)) |> 
   as.data.table()
 stopifnot(all(positions$dist <= positions$receiver_gamma))
 
