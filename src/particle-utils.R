@@ -14,6 +14,13 @@ particle_batch <- function(.sim, .type = c("fwd", "bwd", "smo")) {
   file.path(dirname(.sim$file_output), paste0(.type, "-", 1:3, ".jld2"))
 }
 
+# particle_placeholder
+# * This function is a placeholder for estimate_coord_particle()
+# * It is used to check the constructor functions work for all datasets
+particle_placeholder <- function(...) {
+  list(forward = NULL, backward = NULL, smooth = NULL)
+}
+
 # Determine success of particle algorithms
 # * x is the output of particle algorithms
 particle_success <- function(x) {
