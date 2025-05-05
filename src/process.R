@@ -29,7 +29,9 @@ filter_detections <- function(detections, plot = TRUE) {
     detections |> 
     group_by(unit_id) |> 
     summarise(
-      duration = as.numeric(difftime(max(timestamp), min(timestamp), units = "days")), 
+      duration = as.numeric(difftime(lubridate::ceiling_date(max(timestamp), "months"),
+                                     lubridate::floor_date(min(timestamp), "months"),
+                                     units = "days")), 
       ndays = length(unique(lubridate::floor_date(timestamp, "days"))),
       pdays = ndays / duration
     ) |> 
@@ -43,7 +45,7 @@ filter_detections <- function(detections, plot = TRUE) {
 
   # Select individual/month combinations with detections X % of days
   # * Note that unit_id is _not_ redefined
-  unit_ids   <- durations$unit_id[durations$pdays >= 0.75]
+  unit_ids   <- durations$unit_id[durations$pdays >= 0.5]
   n0         <- length(unique(detections$unit_id))
   n1         <- length(unique(unit_ids))
   detections <- detections[unit_id %in% unit_ids, ]
