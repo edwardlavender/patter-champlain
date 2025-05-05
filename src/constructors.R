@@ -15,8 +15,8 @@ constructor_ac_core <- function(.sim, .datasets, .verbose, ...) {
     
     # Enable testing & define tuning settings 
     test <- FALSE
-    n_particle_filter <- 2.5e4
-    n_particle_smo    <- 1e3L
+    n_particle_filter <- 5e4
+    n_particle_smo    <- 2e3L
     n_sim_smo         <- 100L
     if (test) {
       warning("test = TRUE!", immediate. = TRUE)
@@ -24,6 +24,7 @@ constructor_ac_core <- function(.sim, .datasets, .verbose, ...) {
       n_particle_smo    <- 100L
       n_sim_smo         <- 30L
     }
+    n_record <- max(c(1000L, n_particle_smo))
     
     # Read datasets
     proj.build::check_names(.datasets, c("cap_recap", "moorings"))
@@ -127,6 +128,7 @@ constructor_ac_core <- function(.sim, .datasets, .verbose, ...) {
                      .model_move = model_move, 
                      .yobs       = yobs_fwd, 
                      .n_particle = n_particle_filter, 
+                     .n_record   = n_record,
                      .direction  = "forward", 
                      .batch      = particle_batch(.sim = .sim, .type = "fwd"),
                      .collect    = TRUE,
