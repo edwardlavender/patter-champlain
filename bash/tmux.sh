@@ -15,6 +15,7 @@
 
 # Start tmux session
 # cd ~/documents/projects/patter-champlain
+# tmux ls
 # tmux new -s ch-1
 
 # Define arguments
