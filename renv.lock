@@ -5827,7 +5827,7 @@
       "RemoteUsername": "edwardlavender",
       "RemoteRepo": "proj.lapply",
       "RemoteRef": "main",
-      "RemoteSha": "9853a9a643422b5055182dc0fbbbe37dadd4a2b7",
+      "RemoteSha": "8d4ee94ebc9a226e18d6c69fbec921fc52e4bfbd",
       "Remotes": "github::edwardlavender/proj.build"
     },
     "proj.templates": {
