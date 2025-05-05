@@ -45,19 +45,25 @@ dirs.create(here_output_sim())
 
 dirs.create(here_output_sim_main())
 dirs.create(here_output_sim_main("logs", "R"))
-dirs.create(here_output_sim_main("logs", "R CMD BATCH"))
+dirs.create(here_output_sim_main("logs", "R-CMD-BATCH"))
 dirs.create(here_output_sim_main("runs"))
 dirs.create(here_output_sim_main("synthesis"))
 
 dirs.create(here_output_sim_optim())
 dirs.create(here_output_sim_optim("logs", "R"))
-dirs.create(here_output_sim_optim("logs", "R CMD BATCH"))
+dirs.create(here_output_sim_optim("logs", "R-CMD-BATCH"))
 dirs.create(here_output_sim_optim("runs"))
 dirs.create(here_output_sim_optim("synthesis"))
 
+dirs.create(here_output_sim_grid())
+dirs.create(here_output_sim_grid("logs", "R"))
+dirs.create(here_output_sim_grid("logs", "R-CMD-BATCH"))
+dirs.create(here_output_sim_grid("runs"))
+dirs.create(here_output_sim_grid("synthesis"))
+
 dirs.create(here_output_real_main())
 dirs.create(here_output_real_main("logs", "R"))
-dirs.create(here_output_real_main("logs", "R CMD BATCH"))
+dirs.create(here_output_real_main("logs", "R-CMD-BATCH"))
 dirs.create(here_output_real_main("runs"))
 dirs.create(here_output_real_main("synthesis"))
 
