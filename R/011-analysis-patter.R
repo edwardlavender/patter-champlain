@@ -90,7 +90,7 @@ iteration <- iteration[mobility == analysis_mobility, ]
 iteration[, file_diag := file.path(folder_coord, "diagnostics.qs")]
 iteration[, file_output := file_diag]
 # (optional) Further subset for testing
-if (FALSE) {
+if (TRUE) {
   iteration <- iteration[sensitivity == "best", ]
   iteration <- iteration[1:min(c(.N, 100L)), ]
 }
@@ -198,12 +198,16 @@ nrow(qs::qread(here_input_analysis("iteration-patter.qs"))) * 714 / 1000
 #### Collate coordinates across batches
 if (FALSE) {
   
+  #### An explanation of callstats.qs
   # All iterations should output a callstats.qs file
   # * This is derived from cl_lapply:::workflow()
-  # qs::qread(file.path(dirname(iteration$file_output), "callstats.qs"))
-  stopifnot(all(file.exists(file.path(dirname(iteration$file_output), "callstats.qs"))))
-  
-  # Iterations that converged should output a iteration$file_output (diagnostics.qs) file
+  list.files(dirname(iteration$file_output)[1])
+  iteration[, file_callstats := file.path(dirname(file_output), "callstats.qs")]
+  stopifnot(all(file.exists(iteration$file_callstats)))
+  qs::qread(iteration$file_callstats[1])
+
+  #### An explanation of file_output
+  # All iterations should also output a iteration$file_output (diagnostics.qs) file
   # * This contains the output of estimate_coord_particle()
   # * $forward$states = NULL, forward$diagnostics, foward$callstats
   # * $backward$states = NULL, backward$diagnostics, backward$callstats
@@ -213,6 +217,41 @@ if (FALSE) {
   # > We clean up fwd/bwd files on the fly & only retain smo states
   # qs::qread(iteration$file_output[1])
   table(file.exists(iteration$file_output))
+
+  #### Check convergence 
+  # Compute convergence of filters and smoother
+  convergence_dt <- cl_lapply_iteration_file(
+    iteration, 
+    .file = "file_output", 
+    .fun = function(.sim, .input) {
+      particle_convergence(.input)
+    }) |> rbindlist()
+  # Check the number of forward/backward filter runs that converged
+  head(convergence_dt)
+  table(convergence_dt$forward & convergence_dt$backward)
+  # Check the number of smoothing runs that converged
+  # * This relies on a high threshold of > 95 % time steps with 'proper' smoothing
+  table(convergence_dt$smooth)
+  # Examine proportion of time steps with 'proper' smoothing for each run
+  smooth_ess_prop <- cl_lapply_iteration_file(
+    iteration, 
+    .file = "file_output", 
+    .fun = function(.sim, .input) {
+      out <- NULL
+      if (rlang::has_name(.input$smooth, "diagnostics")) {
+        n0 <- nrow(.input$smooth$diagnostics)
+        n1 <- length(which(!is.na(.input$smooth$diagnostics$ess)))
+        out <- n1 / n0
+      }
+      out 
+    }) |> unlist()
+  table(smooth_ess_prop > 0.9)
+  utils.add::basic_stats(smooth_ess_prop)
+  # Results (real)
+  # * With 2.5e4 filter particles & 1,000 smoothing particles
+  # - 73/100 forward/backward filter successes
+  # - 52/73 forward/backward & smoothing successes (95 % threshold)
+  # - 58/73 forward/backward & smoothing successes (90 % 'patter-flapper' threshold)
   
   # Collate smoothed states 
   # * ETA: ~5 s per row on 1 cl (07m 03s for 84 rows)
