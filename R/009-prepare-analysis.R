@@ -106,6 +106,29 @@ detections[, unit_id := .GRP, by = c("individual_id", "time_id")]
 detections <- filter_detections(detections)
 unitsets   <- unitsets[unit_id %in% detections$unit_id, ]
 
+#### Checks
+# Check the number of days with detections meets minimum criteria
+# * This is based on the threshold specified in filter_detections.R
+ck <- 
+  detections |> 
+  group_by(unit_id) |> 
+  summarise(ck = length(unique(lubridate::yday(timestamp)))) |> 
+  pull(ck) |> 
+  sort()
+stopifnot(all(ck >= 14))
+# Check the number of detections
+# * We want to catch time series with 'too few' observations
+# * What is 'too few' here is somewhat arbitrary
+# * The goal is to catch potential mistakes in data processing
+# * E.g., that would otherwise allow 1 or 2 row datasets forward for analysis
+ck <- 
+  detections |> 
+  group_by(unit_id) |> 
+  summarise(ck = n()) |> 
+  pull(ck) |> 
+  sort()
+stopifnot(all(ck >= 50))
+
 #### Write unitsets/detections
 qs::qsave(unitsets, here_input_analysis("unitsets.qs"))
 detections[, file_detections := unitsets$file_detections[match(unit_id, unitsets$unit_id)]]
