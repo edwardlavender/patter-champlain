@@ -19,15 +19,19 @@ p_batch <- function(.mem_req, .mem_avail) {
 }
 
 # Compute approximate memory used to store outputs of filtering & smoothing, if:
-# * 1000 particles
+# * 1000 or 2000 particles recorded
 # * 20,000 time steps
 # * 4 state dimensions (map_value, x, y, heading)
 # * 100 cores
 p_mem(1000, 20000, 4, 100) # 192000 MB = 192 GB 
+p_mem(2000, 20000, 4, 100) # 384000 MB = 384 GB 
 
 # Compute required number of batches on siam-linux20: 
 # * Double required memory (safety buffer)
-# * Double required memory for iterative applications (we may start on while nearly finishing another)
-# * Assume 500,000 MB available memory (if server not in use)
+# * Double required memory for iterative applications 
+#   (we may start on while nearly finishing another)
+# * Assume 75 % of ~400 000 MB server memory available
+#   (~400 000 MB is max available assuming server not in use)
 # > This suggests 3 batches is sufficient. 
-p_batch(192000 * 4, 5e5)
+p_batch(192000 * 4, 4e5 * 0.75) # 3 batches if 1000 particles recorded
+p_batch(384000 * 4, 4e5 * 0.75) # 6 batches if 2000 particles recorded
