@@ -156,7 +156,7 @@ if (!dev) {
 # iteration <- iteration[1:1L, ]
 print(glue("Using {ncl} core(s) for {nrow(iteration)} iteration row(s) (mobility = {iteration$mobility[1]})."))
 coord_list <- 
-  cl_lapply_workflow(.iteration   = iteration,
+  cl_lapply_workflow(.iteration   = iteration[2, ],
                      .datasets    = list(),
                      .constructor = constructor_ac_analysis, 
                      .algorithm   = estimate_coord_particle, 
@@ -272,13 +272,21 @@ if (FALSE) {
   # - 60/76 forward/backward & smoothing successes (90 % 'patter-flapper' threshold)
   # * For convergence, there is little benefit in boosting the number of particles
   
-  # Collate smoothed states 
-  # * ETA: ~5 s per row on 1 cl (07m 03s for 84 rows)
+  #### (optional) Investigate convergence failures
+  # unit_id individual_id    time_id
+  #  16         24321        2016-01-01
+  # head(convergence_dt)
+  # it <- iteration[2, ]
+  # qs::qread(it$file_diag)
+  # qs::qread(it$file_detections)
+  # detections <- qs::qread(it$file_detections)
+  # TO DO FIX iteration$time_id
+  
+  #### Collate smoothed states 
+  # ETA: ~5 s per row on 1 cl (07m 03s for 84 rows)
   iteration[, file_coord := file.path(folder_coord, "coord.qs")]
   success <- cl_lapply_particle_collate(.iteration = iteration[file.exists(file_output), ])
-  
   # Check all files were successfully created
-  # * For file structure, see below
   table(unlist(convergence))
   
 }

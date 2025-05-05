@@ -136,6 +136,110 @@ constructor_ac_core <- function(.sim, .datasets, .verbose, ...) {
                      .progress   = julia_progress(enabled = test))
     stopifnot(all(names(args_fwd) %in% names(formals(pf_filter))))
     
+    # (optional) Interactive debugging of filter convergence failures
+    if (FALSE) {
+      
+      # Load additional packages
+      library(ggplot2)
+      
+      # Run filter for troublesome individual/time
+      if (FALSE) {
+        
+        # Run filter
+        args_fwd$.n_particle <- 5e4L
+        args_fwd$.n_record   <- 1000L
+        args_fwd$.batch      <- NULL
+        args_fwd$.progress   <- julia_progress(enabled = TRUE)
+        fwd <- do.call(pf_filter, args_fwd)
+        # > unit_id  individual_id    time_id 
+        # > 16       24321         2016-01-01
+        # > Weights from filter (1 -> 18762) are zero at time 12806:returning outputs from 1:12806. Note that all (log) weights at 12806 are -Inf.
+        # > @ 2014-11-22 17:20:00 
+        
+        # Record inputs/outputs
+        qs::qsave(.sim, here_data("debug", "sim.qs"))
+        qs::qsave(moorings, here_data("debug", "moorings.qs"))
+        qs::qsave(args_fwd, here_data("debug", "input.qs"))
+        qs::qsave(fwd, here_data("debug", "output.qs"))
+
+      } else {
+        fwd <- qs::qread(here_data("debug", "output.qs"))
+      }
+      
+      # Identify problematic time step/stamps
+      tdt    <- data.table(timestep = 1:length(timeline), timestamp = timeline)
+      tstep  <- 12806
+      tstamp <- timeline[tstep]
+      
+      # Visualise detection time series
+      debug_detections <-
+        args_fwd$.yobs$ModelObsAcousticLogisTrunc |> 
+        lazy_dt() |> 
+        mutate(timestep = tdt$timestep[match(timestamp, tdt$timestamp)]) |>
+        filter(obs == 1L) |> 
+        as.data.table() 
+      debug_gg <- 
+        debug_detections |>
+        ggplot() + 
+        geom_point(aes(timestep, sensor_id)) +
+        geom_vline(aes(xintercept = tstep)) 
+      plotly::ggplotly(debug_gg)
+      
+      # Check detections before/after convergence failure
+      # 12770, sensor id 56
+      # 12811, sensor id 43
+      
+      # Identify detection containers
+      debug_container <- 
+        args_fwd$.yobs$ModelObsContainer |> 
+        lazy_dt() |> 
+        mutate(timestep = tdt$timestep[match(timestamp, tdt$timestamp)]) |>
+        as.data.table()
+      
+      # Check detection containers correctly shrink in the 5 time steps before failure: ok.
+      debug_container[timestamp >= (tstamp - 5 * 60), ] |> head(10)
+      # timestamp   obs sensor_id centroid_x centroid_y radius
+      # <POSc> <int>     <int>      <num>      <num>  <num>
+      #   1: 2014-11-22 17:16:00     1        43    1793697   927281.8   9512
+      # 2: 2014-11-22 17:18:00     1        43    1793697   927281.8   9296
+      
+      # Container size in moment before detection should be .sim$receiver_gamma + .sim$mobility: ok. 
+      debug_container[timestep == 12810, ]
+      
+      # Plot receivers (not in Julia session on Linux)
+      map      <- terra::rast(here_input("map.tif"))
+      moorings <- qs::qread(here_data("debug", "moorings.qs"))
+      terra::plot(map)
+      r0 <- moorings[receiver_id == 56, .(receiver_x, receiver_y)]
+      points(r0)
+      r1 <- moorings[receiver_id == 43, .(receiver_x, receiver_y)]
+      points(r1)
+      
+      # Compute distance/movement speed between receivers: 
+      # 12770, sensor id 56
+      # 12811, sensor id 43
+      debug_dist <- patter:::dist_2d(as.matrix(r0), as.matrix(r1)) 
+      # average travel distance required per time step 
+      # > 78 m per time step is not unreasonable
+      debug_dist / (12811 - 12770) 
+      
+      # Create animation (not in Julia session on Linux)
+      # unlink(here_fig("debug", qs::qread(here_data("debug", "sim.qs"))$index, "frames"), recursive = TRUE)
+      ani(.sim      = qs::qread(here_data("debug", "sim.qs")), 
+          .map      = terra::rast(here_input("map.tif")), 
+          .moorings = qs::qread(here_data("debug", "moorings.qs")), 
+          .start    = 12500L, 
+          .end      = 12811, 
+          .input    = qs::qread(here_data("debug", "input.qs")), 
+          .output   = qs::qread(here_data("debug", "output.qs")), 
+          .cl = 50L
+          )
+      
+      # Take home message
+      # > Particle animation suggests insufficient directness (Normal(0, 1.8)) in movement model
+
+    }
+    
     # Prepare smoothing outputs unless .sim$smooth = FALSE explicitly specified 
     if (!rlang::has_name(.sim, "smooth") || (rlang::has_name(.sim, "smooth") & .sim$smooth)) {
       
