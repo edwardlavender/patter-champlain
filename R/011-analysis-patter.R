@@ -245,13 +245,32 @@ if (FALSE) {
       }
       out 
     }) |> unlist()
+  hist(smooth_ess_prop, breaks = 100)
   table(smooth_ess_prop > 0.9)
   utils.add::basic_stats(smooth_ess_prop)
-  # Results (real)
-  # * With 2.5e4 filter particles & 1,000 smoothing particles
+  # Summarise smoother ESS for successful smoothing runs
+  ess_mean <- cl_lapply_iteration_file(
+    iteration,
+    .file = "file_output", 
+    .fun = function(.sim, .input) {
+      if (rlang::has_name(.input$smooth, "diagnostics")) {
+        return(mean(.input$smooth$diagnostics$ess, na.rm = TRUE))
+      }
+      return(NA)
+    }, .combine = unlist) 
+  hist(ess_mean, xlim = c(0, 2000))
+  # Results (100 real iterations)
+  # * With 2.5e4 filter particles & 1,000 smoothing particles:
+  # - 1 hour (100 cl)
   # - 73/100 forward/backward filter successes
   # - 52/73 forward/backward & smoothing successes (95 % threshold)
   # - 58/73 forward/backward & smoothing successes (90 % 'patter-flapper' threshold)
+  # * With 5e4 filter particles & 2,000 smoothing particles:
+  # - 3 hours (100 cl)
+  # - 76/100 forward/backward filter successes
+  # - 54/76 forward/backward & smoothing successes (95 % threshold)
+  # - 60/76 forward/backward & smoothing successes (90 % 'patter-flapper' threshold)
+  # * For convergence, there is little benefit in boosting the number of particles
   
   # Collate smoothed states 
   # * ETA: ~5 s per row on 1 cl (07m 03s for 84 rows)
