@@ -15,8 +15,8 @@ constructor_ac_core <- function(.sim, .datasets, .verbose, ...) {
     
     # Enable testing & define tuning settings 
     test <- FALSE
-    n_particle_filter <- 5e4
-    n_particle_smo    <- 2e3L
+    n_particle_filter <- 2e4L
+    n_particle_smo    <- 1e3L
     n_sim_smo         <- 100L
     if (test) {
       warning("test = TRUE!", immediate. = TRUE)
@@ -146,7 +146,7 @@ constructor_ac_core <- function(.sim, .datasets, .verbose, ...) {
       if (FALSE) {
         
         # Run filter
-        args_fwd$.n_particle <- 5e4L
+        args_fwd$.n_particle <- 2.5e4L
         args_fwd$.n_record   <- 1000L
         args_fwd$.batch      <- NULL
         args_fwd$.progress   <- julia_progress(enabled = TRUE)
