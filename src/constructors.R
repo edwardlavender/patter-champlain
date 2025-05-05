@@ -100,7 +100,7 @@ constructor_ac_core <- function(.sim, .datasets, .verbose, ...) {
     # points(acoustics$receiver_x, acoustics$receiver_y)
     
     # Assemble acoustic containers
-    if (length(which(acoustics$obs == 1L) > 2L)) {
+    if (length(which(acoustics$obs == 1L)) > 2L) {
       acoustic_containers <- assemble_acoustics_containers(.timeline = timeline, 
                                                            .acoustics = acoustics, 
                                                            .mobility = .sim$mobility, 
