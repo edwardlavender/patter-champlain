@@ -87,7 +87,7 @@ particle_collate <- function(.sim, .timeline) {
   
   # Open .sim$file_diag
   out <- qs::qread(.sim$file_diag)
-  if (!out$smooth$callstats$convergence) {
+  if (!rlang::has_name(out$smooth, "callstats") || !out$smooth$callstats$convergence) {
     return(FALSE)
   }
   
@@ -123,7 +123,7 @@ cl_lapply_particle_collate <- function(.iteration) {
   # * file_output required by particle_collate -> particle_batch()
   proj.build::check_names(.iteration, c("folder_coord", "file_output"))
   stopifnot(all(file.exists(.iteration$file_output)))
-  .iteration   <- copy(.iteration)
+  .iteration <- copy(.iteration)
   
   # For each simulation, collate particles across batches & cleanup smo-{i}.jld2 files
   convergence <- cl_lapply(split(.iteration, seq_len(nrow(.iteration))), function(.sim) {
@@ -136,12 +136,14 @@ cl_lapply_particle_collate <- function(.iteration) {
     convergence <- particle_collate(.sim = .sim,
                                     .timeline = timeline)
     
-    # (optional)  Clean up smo-{i}.jld2 files to save space
-    if (TRUE) {
+    # (optional) Clean up smo-{i}.jld2 files to save space
+    if (FALSE) {
       batches <- list.files(.sim$folder_coord, 
                             pattern = "^smo-\\d+\\.jld2$", 
                             full.names = TRUE)
       unlink(batches)
+    } else {
+      warning("Clean up of old ^smo-\\d+\\.jld2$ files is currently suppressed.", immediate. = TRUE)
     }
     
     # Return convergence
