@@ -42,3 +42,74 @@ mark_mobility <- function(mobility, col = "black", ...) {
   arrows(x0 = mobility, y0 = -0.003, x1 = mobility, y1 = 0,
          length = 0.04, lwd = 1.25, col = col, ...)
 }
+
+
+if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
+  
+  # Animate particles from the particle filter
+  # * Code adapted for debugging from https://github.com/edwardlavender/patter-flapper/blob/main/src/debug-convergence.R
+  # @param .sim The data.table row
+  # @param .map The SpatRaster
+  # @param .moorings The moorings data.table
+  # @param .start,.stop Integers that define the time steps of interest
+  # @param .input The named list of arguments passed to pf_filter()
+  # @param .output The named list of outputs from pf_filter()
+  
+  ani <- function(.sim, .map, .moorings, .start = 1L, .end, .input, .output, .cl = 1L) {
+    
+    .moorings <- copy(.moorings)
+    
+    # Create directories
+    frames <- here_fig("debug", .sim$index, "frames")
+    dir.create(frames, recursive = TRUE)
+    mp4 <- here_fig("debug", .sim$index)
+    dir.create(mp4)
+    
+    # Make frames
+    pf_plot_xy(.map = .map, 
+               .coord = .output$states, 
+               .steps = .start:.end,
+               .png = list(filename = frames),
+               .cl = .cl,
+               .add_points = list(pch = ".", col = "red"),
+               .add_layer = function(t) {
+                 
+                 # Add receivers
+                 text(.moorings$receiver_x, .moorings$receiver_y, .moorings$receiver_id, cex = 0.5)
+                 
+                 # Add detection containers
+                 # cbind(.moorings$receiver_x, .moorings$receiver_y) |>
+                 #   terra::vect() |>
+                 #   terra::buffer(width = .moorings$receiver_gamma) |> 
+                 #   terra::lines()
+                 
+                 # Add acoustic containers
+                 containers <- .input$.yobs$ModelObsContainer
+                 if (!is.null(containers)) {
+                   cinfo <- containers[timestamp == .input$.timeline[t], ]
+                   if (nrow(cinfo) > 0L) {
+                     
+                     # Colour receiver(s) with next detection
+                     text(cinfo$centroid_x, cinfo$centroid_y, cinfo$sensor_id, cex = 0.5, col = "blue", font = 2)
+                     
+                     # Add time-specific acoustic containers
+                     cbind(cinfo$centroid_x, cinfo$centroid_y) |>
+                       terra::vect() |>
+                       terra::buffer(width = cinfo$radius) |> 
+                       terra::lines(col = "royalblue") 
+                   }
+                 }
+               })
+    
+    # Make animation 
+    input   <- gtools::mixedsort(list.files(frames, full.names = TRUE))
+    output  <- file.path(mp4, "ani.mp4")
+    av::av_encode_video(input, output, framerate = 5)
+    
+    # Open animation (on MacOS)
+    # system(paste("open", shQuote(output)))
+    invisible(NULL)
+  }
+  
+}
+
