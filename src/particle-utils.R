@@ -56,6 +56,21 @@ particle_cleanup <- function(.sim, .cl) {
   invisible(NULL)
 }
 
+# particle convergence (post-hoc check)
+# * This function expects a list from estimate_coord_particle() 
+#   with $forward, $backward and $smooth elements
+particle_convergence <- function(l) {
+  # Iterate over each element & check $callstats$convergence
+  convergences <- sapply(c("forward", "backward", "smooth"), function(direction) {
+    convergence <- FALSE
+    if (rlang::has_name(l, direction) && !is.null(l[[direction]]$callstats)) {
+      convergence <- l[[direction]]$callstats$convergence
+    }
+    convergence
+  }) 
+  data.table(forward = convergences[1], backward = convergences[2], smooth = convergences[3])
+}
+
 # Collate batches in R
 particle_collate <- function(.sim, .timeline) {
   
