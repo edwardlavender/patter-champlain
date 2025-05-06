@@ -101,12 +101,36 @@ length(unique(detections$individual_id))
 # But focus on individual/month blocks that meet selected criteria (below)
 
 #### Focus on individual/month units with sufficient data
-# Check the number of unit_ids in the raw data:
-detections[, unit_id := .GRP, by = c("individual_id", "time_id")]
+# A) Assign unit_id from unitsets
+detections <- 
+  detections |> 
+  left_join(unitsets |> 
+              select(unit_id, individual_id, time_id) |>
+              as.data.table(), 
+            by = c("individual_id", "time_id")) |> 
+  as.data.table()
+# B) Filter detections 
 detections <- filter_detections(detections)
-unitsets   <- unitsets[unit_id %in% detections$unit_id, ]
+# C) Update unitsets
+unitsets <- unitsets[unit_id %in% detections$unit_id, ]
 
 #### Checks
+# Visually validate matching between unitsets & detections
+unitsets[unit_id == 14, ]
+detections[unit_id == 14, ]
+# Validate all unit_ids present in each datsset
+stopifnot(all(unitsets$unit_id %in% detections$unit_id) & 
+            all(detections$unit_id %in% unitsets$unit_id))
+# Validate matching between all unitsets and detections
+cl_lapply(split(unitsets, seq_len(nrow(unitsets))), function(sim) {
+  vdetections <- detections[unit_id == sim$unit_id, ]
+  stopifnot(all(sim$unit_id == vdetections$unit_id))
+  stopifnot(all(sim$individual_id == vdetections$individual_id))
+  stopifnot(all(sim$time_id == vdetections$time_id))
+})
+# Validate time_id assignment in detections
+stopifnot(all(detections$time_id == 
+                lubridate::floor_date(detections$timestamp, "months")))
 # Check the number of days with detections meets minimum criteria
 # * This is based on the threshold specified in filter_detections.R
 ck <- 
@@ -171,6 +195,18 @@ dirs.create(iteration$folder_coord)
 
 #### Write 
 qs::qsave(iteration, here_input_analysis("iteration-patter.qs"))
+
+#### Validation
+# Validate match between iteration and file_detections
+cl_lapply(split(iteration, seq_len(nrow(iteration))), function(sim) {
+  # sim <- iteration[1, ]
+  # print(sim$index)
+  vdetections <- qs::qread(sim$file_detections)
+  stopifnot(all(sim$unit_id == sim$unit_id))
+  stopifnot(all(sim$individual_id == vdetections$individual_id))
+  stopifnot(all(sim$time_id == vdetections$time_id))
+  stopifnot(all(vdetections$time_id == lubridate::floor_date(vdetections$timestamp, "months")))
+})
 
 
 ###########################
