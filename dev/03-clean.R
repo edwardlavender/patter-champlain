@@ -39,6 +39,8 @@ dirs.create(here_input_real())
 dirs.create(here_input_sim())
 dirs.create(here_input("vmap"))
 
+dirs.create(here_debug())
+
 dirs.create(here_data("inst"))
 
 dirs.create(here_output_sim())

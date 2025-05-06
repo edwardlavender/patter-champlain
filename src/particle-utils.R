@@ -11,7 +11,7 @@ use_containers <- function(.containers, .direction) {
 particle_batch <- function(.sim, .type = c("fwd", "bwd", "smo")) {
   .type <- match.arg(.type)
   proj.build::check_names(.sim, "file_output")
-  file.path(dirname(.sim$file_output), paste0(.type, "-", 1:3, ".jld2"))
+  file.path(dirname(.sim$file_output), paste0(.type, "-", 1:5, ".jld2"))
 }
 
 # particle_placeholder

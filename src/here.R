@@ -51,3 +51,7 @@ here_output_real <- function(...) {
 here_output_real_main <- function(...) {
   here_output("real", "main", ...)
 }
+
+here_debug <- function(...) {
+  here_data("debug", ...)
+}

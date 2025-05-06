@@ -135,6 +135,7 @@ The project structure is as follows:
       locations and static parameters;
     - `analysis-patter.R` analyses simulation/real-world datasets using
       `patter`;
+    - `debug-patter.R` debugs `patter` convergence failures;
     - `analysis-heuristics.R` analyses simulation/real-world datasets
       using heuristic methods;
     - `analysis-synthesis.R` synthesises the results of

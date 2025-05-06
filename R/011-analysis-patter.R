@@ -150,11 +150,15 @@ if (!dev) {
 # iteration[1:90, ] on siam-linux20
 # * 1 hour, 90 cl
 
+#### (optional) Tweak parameters
+iteration[, phi := 1.3]
+
 #### Estimate coordinates
 # TO DO In patter.workflows, update .verbose for parallelisation
 # debug(constructor_ac_core)
 # iteration <- iteration[1:1L, ]
 print(glue("Using {ncl} core(s) for {nrow(iteration)} iteration row(s) (mobility = {iteration$mobility[1]})."))
+print(iteration[1, ])
 coord_list <- 
   cl_lapply_workflow(.iteration   = iteration[2, ],
                      .datasets    = list(),
@@ -273,14 +277,7 @@ if (FALSE) {
   # * For convergence, there is little benefit in boosting the number of particles
   
   #### (optional) Investigate convergence failures
-  # unit_id individual_id    time_id
-  #  16         24321        2016-01-01
-  # head(convergence_dt)
-  # it <- iteration[2, ]
-  # qs::qread(it$file_diag)
-  # qs::qread(it$file_detections)
-  # detections <- qs::qread(it$file_detections)
-  # TO DO FIX iteration$time_id
+  # See debug-patter.R
   
   #### Collate smoothed states 
   # ETA: ~5 s per row on 1 cl (07m 03s for 84 rows)

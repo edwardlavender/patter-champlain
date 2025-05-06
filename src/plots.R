@@ -55,14 +55,19 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
   # @param .input The named list of arguments passed to pf_filter()
   # @param .output The named list of outputs from pf_filter()
   
-  ani <- function(.sim, .map, .moorings, .start = 1L, .end, .input, .output, .cl = 1L) {
+  ani <- function(.sim, 
+                  .map, .moorings, 
+                  .start = 1L, .end, 
+                  .input, .output, 
+                  .tnow,
+                  .cl = 1L) {
     
     .moorings <- copy(.moorings)
     
     # Create directories
-    frames <- here_fig("debug", .sim$index, "frames")
+    frames <- here_fig("debug", .tnow, "frames")
     dir.create(frames, recursive = TRUE)
-    mp4 <- here_fig("debug", .sim$index)
+    mp4 <- here_fig("debug", .tnow)
     dir.create(mp4)
     
     # Make frames
@@ -107,7 +112,7 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
     av::av_encode_video(input, output, framerate = 5)
     
     # Open animation (on MacOS)
-    # system(paste("open", shQuote(output)))
+    system(paste("open", shQuote(output)))
     invisible(NULL)
   }
   
