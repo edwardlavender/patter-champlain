@@ -92,8 +92,8 @@ args <- constructor_ac_real(.sim = sim,
                             .datasets = list(), 
                             .verbose = TRUE)
 args_fwd <- args$forward
-args_fwd$.n_particle <- 2.5e4L
-args_fwd$.n_record   <- 1000L
+args_fwd$.n_particle <- 2e4L
+args_fwd$.n_record   <- 5000L
 args_fwd$.batch      <- NULL
 args_fwd$.progress   <- julia_progress(enabled = TRUE)
 # Collect moorings
@@ -105,15 +105,33 @@ moorings <-
   select(receiver_id = sensor_id, receiver_x, receiver_y, receiver_alpha, receiver_beta, receiver_gamma) |> 
   as.data.table()
 
-#### Run filter
+#### (optional) Visualise movement model
+# You need quite small turning angles to generate correlated looking paths
+# Paths only start to 'explore' study area when phi < 1
+sim_path_walk(.map = map, 
+              .timeline = args_fwd$.timeline, 
+              .state = args_fwd$.state, 
+              .model_move = "ModelMoveCXY(env, 216, truncated(Gamma(3.25, 25), upper = 216), Normal(0.0, 0.5));", 
+              .n_path = 4L, 
+              .one_page = TRUE)
+
+#### Run filter (~2 mins with 2e4L particles)
+args_fwd$.model_move <- "ModelMoveCXY(env, 216, truncated(Gamma(3.25, 25), upper = 216), Normal(0.0, 0.5))";
 fwd <- do.call(pf_filter, args_fwd)
 
-# iteration[2, ]
-# > Weights from filter (1 -> 18762) are zero at time 12806:returning outputs from 1:12806. Note that all (log) weights at 12806 are -Inf.
-# > @ 2014-11-22 17:20:00 
+#### Results
+# iteration[2, ], 2e4L particles
+# * phi = c(1.8, 1.3, 0.5) stuck around time step ~12806 
+
+#### Record problematic time step/stamps
+timeline <- args_fwd$timeline
+tdt      <- data.table(timestep = 1:length(timeline), timestamp = timeline)
+tstep    <- max(fwd$diagnostics$timestep)
+tstamp   <- timeline[tstep]
 
 #### Record inputs/outputs
 tnow <- as.numeric(Sys.time())
+dir.create(here_debug(tnow))
 qs::qsave(sim, here_debug(tnow, "sim.qs"))
 qs::qsave(moorings, here_debug(tnow, "moorings.qs"))
 qs::qsave(args_fwd, here_debug(tnow, "input.qs"))
@@ -124,16 +142,16 @@ qs::qsave(fwd, here_debug(tnow, "output.qs"))
 ###########################
 #### Animation
 
-# Create animation (not in Julia session on Linux)
-ani(.sim      = sim,
-    .map      = terra::rast(here_input("map.tif")), 
-    .moorings = qs::qread(here_data("debug", "moorings.qs")), 
-    .start    = 12500L, 
-    .end      = 12811, 
-    .input    = qs::qread(here_data("debug", "input.qs")), 
-    .output   = qs::qread(here_data("debug", "output.qs")), 
-    .cl = 50L
-)
+# Create animation
+# * For 12,000 steps: This takes 6 min (12 cl) plus >2 min for 12,000 steps
+animate_ac(.sim      = sim,
+           .map      = map,
+           .start    = tstep - 1000L,
+           .end      = tstep, 
+           .input    = args_fwd, 
+           .output   = fwd,
+           .tnow     = tnow, 
+           .cl       = 12L)
 
 # Take home message
 # > Particle animation suggests insufficient directness (Normal(0, 1.8)) in movement model
@@ -142,12 +160,6 @@ ani(.sim      = sim,
 ###########################
 ###########################
 #### Interactive debugging
-
-# Identify problematic time step/stamps
-timeline <- fwd_args$timeline
-tdt      <- data.table(timestep = 1:length(timeline), timestamp = timeline)
-tstep    <- 12804
-tstamp   <- timeline[tstep]
 
 # Visualise detection time series
 debug_detections <-
