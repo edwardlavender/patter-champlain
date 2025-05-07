@@ -401,7 +401,7 @@ flexible    <- gamma_rescale(shape, scale, fact = inflate)
 #### Collect movement parameters in data.table (best, restrictive, flexible)
 pars_model_move_full <- data.table(mobility = c(mobility, mobility * deflate, mobility * inflate),
                                    shape = c(shape, restrictive[1], flexible[1]),
-                                   scale = c(scale,  restrictive[2],flexible[2]),
+                                   scale = c(scale,  restrictive[2], flexible[2]),
                                    phi = c(phi, phi * deflate, phi * inflate))
 
 

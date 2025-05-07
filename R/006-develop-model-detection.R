@@ -184,7 +184,7 @@ pars_model_obs_full <- data.table(receiver_alpha = c(a, a * deflate, a * inflate
 #### Define datasets
 # Best-guess (based on weighted GLM): y2
 # GAM (comparison)                  : y4
-# * Define above b
+# * Define above 
 # Restrictive model                 : y5
 # Flexible model                    : y6
 head(fit)
