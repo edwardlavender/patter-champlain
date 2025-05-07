@@ -51,4 +51,11 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
     
   }
   
+  # Read all
+  readAll <- function(x) {
+    x |> 
+      terra::wrap() |> 
+      terra::unwrap()
+  }
+  
 }

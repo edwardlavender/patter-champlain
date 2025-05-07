@@ -42,7 +42,7 @@ files_source_r(here_src())
 expect_no_geospatial()
 
 #### Load data
-map <- terra::rast(here_input("map.tif"))
+map <- terra::rast(here_input("map.tif")) |> readAll()
 
 
 ###########################
@@ -93,7 +93,7 @@ args <- constructor_ac_real(.sim = sim,
                             .verbose = TRUE)
 args_fwd <- args$forward
 args_fwd$.n_particle <- 2e4L
-args_fwd$.n_record   <- 5000L
+args_fwd$.n_record   <- 2000L
 args_fwd$.batch      <- NULL
 args_fwd$.progress   <- julia_progress(enabled = TRUE)
 # Collect moorings
@@ -108,34 +108,79 @@ moorings <-
 #### (optional) Visualise movement model
 # You need quite small turning angles to generate correlated looking paths
 # Paths only start to 'explore' study area when phi < 1
-sim_path_walk(.map = map, 
-              .timeline = args_fwd$.timeline, 
-              .state = args_fwd$.state, 
-              .model_move = "ModelMoveCXY(env, 216, truncated(Gamma(3.25, 25), upper = 216), Normal(0.0, 0.5));", 
-              .n_path = 4L, 
-              .one_page = TRUE)
+if (FALSE) {
+  sim_path_walk(.map = map, 
+                .timeline = args_fwd$.timeline, 
+                .state = args_fwd$.state, 
+                .model_move = "ModelMoveCXY(env, 216, truncated(Gamma(3.25, 25), upper = 216), Normal(0.0, 0.5));", 
+                .n_path = 4L, 
+                .one_page = TRUE)
+}
 
-#### Run filter (~2 mins with 2e4L particles)
-args_fwd$.model_move <- "ModelMoveCXY(env, 216, truncated(Gamma(3.25, 25), upper = 216), Normal(0.0, 0.5))";
+#### (optional) Visualise particles without observations
+if (FALSE) {
+  # Run filter without observations
+  args_nodata             <- args_fwd
+  args_nodata$.model_move <- "ModelMoveCXY(env, 216, truncated(Gamma(3.25, 25), upper = 216), Normal(0.0, 10000))"
+  args_nodata$.yobs       <- list()
+  args_nodata$.xinit      <- data.table(x = 1778217, y = 947554.8, map_value = 1, heading = 0.3)
+  args_nodata$.n_particle <- 5e3L
+  args_nodata$.n_record   <- 1e3L
+  args_nodata$.n_resample <- 1
+  fwd_nodata              <- do.call(pf_filter, args_nodata)
+  # Examine output
+  animate_xyt(.map = map, 
+              .coord = fwd_nodata$states, 
+              .steps = seq(1, length(args_nodata$.timeline), by = 200),
+              .folder = here_fig("model-move"), 
+              .cl = 12L)
+  # Results
+  # > With phi = 1.0, particles spread slowly over landscape
+  # > With phi = 0.5, particles spread more quickly
+  # - The filter is slower
+  # - It is still difficult to travel down narrow channels
+  # - Larger time steps may help but cause difficulty with land
+}
+
+#### Run filter
+# ~2 mins with 2e4L particles
+# ~16 mins with 2e4L particles (phi = 0.4)!
+# args_fwd$.n_resample <- 500
+# args_fwd$.t_resample <- NULL
+args_fwd$.n_move <- 1L
+args_fwd$.n_particle <- 5000L
+args_fwd$.model_move <- "ModelMoveCXY(env, 216, truncated(Gamma(3.25, 25), upper = 216), Normal(0.0, 0.3))";
 fwd <- do.call(pf_filter, args_fwd)
 
 #### Results
 # iteration[2, ], 2e4L particles
 # * phi = c(1.8, 1.3, 0.5) stuck around time step ~12806 
+# * phi = 0.4 works, but the animation shows this is largely 'by luck'
+# * phi = 0.3, 1e4 particles, .n_move = 1 works, in 1 min
+# - acoustic containers have a strong effect
+# - particles are not spreading out enough in the gaps between detections
 
 #### Record problematic time step/stamps
-timeline <- args_fwd$timeline
+timeline <- args_fwd$.timeline
 tdt      <- data.table(timestep = 1:length(timeline), timestamp = timeline)
 tstep    <- max(fwd$diagnostics$timestep)
 tstamp   <- timeline[tstep]
 
 #### Record inputs/outputs
-tnow <- as.numeric(Sys.time())
-dir.create(here_debug(tnow))
-qs::qsave(sim, here_debug(tnow, "sim.qs"))
-qs::qsave(moorings, here_debug(tnow, "moorings.qs"))
-qs::qsave(args_fwd, here_debug(tnow, "input.qs"))
-qs::qsave(fwd, here_debug(tnow, "output.qs"))
+if (TRUE) {
+  tnow <- as.numeric(Sys.time())
+  dir.create(here_debug(tnow))
+  qs::qsave(sim, here_debug(tnow, "sim.qs"))
+  qs::qsave(moorings, here_debug(tnow, "moorings.qs"))
+  qs::qsave(args_fwd, here_debug(tnow, "input.qs"))
+  qs::qsave(fwd, here_debug(tnow, "output.qs"))
+} else {
+  # Read latest outputs
+  tnows <- gtools::mixedsort(list.files(here_debug()))
+  tnow <- tnows[length(tnows)]
+  fwd  <- qs::qread(here_debug(tnow, "output.qs"))
+  
+}
 
 
 ###########################
@@ -146,12 +191,11 @@ qs::qsave(fwd, here_debug(tnow, "output.qs"))
 # * For 12,000 steps: This takes 6 min (12 cl) plus >2 min for 12,000 steps
 animate_ac(.sim      = sim,
            .map      = map,
-           .start    = tstep - 1000L,
-           .end      = tstep, 
+           .steps    = 1:length(timeline),
            .input    = args_fwd, 
            .output   = fwd,
            .tnow     = tnow, 
-           .cl       = 12L)
+           .cl       = 10L)
 
 # Take home message
 # > Particle animation suggests insufficient directness (Normal(0, 1.8)) in movement model

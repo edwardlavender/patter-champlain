@@ -1,5 +1,23 @@
 if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
   
+  animate_xyt <- function(.map, .coord, ..., .folder) {
+    # Define folder for images
+    frames <- file.path(.folder, as.numeric(Sys.time()), "frames")
+    dirs.create(frames)
+    # Create images
+    plot_xyt(.map = .map, 
+             .coord = .coord,
+             .add_points = list(pch = ".", col = "red"),
+             .png = list(filename = frames, 
+                         height = 4, width = 2, units = "in", res = 200), ...)
+    # Make video
+    input   <- gtools::mixedsort(list.files(frames, full.names = TRUE))
+    output  <- file.path(dirname(frames), "ani.mp4")
+    av::av_encode_video(input, output, framerate = 10)
+    
+  }
+
+  
   # Animate particles from the particle filter for the AC algorithm
   # * Code adapted for debugging from https://github.com/edwardlavender/patter-flapper/blob/main/src/debug-convergence.R
   # @param .sim The data.table row
@@ -11,11 +29,14 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
   
   animate_ac <- function(.sim, 
                          .map, 
-                         .start = 1L, .end, 
+                         .steps,
                          .input, .output, 
                          .tnow,
                          .cl = 1L) {
 
+    # Checks
+    .steps <- .steps[.steps <= length(.input$.timeline)]
+    
     # Create directories
     frames <- here_fig("debug", .tnow, "frames")
     unlink(frames, recursive = TRUE)
@@ -53,10 +74,11 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
     names(likelihoods) <- as.character(moorings$sensor_id)
     
     # Iteratively create plots
-    cl_lapply(.start:.end, .cl = .cl, .fun = function(t) {
+    cl_lapply(.steps, .cl = .cl, .fun = function(t) {
       
       # Define time-specific datasets
       # t = 1
+      # print(t)
       tstamp <-  timeline[t]
       acc    <- acoustics[timestamp == tstamp, ]
       det    <- detections[timestamp == tstamp, ]
@@ -65,14 +87,14 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
       
       # Set up plot
       png(file.path(frames, paste0(t, ".png")), 
-          height = 5, width = 6, res = 300, units = "in")
+          height = 5, width = 6, res = 200, units = "in")
       pp <- par(mfrow = c(1, 2))
       
       
       #### Plot detection time series ------------------------------------------
       
       plot(detections$timestep, detections$sensor_id, 
-           xlab = "Receiver ID", ylab = "Time (steps)")
+           xlab = "Time (steps)", ylab = "Receiver ID")
       if (nrow(det) > 0L) {
         points(det$timestep, det$sensor_id, col = "green", lwd = 2)
       }
@@ -133,7 +155,7 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
     tictoc::tic()
     input   <- gtools::mixedsort(list.files(frames, full.names = TRUE))
     output  <- file.path(mp4, "ani.mp4")
-    av::av_encode_video(input, output, framerate = 20)
+    av::av_encode_video(input, output, framerate = 100)
     tictoc::toc()
     
     # Open animation (on MacOS)
