@@ -151,7 +151,7 @@ if (!dev) {
 # * 1 hour, 90 cl
 
 #### (optional) Tweak parameters
-iteration[, phi := 1.3]
+iteration[, phi := 0.3]
 
 #### Estimate coordinates
 # TO DO In patter.workflows, update .verbose for parallelisation
@@ -160,7 +160,7 @@ iteration[, phi := 1.3]
 print(glue("Using {ncl} core(s) for {nrow(iteration)} iteration row(s) (mobility = {iteration$mobility[1]})."))
 print(iteration[1, ])
 coord_list <- 
-  cl_lapply_workflow(.iteration   = iteration[2, ],
+  cl_lapply_workflow(.iteration   = iteration,
                      .datasets    = list(),
                      .constructor = constructor_ac_analysis, 
                      .algorithm   = estimate_coord_particle, 
@@ -250,6 +250,7 @@ if (FALSE) {
       out 
     }) |> unlist()
   hist(smooth_ess_prop, breaks = 100)
+  table(smooth_ess_prop > 0.95)
   table(smooth_ess_prop > 0.9)
   utils.add::basic_stats(smooth_ess_prop)
   # Summarise smoother ESS for successful smoothing runs
@@ -263,21 +264,41 @@ if (FALSE) {
       return(NA)
     }, .combine = unlist) 
   hist(ess_mean, xlim = c(0, 2000))
+  mean(ess_mean, na.rm = TRUE)
   # Results (100 real iterations)
-  # * With 2.5e4 filter particles & 1,000 smoothing particles:
+  # * With 2.5e4 filter particles & 1,000 smoothing particles, phi = 1.8:
   # - 1 hour (100 cl)
   # - 73/100 forward/backward filter successes
   # - 52/73 forward/backward & smoothing successes (95 % threshold)
   # - 58/73 forward/backward & smoothing successes (90 % 'patter-flapper' threshold)
-  # * With 5e4 filter particles & 2,000 smoothing particles:
+  # * With 5e4 filter particles & 2,000 smoothing particles, phi = 1.8:
   # - 3 hours (100 cl)
   # - 76/100 forward/backward filter successes
   # - 54/76 forward/backward & smoothing successes (95 % threshold)
   # - 60/76 forward/backward & smoothing successes (90 % 'patter-flapper' threshold)
-  # * For convergence, there is little benefit in boosting the number of particles
+  # - For convergence, there is little benefit in boosting the number of particles
+  # * With 2e4 filter particles & 1,500 smoothing particles, phi = 0.3:
+  # - 1.2 hours (100 cl)
+  # - 93/100 forward/backward filter successes
+  # - 75/93 forward/backward & smoothing successes (95 % threshold)
+  # - 83/100 forward/backward & smoothing successes (90 % 'patter-flapper' threshold)
+  # - Mean ESS = 300
+  # - A higher turning angle correlation helps
+  # - We should try 2000 smoothing particles again
   
   #### (optional) Investigate convergence failures
   # See debug-patter.R
+  convergence_dt[, index := iteration$index, ]
+  convergence_dt[!forward | !backward, ]
+  # forward backward smooth index
+  # <lgcl>   <lgcl> <lgcl> <int>
+  # 1:   FALSE    FALSE  FALSE    64
+  # 2:    TRUE    FALSE  FALSE   176
+  # 3:   FALSE    FALSE  FALSE   358
+  # 4:   FALSE    FALSE  FALSE   400
+  # 5:    TRUE    FALSE  FALSE   540
+  # 6:   FALSE    FALSE  FALSE   610
+  # 7:   FALSE    FALSE  FALSE   617
   
   #### Collate smoothed states 
   # ETA: ~5 s per row on 1 cl (07m 03s for 84 rows)
