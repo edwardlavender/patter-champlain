@@ -46,11 +46,12 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
     
     # Define datasets
     timeline   <- .input$.timeline
-    acoustics  <- .input$.yobs$ModelObsAcousticLogisTrunc
+    acoustics  <- copy(.input$.yobs$ModelObsAcousticLogisTrunc)
     acoustics[, timestep := (1:length(timeline))[match(timestamp, timeline)]]
     detections <- acoustics[obs == 1L, ]
     moorings <- 
       acoustics |> 
+      lazy_dt() |> 
       group_by(sensor_id) |> 
       slice(1L) |> 
       as.data.table()
@@ -67,8 +68,8 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
       p1 <- terra::app(dist, function(x) plogis(m$receiver_alpha + m$receiver_beta * x))
       p0 <- 1 - p1
       # Mask by land
-      p1 <- terra::mask(p1, .map)
-      p0 <- terra::mask(p0, .map)
+      p1 <- terra::mask(p1, .map) |> readAll()
+      p0 <- terra::mask(p0, .map) |> readAll()
       list(nondetection = p0, detection = p1)
     })
     names(likelihoods) <- as.character(moorings$sensor_id)
@@ -79,7 +80,7 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
       # Define time-specific datasets
       # t = 1
       # print(t)
-      tstamp <-  timeline[t]
+      tstamp <- timeline[t]
       acc    <- acoustics[timestamp == tstamp, ]
       det    <- detections[timestamp == tstamp, ]
       cinfo  <- .input$.yobs$ModelObsContainer[timestamp == tstamp, ]
@@ -155,7 +156,7 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
     tictoc::tic()
     input   <- gtools::mixedsort(list.files(frames, full.names = TRUE))
     output  <- file.path(mp4, "ani.mp4")
-    av::av_encode_video(input, output, framerate = 100)
+    av::av_encode_video(input, output, framerate = 150)
     tictoc::toc()
     
     # Open animation (on MacOS)

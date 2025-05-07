@@ -13,6 +13,15 @@
 # 4) Use this script to dig into the causes of convergence failures
 # 5) Revise best model, as designed in develop-model-move.R & develop-model-detection.R
 
+#### Results
+# * As particles spread out, it is quite easy to die in isolated basins
+# * Less regular resampling appears help a bit with this (visually) 
+# * With low correlation, it is quite hard to particles to spread around the study area
+# * Higher correlations make it easier for particles to move between disparate receivers
+#   in the gaps between detections
+# * High correlations are expensive with a truncated movement model
+# * But can work well with an untruncated model and few particles (fast)
+
 
 ###########################
 ###########################
@@ -96,7 +105,8 @@ args_fwd$.n_particle <- 2e4L
 args_fwd$.n_record   <- 2000L
 args_fwd$.batch      <- NULL
 args_fwd$.progress   <- julia_progress(enabled = TRUE)
-# Collect moorings
+# Collect relevant arguments
+timeline <- args_fwd$.timeline
 moorings <- 
   args_fwd$.yobs$ModelObsAcousticLogisTrunc |> 
   lazy_dt() |>
@@ -121,7 +131,7 @@ if (FALSE) {
 if (FALSE) {
   # Run filter without observations
   args_nodata             <- args_fwd
-  args_nodata$.model_move <- "ModelMoveCXY(env, 216, truncated(Gamma(3.25, 25), upper = 216), Normal(0.0, 10000))"
+  args_nodata$.model_move <- "ModelMoveCXY(env, 216, truncated(Gamma(3.25, 25), upper = 216), Normal(0.0, 1.0))"
   args_nodata$.yobs       <- list()
   args_nodata$.xinit      <- data.table(x = 1778217, y = 947554.8, map_value = 1, heading = 0.3)
   args_nodata$.n_particle <- 5e3L
@@ -142,23 +152,33 @@ if (FALSE) {
   # - Larger time steps may help but cause difficulty with land
 }
 
+#### (optional) Resampling settings
+# With resampling at each time step, populations of particles in some channels ultimately die out
+# We'll try resampling near to acoustic detections or when ESS < 500
+tdet <- args_fwd$.yobs$ModelObsAcousticLogisTrunc[obs == 1, .(timestamp)]
+tdet[, timestep := (1:length(timeline))[match(timestamp, timeline)]]
+tres <- sapply(tdet$timestep, function(t) (t - 5):t, USE.NAMES = FALSE) |> 
+  unlist() |> sort() |> unique()
+tres <- tres[tres > 0]
+length(tres)
+
 #### Run filter
 # ~2 mins with 2e4L particles
-# ~16 mins with 2e4L particles (phi = 0.4)!
-# args_fwd$.n_resample <- 500
-# args_fwd$.t_resample <- NULL
+# ~16 mins with 2e4L particles, phi = 0.4, .n_move = 100_000!
+args_fwd$.n_resample <- 500
+args_fwd$.t_resample <- tres
 args_fwd$.n_move <- 1L
 args_fwd$.n_particle <- 5000L
 args_fwd$.model_move <- "ModelMoveCXY(env, 216, truncated(Gamma(3.25, 25), upper = 216), Normal(0.0, 0.3))";
 fwd <- do.call(pf_filter, args_fwd)
 
 #### Results
-# iteration[2, ], 2e4L particles
+# iteration[2, ], 2e4L particles:
 # * phi = c(1.8, 1.3, 0.5) stuck around time step ~12806 
 # * phi = 0.4 works, but the animation shows this is largely 'by luck'
-# * phi = 0.3, 1e4 particles, .n_move = 1 works, in 1 min
 # - acoustic containers have a strong effect
 # - particles are not spreading out enough in the gaps between detections
+# * phi = 0.3, 5e3 particles, .n_move = 1 works, in 1 min
 
 #### Record problematic time step/stamps
 timeline <- args_fwd$.timeline
@@ -179,7 +199,6 @@ if (TRUE) {
   tnows <- gtools::mixedsort(list.files(here_debug()))
   tnow <- tnows[length(tnows)]
   fwd  <- qs::qread(here_debug(tnow, "output.qs"))
-  
 }
 
 
@@ -189,6 +208,16 @@ if (TRUE) {
 
 # Create animation
 # * For 12,000 steps: This takes 6 min (12 cl) plus >2 min for 12,000 steps
+# * NB: Running this for a few steps with .cl = 1L seems to suppress a segmentation
+#   fault when it then run in parallel for a larger time series below.
+#   If you jump to the parallel version, it can throw a segmentation fault
+animate_ac(.sim      = sim,
+           .map      = map,
+           .steps    = 1:10L,
+           .input    = args_fwd, 
+           .output   = fwd,
+           .tnow     = tnow, 
+           .cl       = 1L)
 animate_ac(.sim      = sim,
            .map      = map,
            .steps    = 1:length(timeline),
@@ -196,6 +225,10 @@ animate_ac(.sim      = sim,
            .output   = fwd,
            .tnow     = tnow, 
            .cl       = 10L)
+
+# Map
+map_pou(.map = map, .coord = fwd$states)
+map_dens(.map = map, .coord = fwd$states, .discretise = TRUE)
 
 # Take home message
 # > Particle animation suggests insufficient directness (Normal(0, 1.8)) in movement model
