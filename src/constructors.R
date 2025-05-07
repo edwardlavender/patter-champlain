@@ -15,9 +15,9 @@ constructor_ac_core <- function(.sim, .datasets, .verbose, ...) {
     
     # Enable testing & define tuning settings 
     test <- FALSE
-    n_particle_filter <- 50000L
+    n_particle_filter <- 20000L
     n_particle_smo    <- 1500L
-    n_sim_smo         <- 100L
+    n_sim_smo         <- 100L   # only implemented if .n_move > 1L
     if (test) {
       warning("test = TRUE!", immediate. = TRUE)
       n_particle_filter <- 5e3L
@@ -128,6 +128,7 @@ constructor_ac_core <- function(.sim, .datasets, .verbose, ...) {
                      .model_move = model_move, 
                      .yobs       = yobs_fwd, 
                      .n_particle = n_particle_filter, 
+                     .n_move     = 1L,
                      .n_record   = n_record,
                      .direction  = "forward", 
                      .batch      = particle_batch(.sim = .sim, .type = "fwd"),
@@ -148,8 +149,8 @@ constructor_ac_core <- function(.sim, .datasets, .verbose, ...) {
       # Define smoother arguments
       # * Note .collect = TRUE is required for particle_success()
       args_smo <- list(.n_particle = n_particle_smo, 
-                       .n_sim = n_sim_smo, 
-                       .cache = TRUE, 
+                       .n_sim = ifelse(isTRUE(args_fwd$.n_move == 1L), 0L, n_sim_smo),
+                       .cache = ifelse(isTRUE(args_fwd$.n_move == 1L), FALSE, TRUE), 
                        .batch = particle_batch(.sim = .sim, .type = "smo"),
                        .progress = julia_progress(enabled = test), 
                        .collect = TRUE, 
