@@ -167,18 +167,21 @@ length(tres)
 # ~16 mins with 2e4L particles, phi = 0.4, .n_move = 100_000!
 args_fwd$.n_resample <- 500
 args_fwd$.t_resample <- tres
-args_fwd$.n_move <- 1L
-args_fwd$.n_particle <- 5000L
-args_fwd$.model_move <- "ModelMoveCXY(env, 216, truncated(Gamma(3.25, 25), upper = 216), Normal(0.0, 0.3))";
+args_fwd$.n_move     <- 1L
+args_fwd$.n_particle <- 1e4L
+args_fwd$.model_move <- "ModelMoveCXY(env, 216, truncated(Gamma(3.25, 25), upper = 216), Normal(0.0, 0.5))";
 fwd <- do.call(pf_filter, args_fwd)
 
 #### Results
 # iteration[2, ], 2e4L particles:
 # * phi = c(1.8, 1.3, 0.5) stuck around time step ~12806 
-# * phi = 0.4 works, but the animation shows this is largely 'by luck'
-# - acoustic containers have a strong effect
-# - particles are not spreading out enough in the gaps between detections
+# * phi = 0.5 _can_ work but is somewhat 'forced' to by containers
+# * phi = 0.4 works:
+# - With regular resampling this looks like 'luck' though
+# - (acoustic containers have a strong effect)
+# - less regular sampling seems to help particles to spread out
 # * phi = 0.3, 5e3 particles, .n_move = 1 works, in 1 min
+# * phi = 0.3-0.4 looks like the right setting for this individual
 
 #### Record problematic time step/stamps
 timeline <- args_fwd$.timeline
@@ -220,7 +223,7 @@ animate_ac(.sim      = sim,
            .cl       = 1L)
 animate_ac(.sim      = sim,
            .map      = map,
-           .steps    = 1:length(timeline),
+           .steps    = 10000:13000,
            .input    = args_fwd, 
            .output   = fwd,
            .tnow     = tnow, 
