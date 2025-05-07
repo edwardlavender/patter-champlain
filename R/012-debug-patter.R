@@ -14,13 +14,23 @@
 # 5) Revise best model, as designed in develop-model-move.R & develop-model-detection.R
 
 #### Results
-# * As particles spread out, it is quite easy to die in isolated basins
-# * Less regular resampling appears help a bit with this (visually) 
-# * With low correlation, it is quite hard to particles to spread around the study area
-# * Higher correlations make it easier for particles to move between disparate receivers
-#   in the gaps between detections
-# * High correlations are expensive with a truncated movement model
-# * But can work well with an untruncated model and few particles (fast)
+# * A weakly correlated random walk (phi = 1.8) works for ~73/100 test runs (analysis-patter.R):
+# - (2e4 particles, default n_resample, default n_move)
+# - The problem with this model appears to be movement between more distant receivers
+# - Particle animations show particles spread out too slowly to reach necessary receivers 
+# - In contrast, high correlations make it easier for particles to move between disparate receivers
+# - High correlations can be expensive with a truncated movement model (if lots of moves)
+# - But can work well with an un-truncated model and few particles (fast)
+# * A more correlated random walk (phi = 0.3) works for ~93/100 individuals (analysis-patter.R):
+# - (2e4 particles, default n_resample, default n_move)
+# - For the 7 remaining individuals, the challenge lies in the south of the study area
+# - Particles can die easily in the narrow channels and receiver gates
+#   can block particles from where they need to get to. 
+# - Strategies that help include:
+#   - Less resampling
+#   - More particles
+#   - More moves (expensive)
+# - The challenge remains unsolved for at least two individuals
 
 
 ###########################
@@ -89,14 +99,20 @@ set_vmap(.vmap = here_input("vmap", iteration$mobility[1], "vmap.tif"))
 #### Run filter
 
 #### Select individual
-sim <- iteration[2, ]
-# > unit_id  individual_id    time_id 
+sim <- iteration[index == 617, ]
+# > unit_id  individual_id    time_id    index 
 # > 16       24321         2016-01-01
+# > 28       24322         2014-11-01    64
+# > 102      24325         2016-04-01    358
+# > 151      24328         2015-10-01    400
+# > 231      24331         2016-03-01    610 -> unsolved
+# > 232      24331         2016-04-01    617 -> unsolved 
 
 #### (optional) Tweak selected parameters
-sim[, phi := 1.3]
+sim[, phi := 0.3]
 
-#### Define filter args 
+#### Define baseline filter args 
+# (We may further customise inputs below)
 args <- constructor_ac_real(.sim = sim,
                             .datasets = list(), 
                             .verbose = TRUE)
@@ -152,7 +168,21 @@ if (FALSE) {
   # - Larger time steps may help but cause difficulty with land
 }
 
-#### (optional) Resampling settings
+#### (optional) Tweak detection probability model
+if (FALSE) {
+  # Plot detection probability model 
+  args_fwd$.yobs$ModelObsAcousticLogisTrunc |> 
+    model_obs_acoustic_logis_trunc() |>
+    plot()
+  # Visualise more restrictive model 
+  a <- 1.414281; b <- -0.002016435
+  lines(1:8000, plogis(a + 1:8000 * b), col = "red")
+  # (optional) Update .yobs with more restrictive model
+  args_fwd$.yobs$ModelObsAcousticLogisTrunc[, receiver_alpha := a]
+  args_fwd$.yobs$ModelObsAcousticLogisTrunc[, receiver_beta := -b]
+}
+
+#### (optional) Tweak resampling settings
 # With resampling at each time step, populations of particles in some channels ultimately die out
 # We'll try resampling near to acoustic detections or when ESS < 500
 tdet <- args_fwd$.yobs$ModelObsAcousticLogisTrunc[obs == 1, .(timestamp)]
@@ -164,24 +194,69 @@ length(tres)
 
 #### Run filter
 # ~2 mins with 2e4L particles
-# ~16 mins with 2e4L particles, phi = 0.4, .n_move = 100_000!
+# ~10 mins with 5e4L particles, phi = 0.3, .n_move = 5000
+# ~16 mins with 2e4L particles, phi = 0.4, .n_move = 100_000
 args_fwd$.n_resample <- 500
 args_fwd$.t_resample <- tres
-args_fwd$.n_move     <- 1L
-args_fwd$.n_particle <- 1e4L
-args_fwd$.model_move <- "ModelMoveCXY(env, 216, truncated(Gamma(3.25, 25), upper = 216), Normal(0.0, 0.5))";
+args_fwd$.n_move     <- 10000
+args_fwd$.n_particle <- 5e4
+args_fwd$.model_move <- "ModelMoveCXY(env, 216, truncated(Gamma(3.25, 25), upper = 216), Normal(0.0, 0.3))";
 fwd <- do.call(pf_filter, args_fwd)
 
-#### Results
+#### Results: on the causes of convergence failures
+# (Results derived from filter runs + examination of particle animations (see below))
+# 
 # iteration[2, ], 2e4L particles:
 # * phi = c(1.8, 1.3, 0.5) stuck around time step ~12806 
 # * phi = 0.5 _can_ work but is somewhat 'forced' to by containers
 # * phi = 0.4 works:
-# - With regular resampling this looks like 'luck' though
-# - (acoustic containers have a strong effect)
-# - less regular sampling seems to help particles to spread out
+#   - With regular resampling this looks like 'luck' though
+#   - (acoustic containers have a strong effect)
+#   - less regular sampling seems to help particles to spread out
 # * phi = 0.3, 5e3 particles, .n_move = 1 works, in 1 min
 # * phi = 0.3-0.4 looks like the right setting for this individual
+#
+# iteration[index == 64, ]:
+# * this individual gets stuck when it moves south into the narrow channel (@ time 5395)
+# * the particles behave sensibly
+# * but they 'die out' too soon in the narrow channel (before the detection)
+# * It is very hard to move back into the channel given a receiver in the way, given:
+#   - High movement correlation 
+#   - Current detection probability model
+# * Possible solutions:
+#   - More particles 
+#   - Truncated movement model
+#   - Weaker movement correlation 
+# * Evaluation: 
+#   - Fails with 1e5 particles and .n_move = 1000
+#   - With 5e4L particles and .n_move = 1000 or .n_move = 5000, we can get this working
+#   - (But only just, looking at the animation!)
+#   - Reducing correlation in turning angle (N(0, 1.0), N(0, 1.3), N(0, 1.8)) does not help
+#   - (N(0, 1.3), N(0, 1.8) fail even earlier)
+#   - This suggests it is just hard for particles to survive in some of the narrow channels
+#
+# iteration[index == 358, ]:
+# * This seems to work here (failed on server)
+#
+# iteration[index == 400, ]:
+# * The particles get stuck in the narrow channel between two receivers
+# * With the current detection probability model, it is hard to escape
+#   given receivers at both ends of the channel. 
+# * This happens even with 1e5 particles & n_move = 1
+# * With 5e4 particles & n_move = 5000L, the problem is solved
+#
+# iteration[index == 610, ]:
+# * Similar issue
+# * Die out in the narrow channel in the south (long gap)
+# * Hard to move through receiver barrier back into channel 
+# * It is hard to get this individual to converge
+#   even with reduced resampling, 1e5 particles, 5000 moves
+#
+# iteration[index = 617, ]
+# * Similar issue as index 610
+# * Unsolved with 5e4 particles and 100,000 moves
+# * A more restrictive detection probability model 
+#   (which would reduce the barrier effect) did not help
 
 #### Record problematic time step/stamps
 timeline <- args_fwd$.timeline
@@ -223,7 +298,7 @@ animate_ac(.sim      = sim,
            .cl       = 1L)
 animate_ac(.sim      = sim,
            .map      = map,
-           .steps    = 10000:13000,
+           .steps    = 10000:11000,
            .input    = args_fwd, 
            .output   = fwd,
            .tnow     = tnow, 
@@ -232,9 +307,6 @@ animate_ac(.sim      = sim,
 # Map
 map_pou(.map = map, .coord = fwd$states)
 map_dens(.map = map, .coord = fwd$states, .discretise = TRUE)
-
-# Take home message
-# > Particle animation suggests insufficient directness (Normal(0, 1.8)) in movement model
 
 
 ###########################
