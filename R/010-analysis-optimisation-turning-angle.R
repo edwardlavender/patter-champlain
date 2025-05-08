@@ -15,6 +15,13 @@
 #    * sim-data.R
 #    * ?pf_filter
 
+#### Results
+# In the real-array, irrespective or whether or not we simulate a weakly or 
+# highly correlated movement path, the high correlation parameter is more likely. 
+# This may be because of the long gaps between detections. 
+# In a dense simulated array
+# ... TO DO
+
 
 ###########################
 ###########################
@@ -122,7 +129,7 @@ if (analysis_moorings == "real") {
   moorings <- sim_array(.map = map, 
                         .timeline = timeline, 
                         .arrangement = "regular", 
-                        .n_receiver = 1000L)
+                        .n_receiver = 100000L)
   
   #### Crop moorings 
   # For speed, we focus on the receivers in a buffer around the simulated path
@@ -130,24 +137,31 @@ if (analysis_moorings == "real") {
   region <- 
     terra::ext(c(range(path$x), range(path$y))) |>
     terra::vect(crs = terra::crs(map)) |> 
-    terra::buffer(width = 20000)
+    terra::buffer(width = 1000)
   # Visually check region size
   terra::plot(map)
   patter:::add_sp_path(path$x, path$y, length = 0)
   terra::lines(region)
   # Filter moorings
   moorings[, map_value := terra::extract(region, cbind(moorings$receiver_x, moorings$receiver_y))[, 2]]
-  moorings[!is.na(map_value), ]
+  moorings <- moorings[!is.na(map_value), ]
   nrow(moorings)
+  
+  #### Visualise
+  terra::plot(terra::crop(map, region))
+  points(moorings$receiver_x, moorings$receiver_y, pch = ".")
+  patter:::add_sp_path(path$x, path$y, length = 0)
+  terra::sbar()
   
   ##### Customise detection probability parameters
   # Check distances between receivers
   dist <- terra::distance(cbind(moorings$receiver_x, moorings$receiver_y), lonlat = FALSE)
   min(dist[dist > 0])
   # Customise parameters
-  # plot(1:1000, plogis(4 + -0.01 * 1:1000), type = "l")
-  # pars_model_obs <- list(receiver_alpha = 4, receiver_beta = -0.01, receiver_gamma = 800)
-  
+  # * With the best-guess parameters, we don't estimate phi accurately
+  # * Try highly precise parameters 
+  plot(1:200, plogis(5 + -0.075 * 1:200), type = "l")
+  pars_model_obs <- list(receiver_alpha = 5, receiver_beta = -0.075, receiver_gamma = 200)
 }
 model_obs <- model_obs_champlain(moorings, pars_model_obs)
 nrow(model_obs$ModelObsAcousticLogisTrunc)
@@ -156,7 +170,9 @@ plot(model_obs)
 #### Simulate observations
 # Simulate acoustic observations 
 # * ~10 s (real-world array)
-# * ~30 s (simulated array with 294 receivers)
+# * ~30 s (simulated array with 1000 receivers)
+# * ~28 mins (simulated array with 2743 receivers!)
+# * ~20 mins (as above, without containers)
 tic()
 obs        <- sim_observations(.timeline = timeline, 
                                .model_obs = model_obs)
@@ -177,6 +193,9 @@ containers <- assemble_acoustics_containers(.timeline  = timeline,
 yobs_fwd <-
   list(ModelObsAcousticLogisTrunc = acoustics,
        ModelObsContainer = containers$forward)
+
+# (optional) Drop containers
+yobs_fwd$ModelObsContainer <- NULL
 
 #### Check observations
 # High phi leads to good detection time series
@@ -256,8 +275,8 @@ nrow(loglik)
 # With the real-world array: 
 # ~1 min per run (10 threads, SIA-LAVENDED-M)
 # ~21-31 mins (phi = c(1.8, 0.4))
-# With the simulated array (294 receivers):
-# ~4 mins per run 
+# With the simulated array (2743 receivers):
+# ~27 mins per run with containers
 values <- cl_lapply(split(loglik, loglik$index), function(d) {
   pf_filter_ll(d$theta)
 }) |> unlist()
