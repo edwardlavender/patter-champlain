@@ -26,7 +26,7 @@ DIRECTORY_LOG="data/output/$analysis/main/logs/R-CMD-BATCH"
 mkdir -p "$DIRECTORY_LOG"
 
 # Run R code
-Rscript --verbose ./R/011-analysis-patter.R \
+Rscript --verbose ./R/019-analysis-patter-2.R \
   "$analysis" "$mobility" "$dev" \
   > "$DIRECTORY_LOG/log-$mobility.Rout" 2>&1
 
