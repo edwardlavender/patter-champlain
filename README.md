@@ -118,14 +118,14 @@ The project structure is as follows:
 8.  **`R/`** contains [R](https://www.r-project.org/) scripts:
 
     - `setup-data-map.R` defines a map of the study area;
-    - `setup-data-move.R` processes movement (e.g., accelerometer)
+    - `setup-data-move-*.R` processes movement (e.g., accelerometer)
       datasets, used to develop the movement model;
+    - `setup-data-detection-pr-*.R` processes detection probability
+      data, used to inform the acoustic observation model;
     - `setup-data-detection.R` processes detection data;
-    - `setup-data-detection-pr.R` processes detection probability data,
-      used to inform the acoustic observation model;
-    - `develop-model-move.R` analyses movement datasets and develops the
-      movement model;
-    - `develop-model-detection.R` analyses detection probability
+    - `develop-model-move-*.R` analyses movement datasets and develops
+      the movement model;
+    - `develop-model-detection-pr-*.R` analyses detection probability
       datasets and develops the acoustic observation model;
     - `develop-model.R` collates state-space model parameters;
     - `sim-data.R` simulates trajectories and observations;
@@ -133,9 +133,8 @@ The project structure is as follows:
       directories for simulation/real-world analyses;
     - `analysis-optimistion-*.R` explores joint estimation of latent
       locations and static parameters;
-    - `analysis-patter.R` analyses simulation/real-world datasets using
-      `patter`;
-    - `debug-patter.R` debugs `patter` convergence failures;
+    - `analysis-patter_*.R` analyses simulation/real-world datasets
+      using `patter`;
     - `analysis-heuristics.R` analyses simulation/real-world datasets
       using heuristic methods;
     - `analysis-synthesis.R` synthesises the results of
