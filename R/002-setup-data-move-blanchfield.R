@@ -1,9 +1,9 @@
 ###########################
 ###########################
-#### setup-data-move.R
+#### setup-data-move-blanchfield.R
 
 #### Aims
-# 1) Sets movement datasets
+# 1) Set up Blanchfield et al. (2023) data for analysis
 
 #### Prerequisites
 # 1) Movement data provided by Blanchfield et al. (2023)

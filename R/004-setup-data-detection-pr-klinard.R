@@ -1,9 +1,9 @@
 ###########################
 ###########################
-#### setup-data-detection-pr.R
+#### setup-data-detection-pr-klinard.R
 
 #### Aims
-# 1) Setup detection probability data
+# 1) Setup detection probability data from Klinard et al. (2019)
 
 #### Prerequisites
 # 1) Detection probability data provided by Klinard et al. (2019)
@@ -123,77 +123,36 @@ detections <-
          receiver_id = receiver_sn,
          timestamp = datetime_UTC,
          tag_lon, tag_lat,
-         receiver_lon = longitude, receiver_lat = latitude) |> 
-  # Focus on the relevant time window of detections
+         receiver_lon = longitude, receiver_lat = latitude
+         ) |>
+  # Add variables required for modelling  
+  mutate(
+    dB = transmitters$dB[match(transmitter_id, transmitters$id)],
+    dist = terra::distance(cbind(tag_lon, tag_lat), cbind(receiver_lon, receiver_lat), 
+                           lonlat = TRUE, pairwise = TRUE)
+    ) |> 
+  # Cleanup
+  select(transmitter_id, timestamp, receiver_id, dB, dist) |> 
+  arrange(transmitter_id, timestamp) |>
+  as.data.table()
+
+#### Filter data
+detections <- 
+  detections |> 
+  # Focus on relevant time periop
   filter(timestamp >= as.POSIXct("2015-10-22 00:00:00", tz = "UTC")) |> 
   filter(timestamp <= as.POSIXct("2016-05-23 00:00:00", tz = "UTC")) |> 
   # Focus on relevant transmitters
   filter(transmitter_id %in% transmitter_ids) |> 
-  # Add covariates for models
-  mutate(dist = terra::distance(cbind(tag_lon, tag_lat), cbind(receiver_lon, receiver_lat), 
-                                lonlat = TRUE, pairwise = TRUE)) |> 
-  # Cleanup
-  arrange(transmitter_id, timestamp) |>
   as.data.table()
 
 #### Summarise raw dataset
-nrow(detections) # 293,786
+nrow(detections)
 length(unique(detections$receiver_id))
 range(detections$timestamp)
 
-#### Create daily summarises of observed/expected number of detections for modelling
-klinard <- 
-  detections |> 
-  # Compute observed number of detections per transmitter/receiver/day
-  mutate(timestamp = lubridate::floor_date(timestamp, "days")) |> 
-  group_by(transmitter_id, receiver_id, timestamp) |> 
-  mutate(observed = n()) |> 
-  slice(1L) |>
-  ungroup() |> 
-  # Compute expected number of transmissions per day
-  mutate(expected = (24 * 60 * 60) / 1800) |>
-  # Use success/failure for glm
-  mutate(success = observed, failure = expected - observed, 
-         prop = success / (success + failure)) |>
-  # Cleanup
-  select(transmitter_id, timestamp, prop, success, failure, dist) |> 
-  arrange(transmitter_id, timestamp) |>
-  as.data.table()
-
-#### Compute weights
-# We assign weights so that on average, a GLM of detection probability
-# behaves as though all detections came from 147 dB tags (Lake Champlain tags)
-# Thus, we upweight 147 dB tags & downweight 153 tags, 
-# accounting for the number of observations. 
-# Since we have more measurements from 147 dB tags, this utimately involves
-# a downweighting of those measurements and an upweighting of the 153 measurements. 
-klinard <- 
-  klinard |> 
-  mutate(dB = transmitters$dB[match(transmitter_id, transmitters$id)]) |>
-  group_by(dB) %>%
-  mutate(
-    n_obs = n(),
-    # Compute weight, accounting for dB scaling and number of observations
-    w = 10^((147 - first(dB)) / 10) / n_obs
-  ) %>%
-  ungroup() %>%
-  # Normalise weights so average weight is one 
-  mutate(w = w / mean(w)) |> 
-  as.data.table()
-
-# Examine weights
-table(klinard$w)
-
-#### Checks
-# The expected number of transmissions should be >= observed number
-# There are a few cases where that is not the case
-table(sort(klinard$failure))
-klinard[failure < 0, c("success", "failure") := .(48, 0)]
-table(sort(klinard$failure))
-table(sort(klinard$success))
-
 #### Write to file
-qs::qsave(klinard, here_data("supp", "model-obs", "klinard.qs"))
+qs::qsave(detections, here_data("supp", "model-obs", "klinard-raw.qs"))
 
 
 #### End of code. 

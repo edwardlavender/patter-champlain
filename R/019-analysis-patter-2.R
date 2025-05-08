@@ -1,6 +1,6 @@
 ###########################
 ###########################
-#### debug-patter.R
+#### analysis-patter-2.R
 
 #### Aims
 # 1) This script develops the patter analysis

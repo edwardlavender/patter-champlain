@@ -1,6 +1,6 @@
 ###########################
 ###########################
-#### analysis-patter.R
+#### analysis-patter-1.R
 
 #### Aims
 # 1) This script provides a generic workflow for analysing simulated/real-world datasets with patter
