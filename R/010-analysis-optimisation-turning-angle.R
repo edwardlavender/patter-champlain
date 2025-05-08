@@ -129,7 +129,7 @@ if (analysis_moorings == "real") {
   # (We do not need to consider non-detections from receivers very far away)
   region <- 
     terra::ext(c(range(path$x), range(path$y))) |>
-    terra::vect() |> 
+    terra::vect(crs = terra::crs(map)) |> 
     terra::buffer(width = 20000)
   # Visually check region size
   terra::plot(map)
