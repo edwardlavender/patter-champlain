@@ -84,7 +84,7 @@ The project structure is as follows:
     - `develop-model.R` collates state-space model parameters;
     - `sim-data.R` simulates trajectories and observations;
     - `prepare-analysis.R` prepares iteration `data.table`s and directories for simulation/real-world analyses;
-    - `analysis-optimistion.R` explores joint estimation of latent locations and static parameters;
+    - `analysis-optimistion-*.R` explores joint estimation of latent locations and static parameters;
     - `analysis-patter.R` analyses simulation/real-world datasets using `patter`;
     - `debug-patter.R` debugs `patter` convergence failures;
     - `analysis-heuristics.R` analyses simulation/real-world datasets using heuristic methods;

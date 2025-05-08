@@ -1,10 +1,11 @@
 ###########################
 ###########################
-#### analysis-optimisation.R
+#### analysis-optimisation-step-length.R
 
 #### Aims
 # 1) Analyses simulated observations using patter
-#    specifically testing how well we can estimate latent locations & parameters
+#    specifically testing how well we can estimate latent locations & step-length parameters
+# NB: Compared to analysis-optimisation-turning-angle.R, this code uses a less-interactive workflow. 
 
 #### Prerequisites
 # 1) Run simulations

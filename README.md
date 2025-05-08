@@ -131,7 +131,7 @@ The project structure is as follows:
     - `sim-data.R` simulates trajectories and observations;
     - `prepare-analysis.R` prepares iteration `data.table`s and
       directories for simulation/real-world analyses;
-    - `analysis-optimistion.R` explores joint estimation of latent
+    - `analysis-optimistion-*.R` explores joint estimation of latent
       locations and static parameters;
     - `analysis-patter.R` analyses simulation/real-world datasets using
       `patter`;
