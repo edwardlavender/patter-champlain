@@ -21,7 +21,7 @@ scripts <- list.files(here_r(), full.names = TRUE)
 # Check scripts
 scripts
 
-# Run selected scripts, sequentially, in isolation (~x mins)
+# Run selected scripts, sequentially, in isolation (~6.5 mins)
 cl_lapply(scripts[1:14], function(script) {
   print(script)
   callr::rscript(script)
