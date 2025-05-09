@@ -107,6 +107,9 @@ The project structure is as follows:
       scripts:
       - `01-dev.R` records project set up and development;
       - `02-clone.R` is used to clone the project (see ‘Instructions’);
+    - `03-clean.R` and `04-clone.R` support project maintenance:
+      - `03-clean.R` cleans and rebuilds the `data/` directory;
+      - `04-rebuild.R` re-runs selected `R` scripts, populating `data/`;
 
 5.  **`doc/`** contains documents\*.
 
