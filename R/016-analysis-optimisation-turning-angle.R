@@ -62,6 +62,7 @@ library(patter)
 library(prettyGraphics)
 library(proj.verse)
 library(tictoc)
+library(truncdist)
 files_source_r(here_src())
 expect_no_geospatial()
 
@@ -129,6 +130,23 @@ while (counter < 120) {
 }
 count
 toc()
+# Compute path properties
+path[, step_length := sqrt((x - data.table::shift(x))^2 + (y - data.table::shift(y))^2)]
+path[, turning_angle := atan2(sin(heading - data.table::shift(heading)), 
+                              cos(heading - data.table::shift(heading)))]
+# Compare model properties & realised patterns
+# * In the narrow study area, realised movements may be more correlated
+# * This does not seem to be the case
+# * Simulated and realised distributions match well
+pp <- par(mfrow = c(1, 2))
+plot(density(path$step_length, na.rm = TRUE))
+curve(dtrunc(x, "gamma", 
+             a = 0, b = pars_model_move$mobility, 
+             shape = pars_model_move$shape, scale = pars_model_move$scale), 
+      col = "red", add = TRUE)
+plot(density(path$turning_angle, na.rm = TRUE))
+curve(dnorm(x, 0, pars_model_move$phi), add = TRUE, col = "red")
+par(pp)
 
 #### Define observation model
 # analysis_moorings <- "real"
@@ -258,6 +276,10 @@ pf_filter_ll <- function(theta) {
   # Run filter
   # * (optional) TO DO Define t_resample
   # * Filter settings are defined to minimise computation time over multiple runs
+  # * TO DO Consider boosting n_move here in line with sim_path_walk()
+  # - n_move = 1L marks a discrepancy with the data generating process!
+  # - This may affect the results. 
+  # - But it is expensive to try with more moves
   fwd <- pf_filter(.timeline   = timeline,
                    .state      = state,
                    .xinit      = NULL,
