@@ -58,13 +58,6 @@ table(blanchfield$accel > 5)
 qs::qsave(blanchfield, here_data("supp", "model-move", "blanchfield.qs"))
 
 
-###########################
-###########################
-#### Setup VPS data
-
-# TO DO (MF)
-
-
 #### End of code. 
 ###########################
 ###########################

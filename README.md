@@ -118,11 +118,11 @@ The project structure is as follows:
 8.  **`R/`** contains [R](https://www.r-project.org/) scripts:
 
     - `setup-data-map.R` defines a map of the study area;
+    - `setup-data-detection.R` processes detection data;
     - `setup-data-move-*.R` processes movement (e.g., accelerometer)
       datasets, used to develop the movement model;
     - `setup-data-detection-pr-*.R` processes detection probability
       data, used to inform the acoustic observation model;
-    - `setup-data-detection.R` processes detection data;
     - `develop-model-move-*.R` analyses movement datasets and develops
       the movement model;
     - `develop-model-detection-pr-*.R` analyses detection probability

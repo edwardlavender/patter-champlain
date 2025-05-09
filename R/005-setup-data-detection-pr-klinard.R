@@ -136,10 +136,10 @@ detections <-
   arrange(transmitter_id, timestamp) |>
   as.data.table()
 
-#### Filter data
+#### Filter data (as in Klinard et al. 2019)
 detections <- 
   detections |> 
-  # Focus on relevant time periop
+  # Focus on relevant time period
   filter(timestamp >= as.POSIXct("2015-10-22 00:00:00", tz = "UTC")) |> 
   filter(timestamp <= as.POSIXct("2016-05-23 00:00:00", tz = "UTC")) |> 
   # Focus on relevant transmitters
