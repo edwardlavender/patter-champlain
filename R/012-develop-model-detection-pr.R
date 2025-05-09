@@ -6,7 +6,9 @@
 # 1) Setup the detection probability model 
 
 #### Prerequisites
-# 1) Process Klinard et al. (2019) dataset
+# 1) Process detection probability dataset
+
+# TO DO Revise script with Futia dataset
 
 
 ###########################

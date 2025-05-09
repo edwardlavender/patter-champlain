@@ -7,9 +7,10 @@
 
 #### Prerequisites
 # We consider the following data sources:
-# 1) Detection data collected by M. Futia. 
-# 2) Movement data provided by Blanchfield et al. (2023)
-# 3) Calibration equations developed by Reeve et al. (2024)
+# 1) Movement data provided by Blanchfield et al. (2023)
+#    & Calibration equations developed by Reeve et al. (2024)
+# 2) VPS data collected by M. Futia.
+# 3) Detection data collected by M. Futia. 
 
 
 ###########################
@@ -29,9 +30,11 @@ library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
 library(ggplot2)
+library(truncdist)
 files_source_r(here_src())
 
 #### Load data
+map  <- terra::rast(here_input("map.tif"))
 fish <- qs::qread(here_input("fish.qs"))
 SS4  <- qs::qread(here_data("supp", "model-obs", "SS4.qs"))
 
