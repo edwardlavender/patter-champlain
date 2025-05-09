@@ -16,11 +16,30 @@
 #    * ?pf_filter
 
 #### Results
-# In the real-array, irrespective or whether or not we simulate a weakly or 
-# highly correlated movement path, the high correlation parameter is more likely. 
-# This may be because of the long gaps between detections. 
-# In a dense simulated array
-# ... TO DO
+# (A) In the real-array:
+#     - Irrespective or whether or not we simulate a weakly or 
+#       highly correlated movement path, 
+#       the high correlation parameter is judged more likely. 
+#     - This may be because of the long gaps between detections. 
+# (B) In a moderately dense simulated array:
+#     - with 294 receivers in ~20,000 m buffer around the simulated array
+#       (5,000 in study area overall, I think)
+#       with out best detection probability model
+#       we see the same pattern as above.
+# (C) In a highly dense simulated array:
+#     - simulated array with 2753 receivers in 1000 m buffer around simulated path
+#     - (100,000 in study area overall)
+#     - more restricted detection probability model
+#       list(receiver_alpha = 5, receiver_beta = -0.075, receiver_gamma = 200)
+#     - acoustic containers not implemented (for speed)
+#     - in this scenario, highest log likelihoods between SD of 1.0-2.5
+#     - the model prefers the lower end (1.0)
+#     - so we're still not estimating perfectly the true value
+#     - but we're closer with more precise data
+# (D) In a dense array in the dat_gebco() area
+#     - Not currently implemented
+#     - Even in this region, large numbers of receivers are needed for 
+#       fast estimation 
 
 
 ###########################
@@ -194,6 +213,17 @@ yobs_fwd <-
   list(ModelObsAcousticLogisTrunc = acoustics,
        ModelObsContainer = containers$forward)
 
+# (optional) Consider focusing on detections for speed
+# * In a dense array, non-detections at all other receivers are expensive to account for
+# * We may be able ignore this source of information with loss in accuracy
+# * We have not tried this yet
+if (FALSE) {
+  length(unique(yobs_fwd$ModelObsAcousticLogisTrunc$sensor_id))
+  yobs_fwd$ModelObsAcousticLogisTrunc <- 
+    yobs_fwd$ModelObsAcousticLogisTrunc[obs == 1L, ]
+  length(unique(yobs_fwd$ModelObsAcousticLogisTrunc$sensor_id))
+}
+
 # (optional) Drop containers
 yobs_fwd$ModelObsContainer <- NULL
 
@@ -277,6 +307,7 @@ nrow(loglik)
 # ~21-31 mins (phi = c(1.8, 0.4))
 # With the simulated array (2743 receivers):
 # ~27 mins per run with containers
+# ~20 mins per run w/o containers (6 hr 10 min)
 values <- cl_lapply(split(loglik, loglik$index), function(d) {
   pf_filter_ll(d$theta)
 }) |> unlist()
