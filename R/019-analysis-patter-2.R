@@ -170,16 +170,16 @@ if (FALSE) {
 
 #### (optional) Tweak detection probability model
 if (FALSE) {
-  # Plot detection probability model 
-  args_fwd$.yobs$ModelObsAcousticLogisTrunc |> 
-    model_obs_acoustic_logis_trunc() |>
-    plot()
-  # Visualise more restrictive model 
+  x <- 0:8000
+  p0 <- args_fwd$.yobs$ModelObsAcousticLogisTrunc
+  a0 <-  p0$receiver_alpha[1]
+  b0 <-  p0$receiver_beta[1]
+  plot(x, plogis(a0 + b0 * x), type = "l")
   a <- 1.414281; b <- -0.002016435
-  lines(1:8000, plogis(a + 1:8000 * b), col = "red")
+  lines(0:8000, plogis(a + 0:8000 * b), col = "red")
   # (optional) Update .yobs with more restrictive model
   args_fwd$.yobs$ModelObsAcousticLogisTrunc[, receiver_alpha := a]
-  args_fwd$.yobs$ModelObsAcousticLogisTrunc[, receiver_beta := -b]
+  args_fwd$.yobs$ModelObsAcousticLogisTrunc[, receiver_beta := b]
 }
 
 #### (optional) Tweak resampling settings
@@ -197,10 +197,14 @@ length(tres)
 # ~10 mins with 5e4L particles, phi = 0.3, .n_move = 5000
 # ~16 mins with 2e4L particles, phi = 0.4, .n_move = 100_000
 args_fwd$.n_resample <- 500
-args_fwd$.t_resample <- tres
-args_fwd$.n_move     <- 10000
+# args_fwd$.t_resample <- tres
+args_fwd$.n_move     <- 5000
 args_fwd$.n_particle <- 5e4
-args_fwd$.model_move <- "ModelMoveCXY(env, 216, truncated(Gamma(3.25, 25), upper = 216), Normal(0.0, 0.3))";
+# (optional) Explore models with different turning angle formulatsion
+# plot(model_move_cxy(216, "truncated(Gamma(3.25, 25), upper = 216)", "TDist(0.3)"))
+# plot(model_move_cxy(216, "truncated(Gamma(3.25, 25), upper = 216)", "MixtureModel([truncated(Normal(0.0, 0.3), -pi, pi), Uniform(-pi, pi)], [0.25, 0.75])"))
+# args_fwd$.model_move <- "ModelMoveCXY(env, 216, truncated(Gamma(3.25, 25), upper = 216), MixtureModel([truncated(Normal(0.0, 0.3), -pi, pi), Uniform(-pi, pi)], [0.25, 0.75]))"
+args_fwd$.model_move <- "ModelMoveCXY(env, 216, truncated(Gamma(3.25, 25), upper = 216), MixtureModel([truncated(Normal(0.0, 0.3), -pi, pi), Uniform(-pi, pi)], [0.9, 0.1]))"
 fwd <- do.call(pf_filter, args_fwd)
 
 #### Results: on the causes of convergence failures
@@ -253,10 +257,12 @@ fwd <- do.call(pf_filter, args_fwd)
 #   even with reduced resampling, 1e5 particles, 5000 moves
 #
 # iteration[index = 617, ]
-# * Similar issue as index 610
+# * Particles are led into the area between the two most southerly receivers
+# * Once in that area, they can't escape due to the detection pr model 
 # * Unsolved with 5e4 particles and 100,000 moves
-# * A more restrictive detection probability model 
-#   (which would reduce the barrier effect) did not help
+# * A more restrictive detection probability model solves the problem
+# * This may be warranted: detection barriers are somewhat 'porous' & 
+#   it is important to represent this in the model 
 
 #### Record problematic time step/stamps
 timeline <- args_fwd$.timeline
@@ -298,7 +304,7 @@ animate_ac(.sim      = sim,
            .cl       = 1L)
 animate_ac(.sim      = sim,
            .map      = map,
-           .steps    = 10000:11000,
+           .steps    = 1:(tstep+100),
            .input    = args_fwd, 
            .output   = fwd,
            .tnow     = tnow, 
