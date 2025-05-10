@@ -7,7 +7,6 @@
 
 #### Prerequisites
 # 1) Develop movement and observation models
-# 2) This code should be run on MacOS or Windows
 
 
 ###########################
