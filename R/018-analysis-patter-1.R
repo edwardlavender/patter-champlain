@@ -285,6 +285,12 @@ if (FALSE) {
   # - Mean ESS = 300
   # - A higher turning angle correlation helps
   # - We should try 2000 smoothing particles again
+  # * With 2e4 filter particles & 1,500 smoothing particles, phi = 0.4:
+  # - 1.22 hours (100 cl)
+  # - 93/100 forward/backward filter successes
+  # - 73/93 forward/backward & smoothing successes (95 % threshold)
+  # - 83/100 forward/backward & smoothing successes (90 % 'patter-flapper' threshold)
+  # - Mean ESS = 412
   
   #### (optional) Investigate convergence failures
   # See debug-patter.R
