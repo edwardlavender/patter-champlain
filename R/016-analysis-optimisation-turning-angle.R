@@ -355,13 +355,6 @@ mtext(side = 2, "Log likelihood", line = 5)
 dev.off()
 
 
-###########################
-###########################
-#### Record outputs
-
-# (optional) TO DO Record outputs
-
-
 #### End of code
 ###########################
 ###########################

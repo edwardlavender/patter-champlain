@@ -119,6 +119,8 @@ if (FALSE) {
 
 if (TRUE) {
   
+  # (optional) TO DO implement grid search
+  
   # Prepare iteration
   iteration <- iteration[individual_id == 1L, ]
   iteration[, smooth := FALSE]
