@@ -21,8 +21,20 @@ scripts <- list.files(here_r(), full.names = TRUE)
 # Check scripts
 scripts
 
-# Run selected scripts, sequentially, in isolation (~6.5 mins)
+# Rebuild on Windows/MacOS:
+# > Run scripts 1:14 sequentially, in isolation (~6.5 mins)
+# > Run subsequent scripts manually, e.g., for sim and real analyses
 cl_lapply(scripts[1:14], function(script) {
+  print(script)
+  callr::rscript(script)
+})
+
+# Rebuild on Linux: 
+# > Find in files julia_connect()
+# > Reun scripts 1:13 (JULIA_SESSION = FALSE) (~5 mins)
+# > Restart RStudio Project
+# > Run other scripts manually 
+cl_lapply(scripts[1:13], function(script) {
   print(script)
   callr::rscript(script)
 })
