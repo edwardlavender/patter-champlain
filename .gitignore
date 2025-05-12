@@ -8,9 +8,10 @@ data-raw/
 data/*
 !data/inst/
 doc/
+fig/
 R/deprecated/
 R/dev/
-fig/
-.Rprofile
+Rmd/
 .Renviron
+.Rprofile
 Rplots.pdf
