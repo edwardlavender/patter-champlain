@@ -311,7 +311,7 @@ if (FALSE) {
   iteration[, file_coord := file.path(folder_coord, "coord.qs")]
   success <- cl_lapply_particle_collate(.iteration = iteration[file.exists(file_output), ])
   # Check all files were successfully created
-  table(unlist(convergence))
+  table(unlist(success))
   
 }
 
