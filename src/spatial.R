@@ -6,6 +6,16 @@ expect_no_geospatial <- function() {
   invisible(NULL)
 }
 
+# Read a map with terra, off Linux
+rast_map <- function(file) {
+  if (!patter:::os_linux()) {
+    map <- terra::rast(file)
+  } else {
+    map <- NULL
+  }
+  map
+}
+
 if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
   
   # Convert shapefile to SpatRaster
