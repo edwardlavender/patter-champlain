@@ -70,7 +70,7 @@ unitsets <-
   slice(1L) |> 
   ungroup() |> 
   mutate(unit_id = row_number()) |> 
-  select(unit_id, individual_id, time_id, timestamp, receiver_id) |>
+  select(unit_id, individual_id, time_id, timestamp) |>
   mutate(
     file_detections = file.path("data", "input", analysis, 
                                 individual_id, time_id, "detection.qs"),
