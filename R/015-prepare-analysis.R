@@ -118,7 +118,7 @@ unitsets <- unitsets[unit_id %in% detections$unit_id, ]
 # Visually validate matching between unitsets & detections
 unitsets[unit_id == 14, ]
 detections[unit_id == 14, ]
-# Validate all unit_ids present in each datsset
+# Validate all unit_ids present in each dataset
 stopifnot(all(unitsets$unit_id %in% detections$unit_id) & 
             all(detections$unit_id %in% unitsets$unit_id))
 # Validate matching between all unitsets and detections
