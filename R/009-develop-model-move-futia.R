@@ -32,8 +32,8 @@ files_source_r(here_src())
 di_lkt_filtered <- qs::qread(file = here_data("supp","model-move",
                                               "DI_lkt_2013-2014_filtered_May2025.qs"))
 # Filtered Thunder Bay data
-qs::qsave(tb_lkt_filtered, file = here_data("supp","model-move",
-                                            "TB_lkt_2021-2024_filtered_May2025.qs"))
+tb_lkt_filtered <- qs::qread(file = here_data("supp","model-move",
+                                              "TB_lkt_2021-2024_filtered_May2025.qs"))
 
 ###########################
 ###########################
@@ -58,13 +58,13 @@ di_step <- di_step %>%
                             dayn >= 121 & dayn < 182 ~ "spring", # May 1 - June 30
                             dayn >= 182 & dayn < 274 ~ "summer", # July 1 - Sept 30
                             dayn >= 274 & dayn < 335 ~ "fall"), # Oct 1 - Nov 30
-         pos_ssn = factor(season,
-                          levels = c("winter", "spring", "summer", "fall")))
+         season = factor(season,
+                         levels = c("winter", "spring", "summer", "fall")))
 
-# remove positions with transmission gap less than 120 secs & greater than 180 secs 
+# remove positions with transmission gap less than 120 secs & greater than 240 secs 
 di_step_cut <- 
   di_step |> 
-  filter(step_gap > 120 & step_gap < 180)
+  filter(step_gap > 120 & step_gap < 240)
 
 # calculate rate of movement (m/s)
 di_step_cut <- 
@@ -117,16 +117,75 @@ tb_step_95 <- tb_step_cut %>%
 
 # combine Drummond Island and Thunder Bay data
 lkt_step <- 
-  di_step_cut |> 
-  bind_rows(tb_step_cut)
+  di_step_95 |> 
+  bind_rows(tb_step_95) |> 
+  mutate(move_rate_sec0 = if_else(move_rate_sec == 0, 0.00001, move_rate_sec))
+
+# variation by parameters (sex or season) within sites
+di_step_95 |> 
+  group_by(sex, season) |> 
+  reframe(quart1_step = quantile(move_rate_2min, 0.25),
+          med_step = median(move_rate_2min),
+          quart3_step = quantile(move_rate_2min, 0.75),
+          mean_step = mean(move_rate_2min))
+
+di_step0 <- 
+  di_step_95 |> 
+  mutate(move_rate_sec0 = if_else(move_rate_sec == 0, 0.00001, move_rate_sec))
+
+di_glmm <- glmmTMB::glmmTMB(move_rate_sec0 ~ sex+season+(1|animal_id),
+                            data = di_step0,
+                            family = glmmTMB::lognormal(),
+                            na.action = na.fail)
+
+summary(di_glmm) # significant differences for sex and season (greater step length during fall, p < 0.001, and for females, p = 0.003)
+
+tb_step_95 |> 
+  filter(sex %in% c("M", "F")) |> 
+  group_by(sex) |> 
+  reframe(quart1_step = quantile(move_rate_2min, 0.25),
+          med_step = median(move_rate_2min),
+          quart3_step = quantile(move_rate_2min, 0.75),
+          mean_step = mean(move_rate_2min))
+
+tb_step_sex <- 
+  tb_step_95 |> 
+  filter(sex %in% c("M", "F"))
+
+tb_glmm <- glmmTMB::glmmTMB(move_rate_sec ~ sex,
+                   family = glmmTMB::lognormal(),
+                   data = tb_step_sex,
+                   na.action = na.fail)
+
+summary(tb_glmm) # significant difference with greater movement for females (p < 0.001)
+
+# variation in step length angle by site during fall
+lkt_step |> 
+  group_by(site) |> 
+  reframe(quart1_step = quantile(move_rate_2min, 0.25),
+          med_step = median(move_rate_2min),
+          quart3_step = quantile(move_rate_2min, 0.75),
+          mean_step = mean(move_rate_2min))
+
+fall_step <- 
+  lkt_step |> 
+  filter(season == "fall" & sex %in% c("M","F"))
+
+fall_glmm <- glmmTMB::glmmTMB(move_rate_sec0 ~ sex+site+(1|animal_id),
+                              family = glmmTMB::lognormal(),
+                              data = fall_step,
+                              na.action = na.fail)
+
+summary(fall_glmm) # significant difference with greater movement for females (p = 0.004) and Drummond Island fish (p < 0.001)
 
 # plot distribution of rate of movement
 lkt_step |> 
-  filter(move_rate_2min > 0) |> 
+  filter(move_rate_2min > 0 &
+           sex %in% c("M","F")) |> 
   ggplot2::ggplot() +
   ggplot2::geom_histogram(ggplot2::aes(x = move_rate_2min),
                           color = "black", fill = "gray80") +
-  lemon::facet_rep_wrap(~site, scales = "free") +
+  lemon::facet_rep_wrap(~site+sex, scales = "free") +
   ggplot2::labs(x = "Two-minute step length (meters)") +
   ggplot2::theme_classic()
 
@@ -191,7 +250,61 @@ turn_angles <-
   di_angle_cut |> 
   bind_rows(tb_angle_cut)
 
-# density plot of turn angle standard deviations by site
+# variation by parameters (sex or season) within sites
+di_angle_cut |> 
+  group_by(sex, season) |> 
+  reframe(quart1_step = quantile(turn_angle_deg, 0.25),
+          med_step = median(turn_angle_deg),
+          quart3_step = quantile(turn_angle_deg, 0.75),
+          mean_step = mean(turn_angle_deg))
+
+di_angle_glmm <- glmmTMB::glmmTMB(turn_angle ~ sex+season+(1|animal_id),
+                                  data = di_angle_cut,
+                                  family = gaussian(),
+                                  na.action = na.fail)
+
+summary(di_glmm) # no significant effects
+
+tb_angle_cut |> 
+  filter(sex %in% c("M", "F")) |> 
+  group_by(sex) |> 
+  reframe(quart1_step = quantile(turn_angle_deg, 0.25),
+          med_step = median(turn_angle_deg),
+          quart3_step = quantile(turn_angle_deg, 0.75),
+          mean_step = mean(turn_angle_deg))
+
+tb_angle_sex <- 
+  tb_angle_cut |> 
+  filter(sex %in% c("M", "F"))
+
+tb_angle_glmm <- glmmTMB::glmmTMB(turn_angle ~ sex,
+                                  family = gaussian(),
+                                  data = tb_angle_sex,
+                                  na.action = na.fail)
+
+summary(tb_angle_glmm) # no significant effects
+
+# variation in step length angle by site during fall
+turn_angles |> 
+  group_by(site) |> 
+  reframe(quart1_step = quantile(turn_angle_deg, 0.25),
+          med_step = median(turn_angle_deg),
+          quart3_step = quantile(turn_angle_deg, 0.75),
+          mean_step = mean(turn_angle_deg))
+
+fall_turn_angle <- 
+  turn_angles |> 
+  filter(season == "fall" & 
+           sex %in% c("M","F"))
+
+fall_angle_glmm <- glmmTMB::glmmTMB(turn_angle ~ sex+site+(1|animal_id),
+                                    family = gaussian(),
+                                    data = fall_turn_angle,
+                                    na.action = na.fail)
+
+summary(fall_angle_glmm) # no effect of sex (p = 0.450) but greater turn angle SD for Thunder Bay (p = 0.008)
+
+# density plot of turn angle standard deviations by site and sex
 turn_angles |> 
   group_by(animal_id, site) |> 
   reframe(turn_sd = sd(turn_angle, na.rm = T)) |>  

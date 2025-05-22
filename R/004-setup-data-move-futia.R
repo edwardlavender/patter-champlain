@@ -84,7 +84,9 @@ di_lkt_filtered <-
   di_lkt |> 
   mutate(hpe_int = ceiling(HPE),
          year_detect = year(PosUTS),
-         PosUTS = as.POSIXct(PosUTS)) |> 
+         PosUTS = as.POSIXct(PosUTS),
+         # convert length from cm to mm
+         FishLen = FishLen/100) |> 
   filter(hpe_int < di_hpe_cutoff[[1]]) |> 
   select(animal_id = TagID,
          FullId = VUEID,
