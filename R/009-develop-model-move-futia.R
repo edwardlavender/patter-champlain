@@ -44,9 +44,9 @@ tb_lkt_filtered <- qs::qread(file = here_data("supp","model-move",
 di_step <- 
   di_lkt_filtered |> 
   group_by(animal_id) |> 
-  arrange(Time) |> 
+  arrange(Time, .by_group = T) |> 
   mutate(site = "Drummond",
-         step_gap = as.numeric(Time - lag(Time)),
+         step_gap = as.numeric(difftime(Time, lag(Time), units = "secs")),
          step_length = terra::distance(cbind(Longitude, Latitude), cbind(lag(Longitude), lag(Latitude)), 
                                        lonlat = TRUE, pairwise = TRUE)) |> 
   ungroup()
@@ -64,7 +64,7 @@ di_step <- di_step %>%
 # remove positions with transmission gap less than 120 secs & greater than 240 secs 
 di_step_cut <- 
   di_step |> 
-  filter(step_gap > 120 & step_gap < 240)
+  filter(step_gap > 120 & step_gap < 360)
 
 # calculate rate of movement (m/s)
 di_step_cut <- 
@@ -85,9 +85,9 @@ di_step_95 <- di_step_cut %>%
 tb_step <- 
   tb_lkt_filtered |> 
   group_by(animal_id) |> 
-  arrange(Time) |> 
+  arrange(Time, .by_group = T) |> 
   mutate(site = "Thunder",
-         step_gap = as.numeric(Time - lag(Time)),
+         step_gap = as.numeric(difftime(Time, lag(Time), units = "secs")),
          step_length = terra::distance(cbind(Longitude, Latitude), cbind(lag(Longitude), lag(Latitude)), 
                                        lonlat = TRUE, pairwise = TRUE)) |> 
   ungroup()
@@ -100,7 +100,7 @@ tb_step <- tb_step %>%
 # remove positions with transmission gap less than 120 secs & greater than 240 secs 
 tb_step_cut <- 
   tb_step |> 
-  filter(step_gap > 120 & step_gap < 240)
+  filter(step_gap > 120 & step_gap < 360)
 
 # calculate rate of movement (m/s)
 tb_step_cut <- 
@@ -176,7 +176,7 @@ fall_glmm <- glmmTMB::glmmTMB(move_rate_sec0 ~ sex+site+(1|animal_id),
                               data = fall_step,
                               na.action = na.fail)
 
-summary(fall_glmm) # significant difference with greater movement for females (p = 0.004) and Drummond Island fish (p < 0.001)
+summary(fall_glmm) # significant difference with greater movement for females (p = 0.009) and Drummond Island fish (p < 0.001)
 
 # plot distribution of rate of movement
 lkt_step |> 
@@ -186,6 +186,17 @@ lkt_step |>
   ggplot2::geom_histogram(ggplot2::aes(x = move_rate_2min),
                           color = "black", fill = "gray80") +
   lemon::facet_rep_wrap(~site+sex, scales = "free") +
+  ggplot2::labs(x = "Two-minute step length (meters)") +
+  ggplot2::theme_classic()
+
+lkt_step |> 
+  filter(move_rate_2min > 0 &
+           sex %in% c("M","F") &
+           site == "Thunder") |> 
+  ggplot2::ggplot() +
+  ggplot2::geom_histogram(ggplot2::aes(x = move_rate_2min),
+                          color = "black", fill = "gray80") +
+  lemon::facet_rep_wrap(~sex+year_detect, scales = "free", ncol = 4) +
   ggplot2::labs(x = "Two-minute step length (meters)") +
   ggplot2::theme_classic()
 
