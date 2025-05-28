@@ -189,16 +189,13 @@ lkt_step |>
   ggplot2::labs(x = "Two-minute step length (meters)") +
   ggplot2::theme_classic()
 
+# plot rate of movement by HPE
 lkt_step |> 
-  filter(move_rate_2min > 0 &
-           sex %in% c("M","F") &
-           site == "Thunder") |> 
-  ggplot2::ggplot() +
-  ggplot2::geom_histogram(ggplot2::aes(x = move_rate_2min),
-                          color = "black", fill = "gray80") +
-  lemon::facet_rep_wrap(~sex+year_detect, scales = "free", ncol = 4) +
-  ggplot2::labs(x = "Two-minute step length (meters)") +
-  ggplot2::theme_classic()
+  ggplot(aes(x = hpe_int, y = move_rate_2min))+
+  geom_point(aes(color = move_rate_2min), alpha = 0.7)+
+  scale_color_viridis_c()+ 
+  lemon::facet_rep_wrap(~site)+
+  theme_classic()
 
 
 ### 2. Lake trout turn angle
