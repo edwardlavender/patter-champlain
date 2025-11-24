@@ -153,6 +153,15 @@ ck <-
   sort()
 stopifnot(all(ck >= 50))
 
+#### Summarise detection dataset
+# cf. raw data summary statistics (setup-data-detection.R)
+nrow(detections)
+nrow(detections)
+length(unique(detections$individual_id))
+range(detections$timestamp)
+difftime(max(detections$timestamp), min(detections$timestamp), units = "days")
+length(unique(detections$receiver_id))
+
 #### Write unitsets/detections
 qs::qsave(unitsets, here_input_analysis("unitsets.qs"))
 detections[, file_detections := unitsets$file_detections[match(unit_id, unitsets$unit_id)]]
