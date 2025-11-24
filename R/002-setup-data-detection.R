@@ -263,6 +263,22 @@ stopifnot(nr > 1L)
 
 ###########################
 ###########################
+#### Raw data summary statistics
+
+# 1,735,137 detections
+# from 93 individuals
+# derived from 153 receiver deployments 
+# over a four year period
+
+nrow(detections)
+length(unique(detections$individual_id))
+range(detections$timestamp)
+difftime(max(detections$timestamp), min(detections$timestamp), units = "days")
+nrow(moorings_real)
+
+
+###########################
+###########################
 #### Write outputs
 
 qs::qsave(fish, here_input("fish.qs"))
