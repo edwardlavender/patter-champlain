@@ -73,6 +73,12 @@ dirs.create(here_data("supp"))
 dirs.create(here_data("supp", "model-move"))
 dirs.create(here_data("supp", "model-obs"))
 
+dirs.create(here_fig())
+dirs.create(here_fig("local"))
+dirs.create(here_fig("local", "qgis"))
+dirs.create(here_fig("model-move"))
+
+
 #### Record tree
 # See 02-clone.R
 

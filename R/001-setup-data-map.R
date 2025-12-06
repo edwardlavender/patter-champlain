@@ -20,6 +20,8 @@ rm(list = ls())
 Sys.setenv("JULIA_SESSION" = FALSE)
 
 #### Load essential packages
+library(sf)
+library(rnaturalearth)
 library(proj.verse)
 library(tictoc)
 files_source_r(here_src())
@@ -30,7 +32,7 @@ champlain  <- terra::vect(here_data_raw_mf("ChamplainRegionsGrouped/ChamplainReg
 
 ###########################
 ###########################
-#### Study area (~2 s)
+#### Define study area (~2 s)
 
 #### Build map 
 # Use a coarse map for speed sampling initial locations 
@@ -79,6 +81,58 @@ terra::writeRaster(map, here_input("map.tif"), overwrite = TRUE)
 terra::writeRaster(regions$SpatRaster, here_input("regions.tif"), overwrite = TRUE)
 qs::qsave(map_bbox, here_input("map-bbox.qs"))
 file.size(here_input("map.tif")) / 1e6 # MB
+
+
+###########################
+###########################
+#### Define QGIS layers
+
+#### Define Lake Champlain (ll)
+champlain_ll <- terra::project(champlain, "WGS84")
+champlain_ll <- sf::st_as_sf(champlain_ll)
+
+#### Get a high-res North America polgyon
+continent <- ne_download(
+  scale = 10,
+  type = "admin_0_countries",
+  category = "cultural",
+  returnclass = "sf"
+)
+continent <- continent[continent$CONTINENT == "North America", ]
+
+#### (optional) Get North American lakes 
+lakes <- ne_download(scale = 10,
+                     type = "lakes",
+                     category = "physical",
+                     returnclass = "sf"
+) |> 
+  st_make_valid()
+# lakes <- sf::st_crop(lakes, continent)
+
+#### (optional) Get North American rivers 
+rivers <- ne_download(
+  scale = 10,
+  type = "rivers_lake_centerlines",
+  category = "physical",
+  returnclass = "sf"
+)
+# rivers <- sf::st_crop(rivers, continent)
+
+#### Collect geometries
+names(champlain_ll$region)
+continent <- st_geometry(continent)
+lakes     <- st_geometry(lakes)
+rivers    <- st_geometry(rivers)
+
+#### Plot layers 
+plot(continent, col = "gray90")
+plot(lakes, col = "lightblue", border = NA, add = TRUE)
+plot(rivers, col = "lightblue", lwd = 0.1, add = TRUE)
+# plot(st_geometry(champlain_ll), col = "blue", add = TRUE) # slow
+
+#### Write layers
+st_write(continent, here_fig("local", "qgis", "continent.shp"), append = FALSE)
+st_write(champlain_ll, here_fig("local", "qgis", "champlain.shp"), append = FALSE)
 
 
 #### End of code. 
