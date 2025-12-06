@@ -143,7 +143,35 @@ utils.add::basic_stats(moorings$depth, na.rm = TRUE)
 # min  mean median  max   sd   IQR  MAD
 # 1 3.4 13.56  11.85 45.7 9.06 11.85 8.82
 
-#### Process moorings
+#### Process moorings for tidy table
+str(moorings)
+moorings |>
+  as_tibble() |> 
+  janitor::clean_names() |> 
+  select(station_name, 
+         receiver_sn,
+         start = deploy_date_time, end = recover_date_time, 
+         lat = deploy_lat, lon = deploy_long, depth) |> 
+  arrange(station_name, start, receiver_sn) |> 
+  mutate(ID = as.character(row_number()), 
+         lon = plyr::round_any(lon, 0.0001),
+         lon = add_lagging_point_zero(lon, 4), 
+         lat = plyr::round_any(lat, 0.0001), 
+         lat = add_lagging_point_zero(lat, 4), 
+         depth = plyr::round_any(depth, 0.1),
+         depth = add_lagging_point_zero(depth, 1),
+         ) |> 
+  select(ID, 
+         Station = station_name, 
+         Receiver = receiver_sn,
+         Start = start,
+         End = end, 
+         `Longitude (°)` = lon, 
+         `Latitude (°)` = lat, 
+         `Depth (m)` = depth) |> 
+  tidy_write(here_fig("moorings.txt"))
+  
+#### Process moorings for modelling
 moorings <- 
   moorings |> 
   mutate(receiver_station = StationName, 
