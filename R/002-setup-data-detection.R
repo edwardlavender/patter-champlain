@@ -51,16 +51,34 @@ utils.add::basic_stats(surgery$length / 1000)
 range(as.Date(surgery$cap_date, format = "%m/%d/%Y"))
 unique(surgery$tag_type)
 
-surgery |> 
+#### Clean surgery (tagging) events
+surgery <- 
+  surgery |> 
   mutate(date = as.Date(surgery$cap_date, format = "%m/%d/%Y"),
+         lon = detections$deploy_long[match(animal_id, detections$animal_id)], 
+         lat = detections$deploy_lat[match(animal_id, detections$animal_id)],
          row = row_number()) |> 
+  as.data.table()
+
+#### Write QGIS
+surgery |> 
+  group_by(lon, lat) |>
+  summarise(n = n()) |>
+  ungroup() |> 
+  as.data.frame() |> 
+  sf::st_as_sf(coords = c("lon", "lat"), crs = 4326) |> 
+  sf::st_write(here_fig("local", "qgis", "tagging.shp"))
+
+#### Write tidy table
+surgery |> 
   select(Row = row, 
          ID = animal_id, 
-         Site = cap_site,
+         `Longitude (°)` = lon, 
+         `Latitude (°)` = lat, 
          Date = date, 
          Sex = sex, 
          `Total length (mm)` = length) |> 
-  as.data.table() |> 
+  tidy_numbers(digits = c(0, 0, 4, 4, 0)) |> 
   tidy_write(here_fig("fish.txt"))
 
 
@@ -143,6 +161,17 @@ utils.add::basic_stats(moorings$depth, na.rm = TRUE)
 # min  mean median  max   sd   IQR  MAD
 # 1 3.4 13.56  11.85 45.7 9.06 11.85 8.82
 
+#### Process moorings for mapping (QGIS)
+moorings |>
+  select(lat = deploy_lat, lon = deploy_long) |> 
+  group_by(lon, lat) |> 
+  summarise(n = n()) |> 
+  ungroup() |> 
+  sf::st_as_sf(coords = c("lon", "lat"), crs = 4326) |> 
+  # Set as polygon with specified radius 
+  sf::st_buffer(dist = 1000, nQuadSegs = 1000) |> 
+  sf::st_write(here_fig("local", "qgis", "moorings.shp"), append = FALSE)
+  
 #### Process moorings for tidy table
 str(moorings)
 moorings |>
