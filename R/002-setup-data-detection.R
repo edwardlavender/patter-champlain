@@ -27,6 +27,7 @@ library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
 library(ggplot2)
 library(lubridate)
+library(prettyGraphics)
 library(tictoc)
 files_source_r(here_src())
 
@@ -41,7 +42,31 @@ surgery    <- fread(here_data_raw("mfutia", "model_comparison", "surgery_log.csv
 
 ###########################
 ###########################
-#### Identify fish 
+#### Identify tagged fish
+
+#### Examine tagging events
+head(surgery)
+nrow(surgery)
+utils.add::basic_stats(surgery$length / 1000)
+range(as.Date(surgery$cap_date, format = "%m/%d/%Y"))
+unique(surgery$tag_type)
+
+surgery |> 
+  mutate(date = as.Date(surgery$cap_date, format = "%m/%d/%Y"),
+         row = row_number()) |> 
+  select(Row = row, 
+         ID = animal_id, 
+         Site = cap_site,
+         Date = date, 
+         Sex = sex, 
+         `Total length (mm)` = length) |> 
+  as.data.table() |> 
+  tidy_write(here_fig("fish.txt"))
+
+
+###########################
+###########################
+#### Identify detected fish 
 
 #### Define fish (id, size, tagging location)
 # Define fish 
