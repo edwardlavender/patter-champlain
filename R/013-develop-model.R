@@ -23,6 +23,7 @@ Sys.setenv("JULIA_SESSION" = FALSE)
 library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
+library(prettyGraphics)
 library(proj.verse)
 files_source_r(here_src())
 
@@ -108,6 +109,12 @@ pars <- rbind(
   as.data.table()
 
 qs::qsave(pars, here_input("pars-patter.qs"))
+
+pars |> 
+  mutate(parameter_id = as.character(parameter_id), 
+         mobility = as.character(mobility)) |> 
+  tidy_numbers(digits = c(4, 4, 4, 4, 4, 0)) |> 
+  tidy_write(here_fig("pars.txt"))
 
 
 #### End of code.
