@@ -67,7 +67,7 @@ surgery |>
   ungroup() |> 
   as.data.frame() |> 
   sf::st_as_sf(coords = c("lon", "lat"), crs = 4326) |> 
-  sf::st_write(here_fig("local", "qgis", "tagging.shp"))
+  sf::st_write(here_fig("local", "qgis", "tagging.shp"), append = FALSE)
 
 #### Write tidy table
 surgery |> 
@@ -146,7 +146,19 @@ fish |>
 #### Prepare moorings
 
 #### Define receiver coordinates (UTM)
-# Note that re-projection requires an internet connection! 
+# Receivers were deployed in 31 stations
+unique(moorings$StationName)
+# With slight changes in position
+# > There are 143 unique pairs of lon, lat coordinates
+# > Out of 153 receiver deployments
+moorings |>
+  group_by(deploy_long, deploy_lat) |> 
+  slice(1L) |>
+  ungroup() |> 
+  nrow()
+nrow(moorings)
+# Define moorings in UTM
+# > Note that re-projection requires an internet connection! 
 head(moorings)
 rxy <- 
   cbind(moorings$deploy_lon, moorings$deploy_lat) |> 
@@ -224,6 +236,9 @@ ggplot(moorings) +
     y    = factor(receiver_id),
     yend = factor(receiver_id)
   ), size = 2)
+
+#### Check map by deployment period
+# (optional) TO DO - see above.
 
 #### Add detection probability parameters
 # This is implemented later
