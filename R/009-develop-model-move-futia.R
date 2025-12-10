@@ -25,6 +25,7 @@ library(proj.verse)
 library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
 files_source_r(here_src())
 
 #### Load data
@@ -35,24 +36,26 @@ di_lkt_filtered <- qs::qread(file = here_data("supp","model-move",
 tb_lkt_filtered <- qs::qread(file = here_data("supp","model-move",
                                               "TB_lkt_2021-2024_filtered_May2025.qs"))
 
+
 ###########################
 ###########################
 #### Analyse data
-### 1. Lake trout step length
-# calculate step length for Drummond Island fish
-# calculate distance and time gaps between filtered positions
+
+#### Build Drummond Island step length dataset
+# Calculate distance and time gaps between filtered positions
 di_step <- 
   di_lkt_filtered |> 
   group_by(animal_id) |> 
   arrange(Time, .by_group = T) |> 
   mutate(site = "Drummond",
          step_gap = as.numeric(difftime(Time, lag(Time), units = "secs")),
-         step_length = terra::distance(cbind(Longitude, Latitude), cbind(lag(Longitude), lag(Latitude)), 
+         step_length = terra::distance(cbind(Longitude, Latitude), 
+                                       cbind(lag(Longitude), lag(Latitude)), 
                                        lonlat = TRUE, pairwise = TRUE)) |> 
   ungroup()
-
-# add season
-di_step <- di_step %>% 
+# Add season
+di_step <- 
+  di_step |> 
   mutate(dayn = yday(Time),
          season = case_when(dayn < 121 | dayn >= 335 ~ "winter", # Dec 1 - Apr 30
                             dayn >= 121 & dayn < 182 ~ "spring", # May 1 - June 30
@@ -60,28 +63,25 @@ di_step <- di_step %>%
                             dayn >= 274 & dayn < 335 ~ "fall"), # Oct 1 - Nov 30
          season = factor(season,
                          levels = c("winter", "spring", "summer", "fall")))
-
-# remove positions with transmission gap less than 120 secs & greater than 240 secs 
+# Remove positions with transmission gap less than 120 secs & greater than 240 secs 
 di_step_cut <- 
   di_step |> 
   filter(step_gap > 120 & step_gap < 360)
-
-# calculate rate of movement (m/s)
+# Calculate rate of movement (m/s)
 di_step_cut <- 
   di_step_cut |> 
   mutate(move_rate_sec = step_length/step_gap,
-         move_rate_2min = move_rate_sec*120)
-
-# remove unlikely movements (greatest 5% for each fish)
-di_step_95 <- di_step_cut %>% 
-  group_by(animal_id) %>% 
-  mutate(quant_95 = quantile(move_rate_sec, 0.95)) %>% 
-  filter(move_rate_sec < quant_95) %>% 
+         move_rate_2min = move_rate_sec * 120)
+# Remove unlikely movements (greatest 5% for each fish)
+di_step_95 <- 
+  di_step_cut |> 
+  group_by(animal_id) |> 
+  mutate(quant_95 = quantile(move_rate_sec, 0.95)) |> 
+  filter(move_rate_sec < quant_95) |> 
   ungroup()
 
-
-# calculate step length for Thunder Bay fish
-# calculate distance and time gaps between filtered positions
+#### Build Thunder Bay step length dataset
+# Calculate distance and time gaps between filtered positions
 tb_step <- 
   tb_lkt_filtered |> 
   group_by(animal_id) |> 
@@ -91,37 +91,35 @@ tb_step <-
          step_length = terra::distance(cbind(Longitude, Latitude), cbind(lag(Longitude), lag(Latitude)), 
                                        lonlat = TRUE, pairwise = TRUE)) |> 
   ungroup()
-
-# add season
-tb_step <- tb_step %>% 
+# Add season
+tb_step <- tb_step |> 
   mutate(dayn = yday(Time),
          season = "fall")
-
-# remove positions with transmission gap less than 120 secs & greater than 240 secs 
+# Remove positions with transmission gap less than 120 secs & greater than 240 secs 
 tb_step_cut <- 
   tb_step |> 
   filter(step_gap > 120 & step_gap < 360)
-
-# calculate rate of movement (m/s)
+# Calculate rate of movement (m/s)
 tb_step_cut <- 
   tb_step_cut |> 
   mutate(move_rate_sec = step_length/step_gap,
          move_rate_2min = move_rate_sec*120)
-
-# remove unlikely movements (greatest 5% for each fish)
-tb_step_95 <- tb_step_cut %>% 
-  group_by(animal_id) %>% 
-  mutate(quant_95 = quantile(move_rate_sec, 0.95)) %>% 
-  filter(move_rate_sec < quant_95) %>% 
+# Remove unlikely movements (greatest 5% for each fish)
+tb_step_95 <- 
+  tb_step_cut |> 
+  group_by(animal_id) |> 
+  mutate(quant_95 = quantile(move_rate_sec, 0.95)) |> 
+  filter(move_rate_sec < quant_95) |> 
   ungroup()
 
-# combine Drummond Island and Thunder Bay data
+#### Combine Drummond Island and Thunder Bay data
 lkt_step <- 
   di_step_95 |> 
   bind_rows(tb_step_95) |> 
   mutate(move_rate_sec0 = if_else(move_rate_sec == 0, 0.00001, move_rate_sec))
 
-# variation by parameters (sex or season) within sites
+#### Investigate Drummond Island dataset
+# Compute summary statistics
 di_step_95 |> 
   group_by(sex, season) |> 
   reframe(quart1_step = quantile(move_rate_2min, 0.25),
@@ -129,17 +127,20 @@ di_step_95 |>
           quart3_step = quantile(move_rate_2min, 0.75),
           mean_step = mean(move_rate_2min))
 
+# Fit GLMM
 di_step0 <- 
   di_step_95 |> 
   mutate(move_rate_sec0 = if_else(move_rate_sec == 0, 0.00001, move_rate_sec))
-
 di_glmm <- glmmTMB::glmmTMB(move_rate_sec0 ~ sex+season+(1|animal_id),
                             data = di_step0,
                             family = glmmTMB::lognormal(),
                             na.action = na.fail)
+summary(di_glmm) 
+# > significant differences for sex and season 
+# > (greater step length during fall, p < 0.001, and for females, p = 0.003
 
-summary(di_glmm) # significant differences for sex and season (greater step length during fall, p < 0.001, and for females, p = 0.003)
-
+#### Investigate Thunder Bay dataset
+# Compute summary statistics
 tb_step_95 |> 
   filter(sex %in% c("M", "F")) |> 
   group_by(sex) |> 
@@ -147,38 +148,39 @@ tb_step_95 |>
           med_step = median(move_rate_2min),
           quart3_step = quantile(move_rate_2min, 0.75),
           mean_step = mean(move_rate_2min))
-
+# Fit GLMM 
 tb_step_sex <- 
   tb_step_95 |> 
   filter(sex %in% c("M", "F"))
-
 tb_glmm <- glmmTMB::glmmTMB(move_rate_sec ~ sex,
                    family = glmmTMB::lognormal(),
                    data = tb_step_sex,
                    na.action = na.fail)
+summary(tb_glmm) 
+# > Significant difference with greater movement for females (p < 0.001)
 
-summary(tb_glmm) # significant difference with greater movement for females (p < 0.001)
-
-# variation in step length angle by site during fall
+#### Examine combined dataset
+# Examine variation in step length by site during fall
 lkt_step |> 
   group_by(site) |> 
   reframe(quart1_step = quantile(move_rate_2min, 0.25),
           med_step = median(move_rate_2min),
           quart3_step = quantile(move_rate_2min, 0.75),
           mean_step = mean(move_rate_2min))
-
+# Fit GLMM
 fall_step <- 
   lkt_step |> 
   filter(season == "fall" & sex %in% c("M","F"))
-
 fall_glmm <- glmmTMB::glmmTMB(move_rate_sec0 ~ sex+site+(1|animal_id),
                               family = glmmTMB::lognormal(),
                               data = fall_step,
                               na.action = na.fail)
+summary(fall_glmm) 
+# > significant difference with greater movement for females (p = 0.009) 
+# > and Drummond Island fish (p < 0.001)
 
-summary(fall_glmm) # significant difference with greater movement for females (p = 0.009) and Drummond Island fish (p < 0.001)
-
-# plot distribution of rate of movement
+#### Plot the distribution of step lengths
+# Plot distribution of rate of movement
 lkt_step |> 
   filter(move_rate_2min > 0 &
            sex %in% c("M","F")) |> 
@@ -188,18 +190,34 @@ lkt_step |>
   lemon::facet_rep_wrap(~site+sex, scales = "free") +
   ggplot2::labs(x = "Two-minute step length (meters)") +
   ggplot2::theme_classic()
-
-# plot rate of movement by HPE
+# Plot rate of movement by HPE
 lkt_step |> 
-  ggplot(aes(x = hpe_int, y = move_rate_2min))+
-  geom_point(aes(color = move_rate_2min), alpha = 0.7)+
-  scale_color_viridis_c()+ 
-  lemon::facet_rep_wrap(~site)+
+  ggplot(aes(x = hpe_int, y = move_rate_2min)) +
+  geom_point(aes(color = move_rate_2min), alpha = 0.7) +
+  scale_color_viridis_c() + 
+  lemon::facet_rep_wrap(~site) +
   theme_classic()
 
+#### Global summaries
+# Overall densities
+plot(density(lkt_step$step_length), ylim = c(0, 0.06))
+lines(density(lkt_step$step_length[lkt_step$site == "Drummond"]), col = "blue")
+lines(density(lkt_step$step_length[lkt_step$site == "Thunder"]), col = "red")
+# Overall summary statistics
+lkt_step |> 
+  group_by(site) |> 
+  summarise(utils.add::basic_stats(step_length))
+lkt_step |> 
+  select(site, step_length) |> 
+  as.data.table() |> 
+  qs::qsave(here_data("supp", "model-move", "futia-step.qs"))
 
-### 2. Lake trout turn angle
-# calculate turn angle for Drummond Island fish
+
+###########################
+###########################
+#### Analyse turn angles
+
+# Calculate turn angle for Drummond Island fish
 di_angle <- 
   di_lkt_filtered |> 
   group_by(animal_id) |>  
@@ -221,7 +239,7 @@ di_angle_cut <-
          season = case_when(dayn < 121 | dayn >= 335 ~ "winter", # Dec 1 - Apr 30
                             dayn >= 121 & dayn < 182 ~ "spring", # May 1 - June 30
                             dayn >= 182 & dayn < 274 ~ "summer", # July 1 - Sept 30
-                            dayn >= 274 & dayn < 335 ~ "fall"), # Oct 1 - Nov 30
+                            dayn >= 274 & dayn < 335 ~ "fall"),  # Oct 1 - Nov 30
          season = factor(season,
                          levels = c("winter", "spring", "summer", "fall")),
          # add site name
@@ -357,6 +375,7 @@ turn_angles |>
   ggplot2::scale_fill_manual(values = c("#5ab4ac","#8c510a")) +
   ggplot2::labs(x = "Turn angle (degrees)", y = "Frequency", fill = "Sex") +
   ggplot2::theme_light()
+
 
 #### End of code. 
 ###########################

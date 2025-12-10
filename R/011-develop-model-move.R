@@ -37,6 +37,7 @@ files_source_r(here_src())
 map  <- terra::rast(here_input("map.tif"))
 fish <- qs::qread(here_input("fish.qs"))
 SS4  <- qs::qread(here_data("supp", "model-obs", "SS4.qs"))
+vps  <- qs::qread(here_data("supp", "model-move", "futia-step.qs"))
 
 
 ###########################
@@ -128,7 +129,12 @@ pars_model_move_full <- data.table(mobility = c(mobility, mobility * deflate, mo
 ###########################
 #### Publication-quality visualisation of movement model
 
-#### Precompute observed step length densities (slow)
+#### Isolate VPS datasets
+# We compute density below 
+drummond <- vps[site == "Drummond", ]
+thunder  <- vps[site == "Thunder", ]
+
+#### For accelerometry, precompute observed step length densities  (slow)
 # Define speeds (values) for 120 s
 s    <- 120
 vmin <- SS4 * min(fish$len) * s
@@ -136,8 +142,8 @@ vmax <- SS4 * max(fish$len) * s
 # Round values to add as a rug (round for speed)
 # vrug <- unique(c(plyr::round_any(vmin, 5), plyr::round_any(vmax, 5)))
 # Compute densities
-dmin <- density(vmin)
-dmax <- density(vmax)
+dmin <- density(vmin, from = 0)
+dmax <- density(vmax, from = 0)
 
 #### Step lengths
 png(here_fig("model-move-step.png"), 
@@ -145,15 +151,18 @@ png(here_fig("model-move-step.png"),
 pp <- par(mgp = c(3, 0.7, 0))
 # Set graphical parameters
 xlim <- c(0, 500)
-ylim <- c(0, 0.025)
-# Observed distributions for small and large fish 
+# ylim <- c(0, 0.025)
+ylim <- c(0, 0.06)
 plot(dmin, 
      type = "n",
      xlim = xlim, ylim = ylim,
      xlab = "", ylab = "", main = "",
      axes = FALSE)
-# rug(vrug, pos = ylim[2] * 0.9)
-add_poly(dmin, col = scales::alpha("lightgrey", 1))
+# Observed distributions for VPS analyses 
+add_poly(density(drummond$step_length, from = 0), col = scales::alpha("lightblue", 1))
+add_poly(density(thunder$step_length, from = 0), col = scales::alpha("blue", 0.5))
+# Observed distributions for small and large fish 
+add_poly(dmin, col = scales::alpha("lightgrey", 0.75))
 add_poly(dmax, col = scales::alpha("dimgrey", 0.5))
 # Best model (step-length)
 plot_dbn("gamma", 
@@ -180,12 +189,14 @@ plot_dbn("gamma",
 mark_mobility(pars_model_move_full$mobility[1])
 mark_mobility(pars_model_move_full$mobility[2], col = "red")
 mark_mobility(pars_model_move_full$mobility[3], col = "darkgreen")
-# Add axes (m/s, m per two min, density )
+# Add axes (m/s, m per two min, density)
 axis(side = 1, c(xlim[1], xlim[2]), labels = c("", ""), lwd.tick = 0, pos = ylim[1])
 axis(side = 1, (0:4) * s, labels = 0:4, pos = ylim[1])
-axis(side = 1, seq(xlim[1], xlim[2], by = 100), pos = -0.005) 
+# axis(side = 1, seq(xlim[1], xlim[2], by = 100), pos = -0.005) 
+axis(side = 1, seq(xlim[1], xlim[2], by = 100), pos = -0.0125) 
 axis(side = 2, ylim, labels = FALSE, lwd.ticks = 0, pos = xlim[1])
-axis(side = 2, c(0, 0.01, 0.02), pos = xlim[1], las = TRUE)
+# axis(side = 2, c(0, 0.01, 0.02), pos = xlim[1], las = TRUE)
+axis(side = 2, c(0, 0.02, 0.04, 0.06), pos = xlim[1], las = TRUE)
 par(pp)
 dev.off()
 
