@@ -14,6 +14,5 @@ dmix <- function(x, mean = 0, sd = 0.3) {
   d2 <- dunif(x, -pi, pi)
   w1 <- 0.99
   w2 <- 1 - w1
-  w2 <- 0
   d1 * w1 + d2 * w2
 }
