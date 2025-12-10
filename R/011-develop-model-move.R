@@ -102,7 +102,7 @@ curve(dtrunc(x, "cauchy", a = 0, b = mobility, 20, 10), from = 0, to = mobility)
 #### Synthesise parameters
 
 #### Define 'best-guess' parameters (list)
-pars_model_move_best <- list(shape = 3.25, scale = 25.0, mobility = 216, phi = 1.8)
+pars_model_move_best <- list(shape = 3.25, scale = 25.0, mobility = 216, phi = 0.4)
 
 #### Define restrictive/flexible parameters 
 # Define parameter uncertainty 
@@ -212,7 +212,7 @@ png(here_fig("model-move-turning-angle.png"),
 pp <- par(mgp = c(3, 0.7, 0))
 x <- seq(-pi, pi, length.out = 1e5)
 y <- dmix(x, 0, pars_model_move_full$phi[1])
-ylim <- c(0, 0.4)
+ylim <- c(0, 1.2)
 plot(x, y,
      ylim = ylim,
      xlab = "", ylab = "",
@@ -232,7 +232,7 @@ axis(side = 1,
      at = c(-pi, -pi/2, 0, pi/2, pi), 
      labels = c(expression(-pi), expression(-pi/2), expression(0), expression(pi/2), expression(pi)), 
      pos = 0)
-yat <- seq(ylim[1], ylim[2], by = 0.1)
+yat <- seq(ylim[1], ylim[2], by = 0.4)
 axis(side = 2, prettyGraphics:::add_lagging_point_zero(yat), las = TRUE, pos = -pi)
 par(pp)
 dev.off()
