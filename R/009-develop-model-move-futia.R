@@ -41,6 +41,9 @@ tb_lkt_filtered <- qs::qread(file = here_data("supp","model-move",
 ###########################
 #### Analyse data
 
+#### Fit models? (slow)
+fit <- FALSE
+
 #### Build Drummond Island step length dataset
 # Calculate distance and time gaps between filtered positions
 di_step <- 
@@ -126,18 +129,19 @@ di_step_95 |>
           med_step = median(move_rate_2min),
           quart3_step = quantile(move_rate_2min, 0.75),
           mean_step = mean(move_rate_2min))
-
 # Fit GLMM
-di_step0 <- 
-  di_step_95 |> 
-  mutate(move_rate_sec0 = if_else(move_rate_sec == 0, 0.00001, move_rate_sec))
-di_glmm <- glmmTMB::glmmTMB(move_rate_sec0 ~ sex+season+(1|animal_id),
-                            data = di_step0,
-                            family = glmmTMB::lognormal(),
-                            na.action = na.fail)
-summary(di_glmm) 
-# > significant differences for sex and season 
-# > (greater step length during fall, p < 0.001, and for females, p = 0.003
+if (fit) {
+  di_step0 <- 
+    di_step_95 |> 
+    mutate(move_rate_sec0 = if_else(move_rate_sec == 0, 0.00001, move_rate_sec))
+  di_glmm <- glmmTMB::glmmTMB(move_rate_sec0 ~ sex+season+(1|animal_id),
+                              data = di_step0,
+                              family = glmmTMB::lognormal(),
+                              na.action = na.fail)
+  summary(di_glmm) 
+  # > significant differences for sex and season 
+  # > (greater step length during fall, p < 0.001, and for females, p = 0.003
+}
 
 #### Investigate Thunder Bay dataset
 # Compute summary statistics
@@ -149,15 +153,17 @@ tb_step_95 |>
           quart3_step = quantile(move_rate_2min, 0.75),
           mean_step = mean(move_rate_2min))
 # Fit GLMM 
-tb_step_sex <- 
-  tb_step_95 |> 
-  filter(sex %in% c("M", "F"))
-tb_glmm <- glmmTMB::glmmTMB(move_rate_sec ~ sex,
-                   family = glmmTMB::lognormal(),
-                   data = tb_step_sex,
-                   na.action = na.fail)
-summary(tb_glmm) 
-# > Significant difference with greater movement for females (p < 0.001)
+if (fit) {
+  tb_step_sex <- 
+    tb_step_95 |> 
+    filter(sex %in% c("M", "F"))
+  tb_glmm <- glmmTMB::glmmTMB(move_rate_sec ~ sex,
+                              family = glmmTMB::lognormal(),
+                              data = tb_step_sex,
+                              na.action = na.fail)
+  summary(tb_glmm) 
+  # > Significant difference with greater movement for females (p < 0.001)
+}
 
 #### Examine combined dataset
 # Examine variation in step length by site during fall
@@ -168,28 +174,30 @@ lkt_step |>
           quart3_step = quantile(move_rate_2min, 0.75),
           mean_step = mean(move_rate_2min))
 # Fit GLMM
-fall_step <- 
-  lkt_step |> 
-  filter(season == "fall" & sex %in% c("M","F"))
-fall_glmm <- glmmTMB::glmmTMB(move_rate_sec0 ~ sex+site+(1|animal_id),
-                              family = glmmTMB::lognormal(),
-                              data = fall_step,
-                              na.action = na.fail)
-summary(fall_glmm) 
-# > significant difference with greater movement for females (p = 0.009) 
-# > and Drummond Island fish (p < 0.001)
+if (fit) {
+  fall_step <- 
+    lkt_step |> 
+    filter(season == "fall" & sex %in% c("M","F"))
+  fall_glmm <- glmmTMB::glmmTMB(move_rate_sec0 ~ sex+site+(1|animal_id),
+                                family = glmmTMB::lognormal(),
+                                data = fall_step,
+                                na.action = na.fail)
+  summary(fall_glmm) 
+  # > significant difference with greater movement for females (p = 0.009) 
+  # > and Drummond Island fish (p < 0.001)
+}
 
-#### Plot the distribution of step lengths
+#### Visualise data using ggplot
 # Plot distribution of rate of movement
 lkt_step |> 
   filter(move_rate_2min > 0 &
            sex %in% c("M","F")) |> 
-  ggplot2::ggplot() +
-  ggplot2::geom_histogram(ggplot2::aes(x = move_rate_2min),
-                          color = "black", fill = "gray80") +
+  ggplot() +
+  geom_histogram(aes(x = move_rate_2min),
+                 color = "black", fill = "gray80") +
   lemon::facet_rep_wrap(~site+sex, scales = "free") +
-  ggplot2::labs(x = "Two-minute step length (meters)") +
-  ggplot2::theme_classic()
+  labs(x = "Two-minute step length (meters)") +
+  theme_classic()
 # Plot rate of movement by HPE
 lkt_step |> 
   ggplot(aes(x = hpe_int, y = move_rate_2min)) +
@@ -198,7 +206,7 @@ lkt_step |>
   lemon::facet_rep_wrap(~site) +
   theme_classic()
 
-#### Global summaries
+#### Overall summaries
 # Overall densities
 plot(density(lkt_step$step_length), ylim = c(0, 0.06))
 lines(density(lkt_step$step_length[lkt_step$site == "Drummond"]), col = "blue")
@@ -217,24 +225,22 @@ lkt_step |>
 ###########################
 #### Analyse turn angles
 
-# Calculate turn angle for Drummond Island fish
+#### Calculate turn angle for Drummond Island fish
+# Comptue angles
 di_angle <- 
   di_lkt_filtered |> 
   group_by(animal_id) |>  
-  arrange(Time) |> 
-  mutate(turn_angle = atan2(Longitude - lag(Longitude,2), Latitude - lag(Latitude,2)) -
-           atan2(lag(Longitude,1)- lag(Longitude,2), lag(Latitude,1)- lag(Latitude,2)),
+  arrange(Time, .by_group = TRUE) |> 
+  mutate(turn_angle = calc_angle_vps(pick(Longitude, Latitude)), 
          turn_time = Time - lag(Time, 2)) |>  
   ungroup() |> 
-  mutate(turn_angle_deg = if_else(turn_angle < 0, turn_angle*57.2958 + 360, turn_angle*57.2958))
-
-
-# filter and add season
+  mutate(turn_angle_deg = turn_angle * pi / 180)
+# Filter and add season
 di_angle_cut <- 
   di_angle |> 
-  # remove turns generated with >2 min time steps between detections
+  # Remove turns generated with >2 min time steps between detections
   filter(turn_time < 360) |> 
-  # assign detections to seasons
+  # Assign detections to seasons
   mutate(dayn = yday(Time),
          season = case_when(dayn < 121 | dayn >= 335 ~ "winter", # Dec 1 - Apr 30
                             dayn >= 121 & dayn < 182 ~ "spring", # May 1 - June 30
@@ -244,23 +250,20 @@ di_angle_cut <-
                          levels = c("winter", "spring", "summer", "fall")),
          # add site name
          site = "Drummond")
-
 summary(di_angle_cut)
 
-
-# calculate turn angle for Thunder Bay fish
+#### Calculate turn angle for Thunder Bay fish
+# Compute angle 
 tb_angle <- 
   tb_lkt_filtered |> 
   group_by(animal_id) |>  
-  arrange(Time) |> 
-  mutate(turn_angle = atan2(Longitude - lag(Longitude,2), Latitude - lag(Latitude,2)) -
-           atan2(lag(Longitude,1)- lag(Longitude,2), lag(Latitude,1)- lag(Latitude,2)),
+  arrange(Time, .by_group = TRUE) |> 
+  mutate(turn_angle = calc_angle_vps(pick(Longitude, Latitude)),
          turn_time = Time - lag(Time, 2)) |>  
   ungroup() |> 
-  mutate(turn_angle_deg = if_else(turn_angle < 0, turn_angle*57.2958 + 360, turn_angle*57.2958))
-
-
-# filter to shortest time steps (season not evaluated as all detections occurred during fall)
+  mutate(turn_angle_deg = turn_angle * pi / 180)
+# Filter to shortest time steps 
+# (season not evaluated as all detections occurred during fall)
 tb_angle_cut <- 
   tb_angle |> 
   # remove turns generated with >3 min time steps between detections
@@ -268,29 +271,32 @@ tb_angle_cut <-
   # assign site name
   mutate(site = "Thunder",
          season = "fall")
-
 summary(tb_angle_cut)
 
-# combine data
+#### Combine datasets
 turn_angles <- 
   di_angle_cut |> 
   bind_rows(tb_angle_cut)
 
-# variation by parameters (sex or season) within sites
+#### Investigate Drummond Island dataset 
+# Compute summary statistics
 di_angle_cut |> 
   group_by(sex, season) |> 
   reframe(quart1_step = quantile(turn_angle_deg, 0.25),
           med_step = median(turn_angle_deg),
           quart3_step = quantile(turn_angle_deg, 0.75),
           mean_step = mean(turn_angle_deg))
+# Fit GLMM
+if (fit) {
+  di_angle_glmm <- glmmTMB::glmmTMB(turn_angle ~ sex+season+(1|animal_id),
+                                    data = di_angle_cut,
+                                    family = gaussian(),
+                                    na.action = na.fail)
+  summary(di_glmm)
+}
 
-di_angle_glmm <- glmmTMB::glmmTMB(turn_angle ~ sex+season+(1|animal_id),
-                                  data = di_angle_cut,
-                                  family = gaussian(),
-                                  na.action = na.fail)
-
-summary(di_glmm) # no significant effects
-
+#### Investigate Thunder Bay dataset
+# Compute summary statistics
 tb_angle_cut |> 
   filter(sex %in% c("M", "F")) |> 
   group_by(sex) |> 
@@ -298,83 +304,110 @@ tb_angle_cut |>
           med_step = median(turn_angle_deg),
           quart3_step = quantile(turn_angle_deg, 0.75),
           mean_step = mean(turn_angle_deg))
+# Fix GLMM
+if (fit) {
+  tb_angle_sex <- 
+    tb_angle_cut |> 
+    filter(sex %in% c("M", "F"))
+  
+  tb_angle_glmm <- glmmTMB::glmmTMB(turn_angle ~ sex,
+                                    family = gaussian(),
+                                    data = tb_angle_sex,
+                                    na.action = na.fail)
+  summary(tb_angle_glmm)
+}
 
-tb_angle_sex <- 
-  tb_angle_cut |> 
-  filter(sex %in% c("M", "F"))
-
-tb_angle_glmm <- glmmTMB::glmmTMB(turn_angle ~ sex,
-                                  family = gaussian(),
-                                  data = tb_angle_sex,
-                                  na.action = na.fail)
-
-summary(tb_angle_glmm) # no significant effects
-
-# variation in step length angle by site during fall
+#### Investigate overall dataset 
+# Examine variation in step length angle by site during fall
 turn_angles |> 
   group_by(site) |> 
   reframe(quart1_step = quantile(turn_angle_deg, 0.25),
           med_step = median(turn_angle_deg),
           quart3_step = quantile(turn_angle_deg, 0.75),
           mean_step = mean(turn_angle_deg))
+# Fit GLMM 
+if (fit) {
+  fall_turn_angle <- 
+    turn_angles |> 
+    filter(season == "fall" & 
+             sex %in% c("M","F"))
+  fall_angle_glmm <- glmmTMB::glmmTMB(turn_angle ~ sex+site+(1|animal_id),
+                                      family = gaussian(),
+                                      data = fall_turn_angle,
+                                      na.action = na.fail)
+  summary(fall_angle_glmm) 
+}
 
-fall_turn_angle <- 
-  turn_angles |> 
-  filter(season == "fall" & 
-           sex %in% c("M","F"))
-
-fall_angle_glmm <- glmmTMB::glmmTMB(turn_angle ~ sex+site+(1|animal_id),
-                                    family = gaussian(),
-                                    data = fall_turn_angle,
-                                    na.action = na.fail)
-
-summary(fall_angle_glmm) # no effect of sex (p = 0.450) but greater turn angle SD for Thunder Bay (p = 0.008)
-
-# density plot of turn angle standard deviations by site and sex
+#### Visualise dataset with ggplot2
+# Density plot of turn angle standard deviations by site and sex
 turn_angles |> 
   group_by(animal_id, site) |> 
   reframe(turn_sd = sd(turn_angle, na.rm = T)) |>  
-  ggplot2::ggplot(ggplot2::aes(x = turn_sd, y = ..density..)) +
-  ggplot2::geom_histogram(color = "black", fill = "transparent") +
-  ggplot2::geom_density(color = "red", size = 0.75) +
+  ggplot(aes(x = turn_sd, y = ..density..)) +
+  geom_histogram(color = "black", fill = "transparent") +
+  geom_density(color = "red", size = 0.75) +
   lemon::facet_rep_wrap(~site) +
-  ggplot2::labs(x = "Turn angle standard deviation (radians)",
-                y = "Density") +
-  ggplot2::theme_classic() 
-
-# Radial histogram of turn angle standard deviation by site
+  labs(x = "Turn angle standard deviation (radians)",
+       y = "Density") +
+  theme_classic() 
+# Radial histogram of turn angle standard deviation by site (Drummond Island)
 turn_angles |> 
-  # focus on Drummond Island Data
+  
   filter(site == "Drummond") |>
-  ggplot2::ggplot() +
-  ggplot2::geom_histogram(ggplot2::aes(x = turn_angle_deg,
-                                       y = ggplot2::after_stat(c(count[group == 1]/sum(count[group == 1]),
-                                                                 count[group == 2]/sum(count[group == 2]))),
-                                       fill = season),
-                          bins = 24, color = "black") +
-  ggplot2::coord_polar(theta = "x") +
+  ggplot() +
+  geom_histogram(aes(x = turn_angle_deg,
+                     y = after_stat(c(count[group == 1]/sum(count[group == 1]),
+                                      count[group == 2]/sum(count[group == 2]))),
+                     fill = season),
+                 bins = 24, color = "black") +
+  coord_polar(theta = "x") +
   lemon::facet_rep_wrap(~season) +
-  ggplot2::scale_x_continuous(breaks = seq(0,360, 15)) +
-  ggplot2::scale_fill_manual(values = c("#5ab4ac","#8c510a")) +
-  ggplot2::labs(x = "Turn angle (degrees)", y = "Frequency", fill = "Season") +
-  ggplot2::theme_light()
-
+  scale_x_continuous(breaks = seq(0,360, 15)) +
+  scale_fill_manual(values = c("#5ab4ac","#8c510a")) +
+  labs(x = "Turn angle (degrees)", y = "Frequency", fill = "Season") +
+  theme_light()
+# As above for Thunder Island
 turn_angles |> 
-  # focus on Thunder Bay data with sex identified
   filter(site == "Thunder" &
            sex %in% c("M","F")) |> 
-  ggplot2::ggplot() +
-  ggplot2::geom_histogram(ggplot2::aes(x = turn_angle_deg, 
-                                       y = ggplot2::after_stat(c(count[group == 1]/sum(count[group == 1]),
-                                                                 count[group == 2]/sum(count[group == 2]))),
-                                       fill = sex),
-                          bins = 24, color = "black") +
-  ggplot2::coord_polar(theta = "x") +
+  ggplot() +
+  geom_histogram(aes(x = turn_angle_deg, 
+                     y = after_stat(c(count[group == 1]/sum(count[group == 1]),
+                                      count[group == 2]/sum(count[group == 2]))),
+                     fill = sex),
+                 bins = 24, color = "black") +
+  coord_polar(theta = "x") +
   lemon::facet_rep_wrap(~ sex) +
-  ggplot2::scale_x_continuous(breaks = seq(0,360, 15)) +
-  ggplot2::scale_fill_manual(values = c("#5ab4ac","#8c510a")) +
-  ggplot2::labs(x = "Turn angle (degrees)", y = "Frequency", fill = "Sex") +
-  ggplot2::theme_light()
+  scale_x_continuous(breaks = seq(0,360, 15)) +
+  scale_fill_manual(values = c("#5ab4ac","#8c510a")) +
+  labs(x = "Turn angle (degrees)", y = "Frequency", fill = "Sex") +
+  theme_light()
+
+#### Overall summaries (turn angle)
+# Overall densities
+plot(density(turn_angles$turn_angle))
+lines(density(turn_angles$turn_angle[turn_angles$site == "Drummond"]), col = "blue")
+lines(density(turn_angles$turn_angle[turn_angles$site == "Thunder"]), col = "red")
+# Overall summary statistics
+turn_angles |> 
+  group_by(site) |> 
+  summarise(utils.add::basic_stats(turn_angle))
+turn_angles |> 
+  select(site, turn_angle) |> 
+  as.data.table() |> 
+  qs::qsave(here_data("supp", "model-move", "futia-angle.qs"))
+
+# #### Overall summarise (turn angle SD)
+# # Compute SD in turning angle
+# turn_angles_sd <- 
+#   turn_angles |> 
+#   group_by(site, animal_id) |>
+#   summarise(sd = sd(turn_angle)) |>
+#   filter(!is.na(sd)) |> 
+#   as.data.table()
+# plot(density(turn_angles_sd$sd))
+# lines(density(turn_angles_sd$sd[turn_angles_sd$site == "Drummond"]), col = "blue")
+# lines(density(turn_angles_sd$sd[turn_angles_sd$site == "Thunder"]), col = "red")
 
 
 #### End of code. 

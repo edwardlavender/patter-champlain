@@ -69,3 +69,48 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
   }
   
 }
+
+# Compute the smallest absolute rotation between two angles
+# Source: wahoo-flapper
+# abs_angle_difference <- function(a1, a2) {
+#   angle_delta <- abs((a1 - a2) %% (2 * pi))
+#   pmin(angle_delta, 2 * pi - angle_delta)
+# }
+
+signed_angle_difference <- function(a1, a2) {
+  ((a1 - a2 + pi) %% (2*pi)) - pi
+}
+
+# Compute turning angles for the VPS data
+# Modified from wahoo-flapper
+if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
+  
+  calc_angle_vps <- function(.data) {
+    
+    # Checks
+    check_names(.data, c("Longitude", "Latitude"))
+    .data <- as.data.table(.data)
+    
+    # Define UTM coordinates from 'Longitude' and 'Latitude'
+    xy <- 
+      cbind(.data$Longitude, .data$Latitude) |>
+      terra::vect(crs = "WGS84") |> 
+      terra::project("EPSG:3175") |> 
+      terra::geom() |> 
+      as.data.table()
+    .data[, x := xy$x]
+    .data[, y := xy$y]
+    
+    # Compute turning angles
+    .data |> 
+      lazy_dt(immutable = FALSE) |>
+      mutate(dx = x - lag(x), 
+             dy = y - lag(y), 
+             heading = atan2(dy, dx), 
+             heading = ((pi / 2 - heading + pi) %% (2 * pi)) - pi,
+             turning_angle = signed_angle_difference(heading, lag(heading))) |> 
+      pull(turning_angle)
+    
+  }
+
+}
