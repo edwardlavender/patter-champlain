@@ -34,10 +34,11 @@ library(truncdist)
 files_source_r(here_src())
 
 #### Load data
-map  <- terra::rast(here_input("map.tif"))
-fish <- qs::qread(here_input("fish.qs"))
-SS4  <- qs::qread(here_data("supp", "model-obs", "SS4.qs"))
-vps  <- qs::qread(here_data("supp", "model-move", "futia-step.qs"))
+map       <- terra::rast(here_input("map.tif"))
+fish      <- qs::qread(here_input("fish.qs"))
+SS4       <- qs::qread(here_data("supp", "model-obs", "SS4.qs"))
+vps_step  <- qs::qread(here_data("supp", "model-move", "futia-step.qs"))
+vps_angle <- qs::qread(here_data("supp", "model-move", "futia-angle.qs"))
 
 
 ###########################
@@ -131,8 +132,8 @@ pars_model_move_full <- data.table(mobility = c(mobility, mobility * deflate, mo
 
 #### Isolate VPS datasets
 # We compute density below 
-drummond <- vps[site == "Drummond", ]
-thunder  <- vps[site == "Thunder", ]
+drummond_step <- vps_step[site == "Drummond", ]
+thunder_step  <- vps_step[site == "Thunder", ]
 
 #### For accelerometry, precompute observed step length densities  (slow)
 # Define speeds (values) for 120 s
@@ -159,8 +160,8 @@ plot(dmin,
      xlab = "", ylab = "", main = "",
      axes = FALSE)
 # Observed distributions for VPS analyses 
-add_poly(density(drummond$step_length, from = 0), col = scales::alpha("lightblue", 1))
-add_poly(density(thunder$step_length, from = 0), col = scales::alpha("blue", 0.5))
+add_poly(density(drummond_step$step_length, from = 0), col = scales::alpha("lightblue", 1))
+add_poly(density(thunder_step$step_length, from = 0), col = scales::alpha("blue", 0.5))
 # Observed distributions for small and large fish 
 add_poly(dmin, col = scales::alpha("lightgrey", 0.75))
 add_poly(dmax, col = scales::alpha("dimgrey", 0.5))
@@ -201,29 +202,38 @@ par(pp)
 dev.off()
 
 #### Turning angle
-# For speed, for this plot we just amend code from patter-flapper
+# (For speed, for this plot we just amend code from patter-flapper)
+# Define data
+drummond_angle <- vps_angle[site == "Drummond", ]
+thunder_angle  <- vps_angle[site == "Thunder", ]
+# Make plot 
 png(here_fig("model-move-turning-angle.png"), 
     height = 4, width = 4, units = "in", res = 800)
 pp <- par(mgp = c(3, 0.7, 0))
-x <- seq(-pi*1.1, pi*1.1, length.out = 1e5)
-y <- dnorm(x, 0, pars_model_move_full$phi[1])
+x <- seq(-pi, pi, length.out = 1e5)
+y <- dmix(x, 0, pars_model_move_full$phi[1])
 ylim <- c(0, 0.4)
 plot(x, y,
      ylim = ylim,
      xlab = "", ylab = "",
-     type = "l", lwd = 2,
+     type = "n", 
      axes = FALSE)
-y <- dnorm(x, 0, pars_model_move_full$phi[2])
+# Add observed distributions from VPS
+add_poly(density(drummond_angle$turn_angle, from = -pi, to = pi), col = scales::alpha("lightblue", 1))
+add_poly(density(thunder_angle$turn_angle, from = -pi, to = pi), col = scales::alpha("blue", 0.5))
+# Add model
+lines(x, y, lwd = 2)
+y <- dmix(x, 0, pars_model_move_full$phi[2])
 lines(x, y, col = "red", lty = 1, lwd = 1)
-y <- dnorm(x, 0, pars_model_move_full$phi[3])
+y <- dmix(x, 0, pars_model_move_full$phi[3])
 lines(x, y, col = "darkgreen", lty = 1, lwd = 1)
-axis(side = 1, at = c(-pi * 1.1, pi * 1.1), labels = FALSE, lwd.tick = 0, pos = 0)
+axis(side = 1, at = c(-pi, pi), labels = FALSE, lwd.tick = 0, pos = 0)
 axis(side = 1, 
      at = c(-pi, -pi/2, 0, pi/2, pi), 
      labels = c(expression(-pi), expression(-pi/2), expression(0), expression(pi/2), expression(pi)), 
      pos = 0)
 yat <- seq(ylim[1], ylim[2], by = 0.1)
-axis(side = 2, prettyGraphics:::add_lagging_point_zero(yat), las = TRUE, pos = -pi*1.1)
+axis(side = 2, prettyGraphics:::add_lagging_point_zero(yat), las = TRUE, pos = -pi)
 par(pp)
 dev.off()
 
