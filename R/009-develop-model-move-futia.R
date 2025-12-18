@@ -226,7 +226,7 @@ lkt_step |>
 #### Analyse turn angles
 
 #### Calculate turn angle for Drummond Island fish
-# Comptue angles
+# Compute angles
 di_angle <- 
   di_lkt_filtered |> 
   group_by(animal_id) |>  
