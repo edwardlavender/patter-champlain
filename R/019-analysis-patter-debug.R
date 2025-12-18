@@ -99,7 +99,8 @@ set_vmap(.vmap = here_input("vmap", iteration$mobility[1], "vmap.tif"))
 #### Run filter
 
 #### Select individual
-sim <- iteration[index == 617, ]
+head(iteration$index)
+sim <- iteration[2, ]
 # > unit_id  individual_id    time_id    index 
 # > 16       24321         2016-01-01
 # > 28       24322         2014-11-01    64
@@ -109,7 +110,7 @@ sim <- iteration[index == 617, ]
 # > 232      24331         2016-04-01    617 -> unsolved 
 
 #### (optional) Tweak selected parameters
-sim[, phi := 0.3]
+sim[, phi := 0.4]
 
 #### Define baseline filter args 
 # (We may further customise inputs below)
@@ -196,15 +197,15 @@ length(tres)
 # ~2 mins with 2e4L particles
 # ~10 mins with 5e4L particles, phi = 0.3, .n_move = 5000
 # ~16 mins with 2e4L particles, phi = 0.4, .n_move = 100_000
-args_fwd$.n_resample <- 500
+# args_fwd$.n_resample <- 500
 # args_fwd$.t_resample <- tres
-args_fwd$.n_move     <- 5000
+args_fwd$.n_move     <- 1
 args_fwd$.n_particle <- 5e4
 # (optional) Explore models with different turning angle formulatsion
 # plot(model_move_cxy(216, "truncated(Gamma(3.25, 25), upper = 216)", "TDist(0.3)"))
 # plot(model_move_cxy(216, "truncated(Gamma(3.25, 25), upper = 216)", "MixtureModel([truncated(Normal(0.0, 0.3), -pi, pi), Uniform(-pi, pi)], [0.25, 0.75])"))
 # args_fwd$.model_move <- "ModelMoveCXY(env, 216, truncated(Gamma(3.25, 25), upper = 216), MixtureModel([truncated(Normal(0.0, 0.3), -pi, pi), Uniform(-pi, pi)], [0.25, 0.75]))"
-args_fwd$.model_move <- "ModelMoveCXY(env, 216, truncated(Gamma(3.25, 25), upper = 216), MixtureModel([truncated(Normal(0.0, 0.3), -pi, pi), Uniform(-pi, pi)], [0.9, 0.1]))"
+args_fwd$.model_move <- "ModelMoveCXY(env, 216, truncated(Gamma(3.25, 25), upper = 216), MixtureModel([truncated(Normal(0.0, 0.3), -pi, pi), Uniform(-pi, pi)], [0.99, 0.01]))"
 fwd <- do.call(pf_filter, args_fwd)
 
 #### Results: on the causes of convergence failures
