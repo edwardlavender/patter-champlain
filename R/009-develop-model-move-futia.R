@@ -70,6 +70,14 @@ di_step <-
 di_step_cut <- 
   di_step |> 
   filter(step_gap > 120 & step_gap < 360)
+# Summarise processed position dataset
+nrow(di_step)
+length(unique(di_step$animal_id))
+di_step |> 
+  distinct(animal_id, .keep_all = TRUE) |> 
+  reframe(utils.add::basic_stats(length_tl))
+range(di_step$Time)
+sort(unique(lubridate::round_date(di_step$Time, "months")))
 # Calculate rate of movement (m/s)
 di_step_cut <- 
   di_step_cut |> 
@@ -102,6 +110,14 @@ tb_step <- tb_step |>
 tb_step_cut <- 
   tb_step |> 
   filter(step_gap > 120 & step_gap < 360)
+# Summarise processed position dataset
+nrow(tb_step)
+length(unique(tb_step$animal_id))
+tb_step |> 
+  distinct(animal_id, .keep_all = TRUE) |> 
+  reframe(utils.add::basic_stats(length_tl))
+range(tb_step$Time)
+sort(unique(lubridate::round_date(tb_step$Time, "months")))
 # Calculate rate of movement (m/s)
 tb_step_cut <- 
   tb_step_cut |> 
@@ -206,17 +222,33 @@ lkt_step |>
   lemon::facet_rep_wrap(~site) +
   theme_classic()
 
-#### Overall summaries
-# Overall densities
+#### Overall summaries (step length)
+# Overall densities 
 plot(density(lkt_step$step_length), ylim = c(0, 0.06))
 lines(density(lkt_step$step_length[lkt_step$site == "Drummond"]), col = "blue")
 lines(density(lkt_step$step_length[lkt_step$site == "Thunder"]), col = "red")
 # Overall summary statistics
+# * N obs by site
 lkt_step |> 
   group_by(site) |> 
-  summarise(utils.add::basic_stats(step_length))
+  summarise(n())
+# * Movement speeds by site
 lkt_step |> 
-  select(site, step_length) |> 
+  # filter(move_rate_sec > 0) |> 
+  group_by(site) |> 
+  summarise(utils.add::basic_stats(move_rate_sec))
+# * The range in median & maximum movement speeds
+lkt_step |> 
+  group_by(site, animal_id) |> 
+  summarise(median = median(move_rate_sec), 
+            max = max(move_rate_sec)) |> 
+  ungroup() |> 
+  group_by(site) |> 
+  reframe(median = utils.add::basic_stats(median), 
+          max = utils.add::basic_stats(max))
+# Record dataset
+lkt_step |> 
+  select(site, move_rate_sec) |> 
   as.data.table() |> 
   qs::qsave(here_data("supp", "model-move", "futia-step.qs"))
 
