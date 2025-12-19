@@ -151,9 +151,9 @@ png(here_fig("model-move-step.png"),
     height = 4, width = 4, units = "in", res = 800)
 pp <- par(mgp = c(3, 0.7, 0))
 # Set graphical parameters
-xlim <- c(0, 500)
+xlim <- c(0, 300)
 # ylim <- c(0, 0.025)
-ylim <- c(0, 0.06)
+ylim <- c(0, 0.053)
 plot(dmin, 
      type = "n",
      xlim = xlim, ylim = ylim,
@@ -192,7 +192,7 @@ mark_mobility(pars_model_move_full$mobility[2], col = "red")
 mark_mobility(pars_model_move_full$mobility[3], col = "darkgreen")
 # Add axes (m/s, m per two min, density)
 axis(side = 1, c(xlim[1], xlim[2]), labels = c("", ""), lwd.tick = 0, pos = ylim[1])
-axis(side = 1, (0:4) * s, labels = 0:4, pos = ylim[1])
+axis(side = 1, pos = ylim[1], lwd = 0, lwd.ticks = 1)
 # axis(side = 1, seq(xlim[1], xlim[2], by = 100), pos = -0.005) 
 axis(side = 1, seq(xlim[1], xlim[2], by = 100), pos = -0.0125) 
 axis(side = 2, ylim, labels = FALSE, lwd.ticks = 0, pos = xlim[1])
@@ -212,7 +212,7 @@ png(here_fig("model-move-turning-angle.png"),
 pp <- par(mgp = c(3, 0.7, 0))
 x <- seq(-pi, pi, length.out = 1e5)
 y <- dmix(x, 0, pars_model_move_full$phi[1])
-ylim <- c(0, 1.2)
+ylim <- c(0, 1.35)
 plot(x, y,
      ylim = ylim,
      xlab = "", ylab = "",
