@@ -248,7 +248,7 @@ lkt_step |>
           max = utils.add::basic_stats(max))
 # Record dataset
 lkt_step |> 
-  select(site, move_rate_sec) |> 
+  select(site, step_length, move_rate_sec) |> 
   as.data.table() |> 
   qs::qsave(here_data("supp", "model-move", "futia-step.qs"))
 
