@@ -41,7 +41,7 @@ pars <- qs::qread(here_input("pars-patter.qs"))
 
 #### Define analysis 
 # analysis <- "sim"
-# analysis <- "real"
+analysis <- "real"
 stopifnot(analysis %in% c("sim", "real"))
 
 #### Define analysis-specific routines
@@ -156,11 +156,13 @@ stopifnot(all(ck >= 50))
 #### Summarise detection dataset
 # cf. raw data summary statistics (setup-data-detection.R)
 nrow(detections)
-nrow(detections)
 length(unique(detections$individual_id))
 range(detections$timestamp)
-difftime(max(detections$timestamp), min(detections$timestamp), units = "days")
+int <- lubridate::interval(min(detections$timestamp),max(detections$timestamp))
+lubridate::time_length(int, "months")
+lubridate::time_length(int, "years")
 length(unique(detections$receiver_id))
+length(unique(paste(detections$individual_id, detections$time_id)))
 
 #### Write unitsets/detections
 qs::qsave(unitsets, here_input_analysis("unitsets.qs"))
