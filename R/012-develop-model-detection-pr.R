@@ -67,20 +67,36 @@ ggplot(data.frame(x = c(0, receiver_gamma)), aes(x = x)) +
 ###########################
 #### Analyse range-testing datasets
 
+#### Define studies
+# Define studies
+studies <- sort(unique(dcounts$study))
+# Check balance of observations
+dcounts |> 
+  group_by(study) |> 
+  summarise(sum(success + failure))
+
 #### Model detection probability
-
 # detections ~ B(n, p)
-# p = logistic(dist * study) or p = s(dist * study)
+# p = logistic(dist)
 
-# GLM
-m1 <- glm(cbind(success, failure) ~ dist * study,
-          data = dcounts, family = binomial())
-
-# GAM
-# * Model I in Pedersen et al. (2019)
-# * Complete flexibility: different smoothness, different penalties 
-m2 <- gam(cbind(success, failure) ~ study + s(dist, by = study, k = 5), 
-          data = dcounts, family = binomial)
+models  <- cl_lapply(studies, function(s) {
+  
+  # Define data 
+  # s <- studies[1]
+  data <- as.data.frame(dcounts[study == s, ])
+  
+  # GLM 
+  m1 <- glm(cbind(success, failure) ~ dist,
+      data = data, 
+      family = binomial())
+  
+  # GAM
+  m2 <- gam(cbind(success, failure) ~ dist, 
+            data = dcounts, family = binomial)
+  
+  list(GLM = m1, GAM = m2)
+})
+names(models) <- studies
 
 # SCAM (enforce monotonic decline)
 # m_scam <- scam::scam(cbind(success, failure) ~ study + 
@@ -89,48 +105,45 @@ m2 <- gam(cbind(success, failure) ~ study + s(dist, by = study, k = 5),
 
 
 #### Extract example GLM coefficients
-# Model 1 is our main model (GLM)
 # Here we extract intercept & distance coefficient for one of the studies
+m1 <- models[[1]]$GLM
 equatiomatic::extract_eq(m1)
-(receiver_alpha <- coef(m1)[1]) # 1.885708
-(receiver_beta  <- coef(m1)[2]) # -0.001613148
-dbinom(1, size = 1, prob = plogis(receiver_alpha + receiver_beta * 8000))
-dbinom(1, size = 1, prob = plogis(receiver_alpha + receiver_beta * 8001))
+(receiver_alpha <- coef(m1)[1]) 
+(receiver_beta  <- coef(m1)[2])
+dbinom(1, size = 1, prob = plogis(receiver_alpha + receiver_beta * 7000))
+dbinom(1, size = 1, prob = plogis(receiver_alpha + receiver_beta * 7001))
 
 #### Compute predictions
 # Define data.table of studies & distances
 # * Note that GAMs behave poorly beyond the range of the data
 dists <- seq(0, 1e4, by = 1)
-nd <- lapply(unique(dcounts$study), function(s) {
-  data.table(study = s, dist = seq(0, max(dcounts$dist[dcounts$study == s]), by = 1))
-  # data.table(study = s, dist = dists)
-}) |> rbindlist()
+nd <- data.table(dist = dists)
 # Generate predictions, for each model
-pred <- lapply(1:2, function(i) {
-    ms <- list(Best = m1, GAM = m2)
-    m  <- ms[[i]]
-    p <- predict(m, newdata = nd, se.fit = TRUE, type = "link")
-    p <- prettyGraphics::list_CIs(p, inv_link = m$family$linkinv, plot_suggestions = FALSE)
-    cbind(nd, 
-          data.table(model = names(ms)[i], 
-                     fit = as.numeric(p$fit), 
-                     lwr = as.numeric(p$lowerCI), 
-                     upr = as.numeric(p$upperCI)))
+pred_empirical <- 
+  lapply(studies, function(s) {
+    lapply(c("GLM", "GAM"), function(m) {
+      # s = studies[[1]]; m <- "GLM"
+      mod  <- models[[s]][[m]]
+      p <- predict(mod, newdata = nd, se.fit = TRUE, type = "link")
+      p <- prettyGraphics::list_CIs(p, inv_link = mod$family$linkinv, plot_suggestions = FALSE)
+      cbind(nd, 
+            data.table(study = s, 
+                       model = m,
+                       fit = as.numeric(p$fit), 
+                       lwr = as.numeric(p$lowerCI), 
+                       upr = as.numeric(p$upperCI)))
+    }) |> rbindlist()
   }) |> 
   rbindlist() |>
   arrange(study, model, dist) |> 
   as.data.table()
 
 #### Visualise GLMs
-# The GLMs are more 'generous' than our initial guess
-# The GLMs and GAMs match well
-# For K153, the GAMs better capture low-probability detections at higher distances
-# Otherwise, GAMs behave more pooly at the edges of the data
 ggplot(dcounts, aes(x = dist, y = prop)) +
   geom_bin_2d(bins = 50) +
   scale_fill_viridis_c(name = "Count") +
   geom_point(shape = ".") + 
-  geom_line(data = pred[model == "Best", ], 
+  geom_line(data = pred_empirical[model == "GLM", ], 
             aes(x = dist, y = fit, colour = study, group = study), 
             lwd = 1.25, inherit.aes = FALSE) +
   # Add preliminary best-guess
@@ -147,19 +160,19 @@ ggplot(dcounts, aes(x = dist, y = prop)) +
   labs(x = "Distance", y = "Detection Probability") +
   theme_bw()
 
-# Green line
-# * start black -> detection pr was too high
-# * we're trying to use one model for all receivers (limitation)
-# * red line may be biased low b/c of range test design
+# > Black line -> detection pr was too high
+# > We're trying to use one model for all receivers (limitation)
+# > Red line may be biased low b/c of range test design
+# > Green lines are more reasonable choices
 
 #### Visualise GLMs versus GAMS
 head(dcounts)
-head(pred)
+head(pred_empirical)
 ggplot() +
   geom_bin_2d(aes(x = dist, y = prop), data = dcounts, bins = 50) +
   scale_fill_viridis_c(name = "Count") +
   geom_point(shape = ".") + 
-  geom_line(data = pred,
+  geom_line(data = pred_empirical,
             aes(x = dist, y = fit, colour = model, group = model), 
             lwd = 1.25, inherit.aes = FALSE) + 
   facet_wrap(~study)
@@ -168,12 +181,28 @@ ggplot() +
 # Residual diagnostics are poor
 # But MLE parameter estimates look reasonable (above)
 # and uncertainty quantification is not the aim here
-r1 <- simulateResiduals(m1)
-r2 <- simulateResiduals(m2) 
-plot(r1)
-plot(r2)
+if (FALSE) {
+  lapply(models, function(mods) {
+    m1 <- mods[["GLM"]]
+    m2 <- mods[["GAM"]]
+    r1 <- simulateResiduals(m1)
+    r2 <- simulateResiduals(m2) 
+    readline("See GLM...")
+    plot(r1)
+    readline("See GAM...")
+    plot(r2)
+    invisible(NULL)
+  }) |> invisible()
+}
 
-#### Examine receiver_gamma
+#### Examine estimated 50 % detection range
+pred_empirical |> 
+  filter(model == "GLM") |> 
+  group_by(study) |> 
+  slice(which.min(abs(0.5 - fit)))
+  
+
+#### Examine empirical maximum detection range
 # * Max detection range may be affected by study design
 # * NB Futia testing does not cover entire Lake Champlain 
 dcounts |> 
@@ -183,22 +212,19 @@ dcounts |>
   select(study, transmitter_id, dB, max_dist) |> 
   as.data.table()
 
-#### Compute balance of observations
-dcounts |> 
-  group_by(study) |> 
-  summarise(sum(success + failure))
-
 
 ###########################
 ###########################
 #### Record parameters
 
 #### Define 'best-guess' parameters (list)
+# Pull out coefficients for suitable model
+coefs <- coef(models[["F151"]][["GLM"]])
 # Define parameters
-a <- receiver_alpha
-b <- receiver_beta
-g <- 8000.0  # use 7000.0
-# Collate in list
+a <- as.numeric(coefs[1])
+b <- as.numeric(coefs[2])
+g <- 7000
+# Collate parameter list
 pars_model_obs_best <- list(receiver_alpha = a, 
                             receiver_beta  = b, 
                             receiver_gamma = g)
@@ -213,31 +239,28 @@ pars_model_obs_full <- data.table(receiver_alpha = c(a, a * deflate, a * inflate
                                   receiver_beta = c(b, b * inflate, b * deflate), 
                                   receiver_gamma = c(g, g * deflate, g * inflate))
 
+#### Define detection probability curves
+pm <- copy(pars_model_obs_full)
+pm[, sensitivity_label := c("Best", "Restricted", "Flexible")]
+pred_patter <- 
+  lapply(split(pm, seq_len(nrow(pm))), function(d) {
+  dist <- nd$dist
+  fit <- trunclogis(d$receiver_alpha, d$receiver_beta, d$receiver_gamma, dist)
+  data.table(sensitivity_label = d$sensitivity_label, 
+             dist = dist, 
+             fit = fit)
+}) |> rbindlist()
+
 
 ###########################
 ###########################
 #### Publication-quality plot
 
-#### Define datasets
-# Best-guess (based on weighted GLM): y2
-# GAM (comparison)                  : y4
-# * Define above 
-# Restrictive model                 : y5
-# Flexible model                    : y6
-head(fit)
-p <- pars_model_obs_full
-fit[dist > p$receiver_gamma[1], y2 := 0]
-fit[, y5 := plogis(p$receiver_alpha[2] + p$receiver_beta[2] * dist)]
-fit[dist > p$receiver_gamma[2], y5 := NA]
-fit[, y6 := plogis(p$receiver_alpha[3] + p$receiver_beta[3] * dist)]
-fit[dist > p$receiver_gamma[3], y5 := NA]
-rm(p)
-
 #### Make plot
 png(here_fig("model-obs.png"), 
-    height = 4, width = 6, units = "in", res = 800)
+    height = 5, width = 10, units = "in", res = 800)
 gg <- 
-  ggplot(klinard, aes(x = dist, y = prop)) +
+  ggplot(dcounts, aes(x = dist, y = prop)) +
   geom_bin_2d(bins = 50) +
   scale_fill_viridis_c(name = "Count", direction = -1, alpha = 0.95, 
                        guide     = guide_colorbar(
@@ -255,18 +278,27 @@ gg <-
                          title.position  = "top",
                          label.position  = "right"
                        )) +
-  geom_point(shape = ".") + 
-  # Weighted GAM (baseline)
-  geom_line(data = fit, aes(x = dist, y = y4), 
-            lwd = 1, colour = "dimgrey", inherit.aes = FALSE) +
-  # Best model (weighted GLM, truncated)
-  geom_line(data = fit, aes(x = dist, y = y2),
-            lwd = 1.25, colour = "black", inherit.aes = FALSE) +
-  # Restrictive and flexible models (truncated)
-  geom_line(data = fit, aes(x = dist, y = y5), 
-            lwd = 0.75, colour = "red", inherit.aes = FALSE) +
-  geom_line(data = fit, aes(x = dist, y = y6), 
-            lwd = 0.75, colour = "darkgreen", inherit.aes = FALSE) +
+  # geom_point(shape = ".") + 
+  # Add best, restrictive and flexible models
+  geom_line(data = pred_patter, aes(x = dist, y = fit, 
+                                      colour = sensitivity_label, group = sensitivity_label),
+            lwd = 1.75,  inherit.aes = FALSE) +
+  # Add GLMs
+  geom_line(data = pred_empirical[model == "GLM", ], 
+            aes(x = dist, y = fit, colour = study, group = study), 
+            lwd = 0.75, linetype = 2, inherit.aes = FALSE) +
+  # Colour lines 
+  scale_colour_manual(values = c(
+      "F146" = "lightblue",
+      "F151" = "skyblue",
+      "F152" = "blue",
+      "K145" = "mediumpurple1",
+      "K153" = "purple3",
+      "Best"        = "black",
+      "Restricted"  = "red",
+      "Flexible"    = "darkgreen"
+    )
+  ) + 
   # Axes
   scale_x_continuous(limits = c(0, max(pars_model_obs_full$receiver_gamma)), expand = c(0, 0)) + 
   scale_y_continuous(expand = c(0, 0)) +
@@ -276,10 +308,11 @@ gg <-
     "segment",
     x     = pars_model_obs_full$receiver_gamma,
     xend  = pars_model_obs_full$receiver_gamma,
-    y     = -0.04, 
+    y     = -0.05, 
     yend  = -0.0075,
-    arrow = arrow(length = unit(0.15, "cm")),
-    colour = c("black", "red", "darkgreen")
+    arrow = arrow(length = unit(0.2, "cm")),
+    colour = c("black", "red", "darkgreen"), 
+    linewidth = 1
   ) +
   labs(x = "Distance", y = "Detection probability") +
   theme_bw() + 

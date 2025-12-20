@@ -17,3 +17,10 @@ dmix <- function(x, mean = 0, sd = 0.3) {
   w2 <- 1 - w1
   d1 * w1 + d2 * w2
 }
+
+# Truncated logistic detection probability function
+trunclogis <- function(receiver_alpha, receiver_beta, receiver_gamma, dist) {
+  p <- plogis(receiver_alpha + receiver_beta * dist)
+  p[dist > receiver_gamma] <- 0
+  p
+}
