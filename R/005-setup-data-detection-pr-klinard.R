@@ -70,9 +70,9 @@ detections <- fread(here_data_raw("model-obs", "klinard-et-al-2019",
 # * V13 147 dB tags used
 
 # We will select tags in the following categories:
-# * V9 11 m (one tag)  
-# * V9 50 m (two tags tag)
-# * V13 50 m (one tag)
+# * V9 [145 dB] 11 m (one tag)  
+# * V9 [145 dB] 50 m (two tags)
+# * V13 [153 dB] 50 m (one tag)
 # (These tags bound the characteristics of the tags used in our system)
 
 # Transmitter IDs
@@ -99,7 +99,7 @@ detections <- fread(here_data_raw("model-obs", "klinard-et-al-2019",
 
 ###########################
 ###########################
-#### Setup data
+#### Define detections/non-detections
 
 #### Define transmitter IDs (see above)
 transmitter_ids <- c("57347", "57349", "57350", "30838")
@@ -129,10 +129,11 @@ detections <-
   mutate(
     dB = transmitters$dB[match(transmitter_id, transmitters$id)],
     dist = terra::distance(cbind(tag_lon, tag_lat), cbind(receiver_lon, receiver_lat), 
-                           lonlat = TRUE, pairwise = TRUE)
+                           lonlat = TRUE, pairwise = TRUE), 
+    delay = 1800
     ) |> 
   # Cleanup
-  select(transmitter_id, timestamp, receiver_id, dB, dist) |> 
+  select(transmitter_id, timestamp, receiver_id, dB, delay, dist) |> 
   arrange(transmitter_id, timestamp) |>
   as.data.table()
 
@@ -151,8 +152,52 @@ nrow(detections)
 length(unique(detections$receiver_id))
 range(detections$timestamp)
 
+
+###########################
+###########################
+#### Define detection counts
+
+#### Create daily summarises of observed/expected number of detections for modelling
+dcounts <- 
+  detections |> 
+  # Compute observed number of detections per transmitter/receiver/day
+  mutate(timestamp = lubridate::floor_date(timestamp, "days")) |> 
+  group_by(transmitter_id, receiver_id, timestamp) |> 
+  mutate(observed = n()) |> 
+  slice(1L) |>
+  ungroup() |> 
+  # Compute expected number of transmissions per day
+  # * Note the round() to ensure the expected number of transmissions is Int
+  mutate(expected = round((24 * 60 * 60) / delay)) |>
+  # Use success/failure for glm
+  mutate(observed = as.integer(observed), 
+         expected = as.integer(expected),
+         success = observed, 
+         failure = expected - observed, 
+         prop = success / (success + failure)) |>
+  # Cleanup
+  select(transmitter_id, timestamp, prop, success, failure, dB, dist) |> 
+  arrange(transmitter_id, timestamp) |>
+  as.data.table()
+
+#### Quick validation
+# The number of successes and failures should be integers
+str(dcounts)
+# The expected number of transmissions should be >= observed number
+# * There are a few cases where that is not the case
+table(dcounts$failure < 0)
+dcounts[failure < 0, c("success", "failure") := .(48, 0)]
+# Plot detection efficacy
+dcounts |> 
+  ggplot(aes(dist, prop)) + 
+  geom_point() + 
+  geom_smooth()
+# Check format consistency
+head(dcounts)
+head(qs::qread(here_data("supp", "model-obs", "futia-raw.qs")))
+
 #### Write to file
-qs::qsave(detections, here_data("supp", "model-obs", "klinard-raw.qs"))
+qs::qsave(dcounts, here_data("supp", "model-obs", "klinard-raw.qs"))
 
 
 #### End of code. 

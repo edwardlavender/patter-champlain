@@ -8,8 +8,6 @@
 #### Prerequisites
 # 1) Process detection probability dataset
 
-# TO DO Revise script with Futia dataset
-
 
 ###########################
 ###########################
@@ -33,7 +31,7 @@ library(proj.verse)
 files_source_r(here_src())
 
 #### Load data
-klinard  <- qs::qread(here_data("supp", "model-obs", "klinard.qs"))
+dcounts  <- qs::qread(here_data("supp", "model-obs", "range-testing.qs"))
 pars_adj <- qs::qread(here_input("pars-adj.qs"))
 
 
@@ -67,91 +65,128 @@ ggplot(data.frame(x = c(0, receiver_gamma)), aes(x = x)) +
 
 ###########################
 ###########################
-#### Analyse Klinard et al. (2019) datasets
+#### Analyse range-testing datasets
 
 #### Model detection probability
 
 # detections ~ B(n, p)
-# p = logistic(dist) or p = s(dist)
+# p = logistic(dist * study) or p = s(dist * study)
 
-# Unweighted GLM
-m1 <- glm(cbind(success, failure) ~ dist,
-          data = klinard, family = binomial())
+# GLM
+m1 <- glm(cbind(success, failure) ~ dist * study,
+          data = dcounts, family = binomial())
 
-# Weighted GLM
-m2 <- glm(cbind(success, failure) ~ dist,
-          data = klinard, family = binomial(), weights = w)
+# GAM
+# * Model I in Pedersen et al. (2019)
+# * Complete flexibility: different smoothness, different penalties 
+m2 <- gam(cbind(success, failure) ~ study + s(dist, by = study, k = 5), 
+          data = dcounts, family = binomial)
 
-# Unweighted GAM
-m3 <- gam(cbind(success, failure) ~ s(dist), 
-          data = klinard, family = binomial)
+# SCAM (enforce monotonic decline)
+# m_scam <- scam::scam(cbind(success, failure) ~ study + 
+#                  s(dist, by = study, k = 10, bs = "mpd"), 
+#                data = dcounts, family = binomial)
 
-# Weighted GAM 
-m4 <- gam(cbind(success, failure) ~ s(dist), 
-          data = klinard, family = binomial, weights = w)
 
-#### Extract GLM coefficients
-# Model 2 is our prefered model (weighted GLM)
-equatiomatic::extract_eq(m2)
-(receiver_alpha <- coef(m2)[1]) # 1.885708
-(receiver_beta  <- coef(m2)[2]) # -0.001613148
+#### Extract example GLM coefficients
+# Model 1 is our main model (GLM)
+# Here we extract intercept & distance coefficient for one of the studies
+equatiomatic::extract_eq(m1)
+(receiver_alpha <- coef(m1)[1]) # 1.885708
+(receiver_beta  <- coef(m1)[2]) # -0.001613148
 dbinom(1, size = 1, prob = plogis(receiver_alpha + receiver_beta * 8000))
 dbinom(1, size = 1, prob = plogis(receiver_alpha + receiver_beta * 8001))
 
-#### Visualise models
-## (A) Compute predictions
-nd   <- data.table(dist = seq(0, 1e4, length.out = 1e3L))
-fit  <- data.table(dist = nd$dist, 
-                   y0 = plogis(2.5 + -0.003 * nd$dist), # initial guess, 
-                   y1 = predict(m1, newdata = nd, type = "response"), 
-                   y2 = predict(m2, newdata = nd, type = "response"), 
-                   y3 = predict(m3, newdata = nd, type = "response"),
-                   y4 = predict(m4, newdata = nd, type = "response"))
-## (B) Visualise models
+#### Compute predictions
+# Define data.table of studies & distances
+# * Note that GAMs behave poorly beyond the range of the data
+dists <- seq(0, 1e4, by = 1)
+nd <- lapply(unique(dcounts$study), function(s) {
+  data.table(study = s, dist = seq(0, max(dcounts$dist[dcounts$study == s]), by = 1))
+  # data.table(study = s, dist = dists)
+}) |> rbindlist()
+# Generate predictions, for each model
+pred <- lapply(1:2, function(i) {
+    ms <- list(Best = m1, GAM = m2)
+    m  <- ms[[i]]
+    p <- predict(m, newdata = nd, se.fit = TRUE, type = "link")
+    p <- prettyGraphics::list_CIs(p, inv_link = m$family$linkinv, plot_suggestions = FALSE)
+    cbind(nd, 
+          data.table(model = names(ms)[i], 
+                     fit = as.numeric(p$fit), 
+                     lwr = as.numeric(p$lowerCI), 
+                     upr = as.numeric(p$upperCI)))
+  }) |> 
+  rbindlist() |>
+  arrange(study, model, dist) |> 
+  as.data.table()
+
+#### Visualise GLMs
 # The GLMs are more 'generous' than our initial guess
 # The GLMs and GAMs match well
-# The GAMs better capture low-probability detections at higher distances
-# The GAMs behave more poorly beyond range of data
-# Weighted/unweighted models are similar
-ggplot(klinard, aes(x = dist, y = prop)) +
+# For K153, the GAMs better capture low-probability detections at higher distances
+# Otherwise, GAMs behave more pooly at the edges of the data
+ggplot(dcounts, aes(x = dist, y = prop)) +
   geom_bin_2d(bins = 50) +
   scale_fill_viridis_c(name = "Count") +
   geom_point(shape = ".") + 
-  geom_line(data = fit, aes(x = dist, y = y0),
-            lwd = 1.5, color = "grey", inherit.aes = FALSE) +
-  geom_line(data = fit, aes(x = dist, y = y1),
-            lwd = 1.5, color = "red", inherit.aes = FALSE) +
-  geom_line(data = fit, aes(x = dist, y = y2), 
-            lwd = 1.5, color = "darkred", inherit.aes = FALSE) +
-  geom_line(data = fit, aes(x = dist, y = y3), 
-            lwd = 1.5, color = "skyblue", inherit.aes = FALSE) +
-  geom_line(data = fit, aes(x = dist, y = y4), 
-            lwd = 1.5, color = "blue", inherit.aes = FALSE) +
+  geom_line(data = pred[model == "Best", ], 
+            aes(x = dist, y = fit, colour = study, group = study), 
+            lwd = 1.25, inherit.aes = FALSE) +
+  # Add preliminary best-guess
+  # * After a preliminary GLM analysis based on the Klinard et al. data
+  #   we generated the following line. We found this was too generous
+  #   (receivers 'blocked' movements between sequential detections). 
+  geom_line(data = data.table(dist = dists, 
+                              fit = plogis(1.885708 - 0.001613148 * dists)), 
+            aes(x = dist, y = fit),
+            col = "black", lwd = 1.5, inherit.aes = FALSE) + 
   scale_x_continuous(limits = c(0, 1e4), expand = c(0, 0)) + 
   scale_y_continuous(limits = c(0, 1), expand = c(0, 0)) + 
+  # facet_wrap(~model) + 
   labs(x = "Distance", y = "Detection Probability") +
   theme_bw()
+
+# Green line
+# * start black -> detection pr was too high
+# * we're trying to use one model for all receivers (limitation)
+# * red line may be biased low b/c of range test design
+
+#### Visualise GLMs versus GAMS
+head(dcounts)
+head(pred)
+ggplot() +
+  geom_bin_2d(aes(x = dist, y = prop), data = dcounts, bins = 50) +
+  scale_fill_viridis_c(name = "Count") +
+  geom_point(shape = ".") + 
+  geom_line(data = pred,
+            aes(x = dist, y = fit, colour = model, group = model), 
+            lwd = 1.25, inherit.aes = FALSE) + 
+  facet_wrap(~study)
 
 #### Examine residuals
 # Residual diagnostics are poor
 # But MLE parameter estimates look reasonable (above)
 # and uncertainty quantification is not the aim here
 r1 <- simulateResiduals(m1)
-r2 <- simulateResiduals(m3) 
+r2 <- simulateResiduals(m2) 
 plot(r1)
 plot(r2)
 
 #### Examine receiver_gamma
-kmax <- 
-  klinard |> 
-  group_by(transmitter_id) |> 
+# * Max detection range may be affected by study design
+# * NB Futia testing does not cover entire Lake Champlain 
+dcounts |> 
+  group_by(study) |> 
   mutate(max_dist = max(dist)) |> 
   slice(1L) |>
-  select(transmitter_id, dB, max_dist) |> 
+  select(study, transmitter_id, dB, max_dist) |> 
   as.data.table()
-# Adjusted max detection ranges for 147 dB tag
-# (Amplitude Distance Law)
-kmax$max_dist * 10^((147 - kmax$dB) / 20)
+
+#### Compute balance of observations
+dcounts |> 
+  group_by(study) |> 
+  summarise(sum(success + failure))
 
 
 ###########################
@@ -162,7 +197,7 @@ kmax$max_dist * 10^((147 - kmax$dB) / 20)
 # Define parameters
 a <- receiver_alpha
 b <- receiver_beta
-g <- 8000.0
+g <- 8000.0  # use 7000.0
 # Collate in list
 pars_model_obs_best <- list(receiver_alpha = a, 
                             receiver_beta  = b, 
@@ -270,6 +305,7 @@ gg <-
 print(gg)
 dev.off()
 print(gg)
+
 
 ###########################
 ###########################
