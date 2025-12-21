@@ -23,6 +23,7 @@ Sys.setenv("JULIA_SESSION" = FALSE)
 library(sf)
 library(rnaturalearth)
 library(proj.verse)
+library(spatial.extensions)
 library(tictoc)
 files_source_r(here_src())
 
@@ -34,11 +35,14 @@ champlain  <- terra::vect(here_data_raw_mf("ChamplainRegionsGrouped/ChamplainReg
 ###########################
 #### Define study area (~2 s)
 
+#### Define UTM SpatVector
+epsg_utm         <- "EPSG:3175"
+champlain$land   <- as.numeric(1)
+champlain_utm    <- champlain |> terra::project(epsg_utm)
+
 #### Build map 
 # Use a coarse map for speed sampling initial locations 
 tic()
-epsg_utm         <- "EPSG:3175"
-champlain$land   <- as.numeric(1)
 regions <- as_SpatRaster(champlain, .simplify = 0.001, .utm = epsg_utm,
                          .field = "region", .res = 200, .plot = TRUE)
 maps    <- as_SpatRaster(champlain, .simplify = 0.001, .utm = epsg_utm,
@@ -50,7 +54,7 @@ toc()
 #### Examine map properties
 # Visualise map simplification
 terra::plot(map, col = "blue")
-terra::lines(champlain |> terra::project(epsg_utm))
+terra::lines(champlain_utm)
 # Zoom-in to check resolution
 map_zoom <- terra::crop(map, 
                         cbind(1787707, 977397.3) |>
@@ -58,7 +62,7 @@ map_zoom <- terra::crop(map,
                           terra::buffer(width = 10000) |>
                           terra::ext())
 terra::plot(map_zoom)
-terra::lines(champlain |> terra::project(epsg_utm))
+terra::lines(champlain_utm)
 # Check ncell & compare to dat_gebco() for reference
 terra::ncell(map)                  # 107625
 terra::ncell(patter::dat_gebco())  # 50160
@@ -131,6 +135,7 @@ plot(rivers, col = "lightblue", lwd = 0.1, add = TRUE)
 # plot(st_geometry(champlain_ll), col = "blue", add = TRUE) # slow
 
 #### Write layers
+qsavevect(champlain_utm, here_input("champlain-utm.qs"))
 st_write(continent, here_fig("local", "qgis", "continent.shp"), append = FALSE)
 st_write(champlain_ll, here_fig("local", "qgis", "champlain.shp"), append = FALSE)
 

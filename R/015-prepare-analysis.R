@@ -28,11 +28,14 @@ library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
 library(ggplot2)
 library(proj.verse)
+library(spatial.extensions)
+library(tictoc)
 library(truncdist)
 files_source_r(here_src())
 
 #### Load data
-pars <- qs::qread(here_input("pars-patter.qs"))
+champlain <- qreadvect(here_input("champlain-utm.qs"))
+pars      <- qs::qread(here_input("pars-patter.qs"))
 
 
 ###########################
@@ -49,6 +52,10 @@ here_input_analysis <- switch_here_input_analysis(analysis)
 
 #### Define analysis-specific data
 detections <- qs::qread(here_input_analysis("detections.qs"))
+if (analysis == "real") {
+  moorings       <- qs::qread(here_input_analysis("moorings.qs"))
+  detections_raw <- qs::qread(here_input_analysis("detections-raw.qs"))
+}
 
 
 ###########################
@@ -163,6 +170,81 @@ lubridate::time_length(int, "months")
 lubridate::time_length(int, "years")
 length(unique(detections$receiver_id))
 length(unique(paste(detections$individual_id, detections$time_id)))
+
+#### Visualise modelled datasets
+# (optional) TO DO Move this code to appropriate synthesis script
+# Plot raw time series (light grey)
+# Add modelled time series, coloured by region as in map
+if (analysis == "real") {
+  
+  #### Define colour scheme
+  # Define scheme 
+  cols <- tribble(
+    ~region,            ~col,
+    "Main Lake Central", "#6c81de", 
+    "Main Lake North",   "#9834df", 
+    "Main Lake South",   "#e41ea5", 
+    "Malletts Bay",      "#df756d", 
+    "Missisquoi Bay",    "#87e93b", 
+    "Northeast Arm",     "#22e45f", 
+    "South Lake",        "#0dcbd9")
+  # Add to moorings
+  moorings <- 
+    moorings |> 
+    mutate(region = terra::extract(champlain, cbind(receiver_x, receiver_y))$region, 
+           col = cols$col[match(region, cols$region)]) |> 
+    as.data.table()
+  stopifnot(all(!is.na(moorings$col)))
+  
+  #### Process raw detections
+  ids  <- unique(detections_raw$individual_id)
+  draw <- copy(detections_raw)
+  draw[, model := FALSE]
+  draw[detections, on = .(individual_id, timestamp), model := TRUE]
+  draw[, individual_id := factor(individual_id, levels = ids)]
+  draw[, col := moorings$col[match(receiver_id, moorings$receiver_id)]]
+  draw[, col := ifelse(model == TRUE, col, scales::alpha("dimgrey", 0.25))]
+
+  #### Plot (~15 s)
+  tic()
+  range(draw$timestamp)
+  png(here_fig("detections.png"), 
+      height = 9.69 * 1.75, width = 6.27 * 1.75, units = "in", res = 800)
+  # Set parameters 
+  pp <- par(oma = c(1.5, 1.5, 0, 0))
+  xshift    <-  5 * 24 * 60 * 60
+  cex.axis  <- 2
+  cex.mtext <- 2.25
+  # Blank plot
+  plot(draw$timestamp, draw$individual_id, 
+       type = "n",
+       xlim = c(min(draw$timestamp) - xshift, max(draw$timestamp) + xshift),
+       ylim = c(0, length(ids) + 1),
+       xaxs = "i", yaxs = "i",
+       xlab = "", ylab = "", 
+       xaxt = "n", cex.axis = cex.axis, las = TRUE)
+  # Add x grid (by month)
+  months <- seq(lubridate::floor_date(min(draw$timestamp), "months"), 
+                lubridate::floor_date(max(draw$timestamp), "months"),
+                by = "months")
+  sapply(months, \(month) abline(v = month, col = "lightgrey", lty = 3)) |> invisible()
+  # Add y grid (by individual)
+  sapply(unique(draw$individual_id), \(id) abline(h = id, col = "lightgrey")) |> invisible()
+  # Add points (on top of grid)
+  n <- nrow(draw)
+  # n <- 1e5
+  points(draw$timestamp[1:n], draw$individual_id[1:n],
+         pch = 3, col = draw$col, las = TRUE)
+  # Add axes
+  xat <- as.POSIXct(paste0(rep(2014:2017, each = 2), c("-01-01", "-06-01")), tz = "UTC")
+  axis(side = 1, at = xat, labels = format(xat, "%b-%y"), cex.axis = cex.axis)
+  mtext(side = 1, "Time (month-year)", line = 4, cex = cex.mtext)
+  mtext(side = 2, "Individual", line = 4, cex = cex.mtext)
+  par(pp)
+  dev.off()
+  toc()
+  
+}
 
 #### Write unitsets/detections
 qs::qsave(unitsets, here_input_analysis("unitsets.qs"))

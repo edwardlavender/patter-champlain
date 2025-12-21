@@ -371,11 +371,14 @@ points(moorings_real$receiver_x, moorings_real$receiver_y, pch = ".")
 par(pp)
 
 #### Clean up detections
+# Select columns
 head(detections)
 detections <-
   detections |> 
   select(individual_id, timestamp, receiver_id) |> 
   as.data.table()
+# Record 'raw' detections
+detections_raw <- copy(detections)
 
 #### Checks
 # number of receivers with detections
@@ -429,6 +432,7 @@ qs::qsave(fish, here_input("fish.qs"))
 qs::qsave(moorings_sim, here_input_sim("moorings-xy.qs"))
 qs::qsave(moorings_real, here_input_real("moorings.qs"))
 qs::qsave(detections, here_input_real("detections.qs"))
+qs::qsave(detections_raw, here_input_real("detections-raw.qs"))
 
 
 #### End of code. 

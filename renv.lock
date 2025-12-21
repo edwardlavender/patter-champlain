@@ -7607,9 +7607,13 @@
       "Description": "Extensions to r-spatial packages.",
       "License": "MIT + file LICENSE",
       "Imports": [
+        "rlang",
         "terra"
       ],
-      "Suggests": [],
+      "Suggests": [
+        "qs",
+        "sf"
+      ],
       "Depends": [
         "R (>= 4.1)"
       ],
@@ -7628,7 +7632,7 @@
       "RemoteUsername": "edwardlavender",
       "RemoteRepo": "spatial.extensions",
       "RemoteRef": "main",
-      "RemoteSha": "aa9ece36ce0459badea67a3c80916a14bfcc2e24"
+      "RemoteSha": "77360edcb8dd8a8269c972ed22588a7171a7624c"
     },
     "spatstat.data": {
       "Package": "spatstat.data",
