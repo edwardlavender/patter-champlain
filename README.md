@@ -52,7 +52,7 @@ The key elements of the workflow are as follows:
 
 ## Dependencies
 
-The project was built in [R](https://www.r-project.org/) (version 4.5.0)
+The project was built in [R](https://www.r-project.org/) (version 4.5.2)
 in [RStudio](https://www.rstudio.com/) and implements local dependency
 management using
 [`renv`](https://rstudio.github.io/renv/articles/renv.html). This can be
@@ -62,7 +62,7 @@ used to regenerate the local project library (see `Instructions`).
 
 The project structure is as follows:
 
-1.  **`bash/`** contains bash scripts (for code deployment on a server).
+1.  **`bin/`** contains bash scripts (for code deployment on a server).
 
 2.  **`data-raw/`** contains raw datasets\*. This includes:
 

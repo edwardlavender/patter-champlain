@@ -38,7 +38,7 @@ The project was built in [R](https://www.r-project.org/) (version `r paste0(vers
 
 The project structure is as follows: 
 
-1. **`bash/`** contains bash scripts (for code deployment on a server). 
+1. **`bin/`** contains bash scripts (for code deployment on a server). 
 
 2.  **`data-raw/`** contains raw datasets*. This includes:
     

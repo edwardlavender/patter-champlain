@@ -1,7 +1,6 @@
-# Deploy analysis-patter.R on siam-linux20
+# Deploy Julia workflows on siam-linux20
 
 # Instructions
-# * Ensure test <- FALSE in constructor_ac_core() (!)
 # * (optional) Clean up output folders, including logs/ and runs/
 # * Customise arguments below as required
 # * Run tmux code below to deploy script
@@ -18,15 +17,13 @@
 # tmux ls
 # tmux new -s ch-1
 
-# Define arguments
-analysis="real"
-mobility="216"
-dev="FALSE"
-DIRECTORY_LOG="data/output/$analysis/main/logs/R-CMD-BATCH"
-mkdir -p "$DIRECTORY_LOG"
+# TO DO Run Julia scripts
 
-# Run R code
-Rscript --verbose ./R/019-analysis-patter.R \
-  "$analysis" "$mobility" "$dev" \
-  > "$DIRECTORY_LOG/log-$mobility.Rout" 2>&1
+# for i in {1..50}; do
+#   Rscript run_model.R "$i" &
+#   (( $(jobs -r | wc -l) >= 10 )) && wait -n
+# done
+# wait
+
+# parallel -j 10 Rscript run.R ::: args
 
