@@ -34,8 +34,8 @@ files_source_r(here_src())
 #### Load data 
 # lkt_detections_2013-2017.rds: raw detections (93 fish)
 # lkt_detections_2013-2017_filtered.qs: filtered detections (as in Futia et al., 2024)
-epsg_utm            <- qs::qread(here_input("epsg-utm.qs"))
 map                 <- terra::rast(here_input("map.tif"))
+epsg_utm            <- qs::qread(here_input("epsg-utm.qs"))
 map_bbox            <- qs::qread(here_input("map-bbox.qs"))
 detections          <- readRDS(here_data_raw_mf("lkt_detections_2013-2017.rds"))
 detections_filtered <- qs::qread(here_data_raw_mf("lkt_detections_2013-2017_filtered.qs"))
@@ -156,7 +156,8 @@ stopifnot(all(fish$nlat == 1L))
 stopifnot(all(fish$nlon == 1L))
 
 #### Clean up
-fish |> 
+fish <- 
+  fish |> 
   select(individual_id, len, x, y, lon, lat) |> 
   as.data.table()
 
