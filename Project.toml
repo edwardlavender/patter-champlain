@@ -1,0 +1,9 @@
+[deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+GeoArrays = "2fb1d81b-e6a0-5fc5-82e6-8e06903437ab"
+Parquet = "626c502c-15b0-58ad-a749-f091afb673ae"
+Patter = "faabfbac-af09-47ee-bc95-5e336c516b5a"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
