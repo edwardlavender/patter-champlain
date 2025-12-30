@@ -43,98 +43,44 @@ pars      <- qs::qread(here_input("pars-patter.qs"))
 #### Select analysis
 
 #### Define analysis 
-# analysis <- "sim"
-analysis <- "real"
+analysis <- "sim"
+# analysis <- "real"
+subanalysis <- "main"
 stopifnot(analysis %in% c("sim", "real"))
+stopifnot(subanalysis == "main")
 
 #### Define analysis-specific routines
+# TO DO IMPLEMENT MAIN 
 here_input_analysis <- switch_here_input_analysis(analysis)
 
 #### Define analysis-specific data
 detections <- qs::qread(here_input_analysis("detections.qs"))
 if (analysis == "real") {
-  moorings       <- qs::qread(here_input_analysis("moorings.qs"))
   detections_raw <- qs::qread(here_input_analysis("detections-raw.qs"))
+  moorings       <- qs::qread(here_input_analysis("moorings.qs"))
 }
 
 
 ###########################
 ###########################
-#### Define unitsets
+#### Define detection dataset (blocks)
 
-#### Define units (individual/month combinations)
+#### Update detections with individual/time_id blocks
+# Define individual_id, time_id blocks
 detections <- 
   detections |> 
   group_by(individual_id) |> 
   mutate(time_id = lubridate::floor_date(timestamp, "months")) |>
   select(individual_id, time_id, timestamp, receiver_id) |>
   as.data.table()
-
-#### Define unitsets
-unitsets <- 
-  detections |> 
-  group_by(individual_id, time_id) |> 
-  slice(1L) |> 
-  ungroup() |> 
-  mutate(unit_id = row_number()) |> 
-  select(unit_id, individual_id, time_id, timestamp) |>
-  mutate(
-    file_detections = file.path("data", "input", analysis, 
-                                individual_id, time_id, "detection.qs"),
-    folder_home = file.path("data", "output", analysis, "main", "runs", 
-                            individual_id, time_id), 
-    folder_home_patter = file.path(folder_home, "patter")) |>
-  as.data.table()
-
-#### Build directories
-if (FALSE) {
-  unlink(file.path("data", "output", analysis, "main", "runs"))
-}
-dirs.create(dirname(unitsets$file_detections))
-dirs.create(unitsets$folder_home)
-dirs.create(unitsets$folder_home_patter)
-
-
-###########################
-###########################
-#### Filter dataset
-
-#### Number of individuals in full dataset
+# Check number of individuals in full dataset
 length(unique(detections$individual_id))
 
-#### (optional) Focus on individuals with sufficient data
-# This is no longer implemented
-# We include all individuals
-# But focus on individual/month blocks that meet selected criteria (below)
-
-#### Focus on individual/month units with sufficient data
-# A) Assign unit_id from unitsets
-detections <- 
-  detections |> 
-  left_join(unitsets |> 
-              select(unit_id, individual_id, time_id) |>
-              as.data.table(), 
-            by = c("individual_id", "time_id")) |> 
-  as.data.table()
-# B) Filter detections 
+#### Focus on individual/time (month) units with sufficient data
+# NB: filter_detectionsd assumes monthly blocks
 detections <- filter_detections(detections)
-# C) Update unitsets
-unitsets <- unitsets[unit_id %in% detections$unit_id, ]
 
 #### Checks
-# Visually validate matching between unitsets & detections
-unitsets[unit_id == 14, ]
-detections[unit_id == 14, ]
-# Validate all unit_ids present in each dataset
-stopifnot(all(unitsets$unit_id %in% detections$unit_id) & 
-            all(detections$unit_id %in% unitsets$unit_id))
-# Validate matching between all unitsets and detections
-cl_lapply(split(unitsets, seq_len(nrow(unitsets))), function(sim) {
-  vdetections <- detections[unit_id == sim$unit_id, ]
-  stopifnot(all(sim$unit_id == vdetections$unit_id))
-  stopifnot(all(sim$individual_id == vdetections$individual_id))
-  stopifnot(all(sim$time_id == vdetections$time_id))
-})
 # Validate time_id assignment in detections
 stopifnot(all(detections$time_id == 
                 lubridate::floor_date(detections$timestamp, "months")))
@@ -142,7 +88,7 @@ stopifnot(all(detections$time_id ==
 # * This is based on the threshold specified in filter_detections.R
 ck <- 
   detections |> 
-  group_by(unit_id) |> 
+  group_by(paste(individual_id, time_id)) |> 
   summarise(ck = length(unique(lubridate::yday(timestamp)))) |> 
   pull(ck) |> 
   sort()
@@ -154,24 +100,27 @@ stopifnot(all(ck >= 14))
 # * E.g., that would otherwise allow 1 or 2 row datasets forward for analysis
 ck <- 
   detections |> 
-  group_by(unit_id) |> 
+  group_by(paste(individual_id, time_id)) |> 
   summarise(ck = n()) |> 
   pull(ck) |> 
   sort()
 stopifnot(all(ck >= 50))
 
-#### Summarise detection dataset
+#### Summarise (real) detection dataset used for modelling 
 # cf. raw data summary statistics (setup-data-detection.R)
-nrow(detections)
-length(unique(detections$individual_id))
-range(detections$timestamp)
-int <- lubridate::interval(min(detections$timestamp),max(detections$timestamp))
-lubridate::time_length(int, "months")
-lubridate::time_length(int, "years")
-length(unique(detections$receiver_id))
-length(unique(paste(detections$individual_id, detections$time_id)))
+if (TRUE) {
+  nrow(detections)
+  length(unique(detections$individual_id))
+  range(detections$timestamp)
+  int <- lubridate::interval(min(detections$timestamp),max(detections$timestamp))
+  lubridate::time_length(int, "months")
+  lubridate::time_length(int, "years")
+  length(unique(detections$receiver_id))
+  length(unique(paste(detections$individual_id, detections$time_id)))
+  plot(detections$timestamp, detections$individual_id)
+}
 
-#### Visualise modelled datasets
+#### Visualise real detection dataset used for modelling 
 # (optional) TO DO Move this code to appropriate synthesis script
 # Plot raw time series (light grey)
 # Add modelled time series, coloured by region as in map
@@ -204,11 +153,11 @@ if (analysis == "real") {
   draw[, individual_id := factor(individual_id, levels = ids)]
   draw[, col := moorings$col[match(receiver_id, moorings$receiver_id)]]
   draw[, col := ifelse(model == TRUE, col, scales::alpha("dimgrey", 0.25))]
-
+  
   #### Plot (~15 s)
   tic()
   range(draw$timestamp)
-  png(here_fig("detections.png"), 
+  png(here_fig(analysis, "detections.png"), 
       height = 9.69 * 1.75, width = 6.27 * 1.75, units = "in", res = 800)
   # Set parameters 
   pp <- par(oma = c(1.5, 1.5, 0, 0))
@@ -246,211 +195,115 @@ if (analysis == "real") {
   
 }
 
-#### Write unitsets/detections
-qs::qsave(unitsets, here_input_analysis("unitsets.qs"))
-detections[, file_detections := unitsets$file_detections[match(unit_id, unitsets$unit_id)]]
-cl_lapply(split(detections, detections$unit_id), function(d) {
-  qs::qsave(d, d$file_detections[1])
+
+###########################
+###########################
+#### Define unitsets
+
+#### Define unitsets
+unitsets <- 
+  detections |> 
+  group_by(individual_id, time_id) |> 
+  slice(1L) |> 
+  ungroup() |> 
+  arrange(individual_id, time_id) |> 
+  mutate(unit_id = row_number()) |> 
+  select(unit_id, individual_id, time_id, timestamp) |>
+  mutate(
+    # Define unit-specific input files
+    folder_input        = file.path("data", "input", analysis, subanalysis, "runs", 
+                                    individual_id, time_id), 
+    file_timeline       = file.path(folder_input, "timeline.parquet"),
+    file_acoustics      = file.path(folder_input, "acoustics.parquet"),
+    file_containers_fwd = file.path(folder_input, "containers-fwd.parquet"),
+    file_containers_bwd = file.path(folder_input, "containers-bwd.parquet")
+  ) |>
+  as.data.table()
+# Update detections with unit_id
+detections <- 
+  detections |> 
+  left_join(unitsets[, .(unit_id, individual_id, time_id)], 
+            by = c("individual_id", "time_id")) |> 
+  select(unit_id, individual_id, time_id, timestamp, receiver_id) |> 
+  as.data.table()
+
+#### Build directories
+if (FALSE) {
+  unlink(file.path("data", "input", analysis, subanalysis), recursive = TRUE)
+}
+dirs.create(unitsets$folder_input_runs)
+dirs.create(unitsets$folder_output_runs)
+
+#### Checks
+# Visually validate matching between unitsets & detections
+unitsets[unit_id == 14, ]
+detections[unit_id == 14, ]
+# Validate all unit_ids present in each dataset
+stopifnot(all(unitsets$unit_id %in% detections$unit_id) & 
+            all(detections$unit_id %in% unitsets$unit_id))
+# Validate matching between all unitsets and detections
+cl_lapply(split(unitsets, seq_len(nrow(unitsets))), function(sim) {
+  vdetections <- detections[unit_id == sim$unit_id, ]
+  stopifnot(all(sim$unit_id == vdetections$unit_id))
+  stopifnot(all(sim$individual_id == vdetections$individual_id))
+  stopifnot(all(sim$time_id == vdetections$time_id))
 })
 
 
 ###########################
 ###########################
-#### Prepare iteration patter: main analysis
+#### Prepare iterations
 
 #### Define iteration 
 iteration <- 
   unitsets |> 
-  select(unit_id, individual_id, time_id, 
-         file_detections,
-         folder_home = folder_home_patter) |>
   cross_join(pars) |> 
-  mutate(index = row_number(),
-         folder_coord = file.path(folder_home, "coord", parameter_id)) |> 
+  mutate(
+    # Define unit-specific & sensitivity specififc output files (see Julia scripts)
+    folder_output       = file.path("data", "output", analysis, subanalysis, "runs", 
+                                    individual_id, time_id, parameter_id),
+    file_states         = file.path(folder_output, "states.parquet"),
+    file_diagnostics    = file.path(folder_output, "diagnostics.parquet"),
+    file_callstats      = file.path(folder_output, "callstats.parquet"),
+    file_particles      = file.path(folder_output, "particles.parquet")) |> 
+  # Add modelling columns
+  mutate(
+    n_batch             = 10L,
+    n_particle_filter   = ifelse(analysis == "sim", 50000L, 75000L), 
+    n_particle_smoother = ifelse(analysis == "sim", 1500L, 2000L), 
+  )
   as.data.table()
 
-#### Check nrows
-# TO DO Limit iteration rows
-# * For the real analysis, the number of rows in this data.table is too high
-# * We should restrict this
-#   - A) Restrict individual inclusion criteria 
-#   - B) Reconsider simulation priorities 
-#   - C) Restrict sensitivity analyses
-#        on the basis of simulation results the sensitivity analysis 
+#### Check nrow
+# This must be feasible! 
 nrow(iteration)
 
 #### Build directories 
 if (FALSE) {
-  unlink(iteration$folder_coord)
+  unlink(iteration$folder_output, recursive = TRUE)
 }
-nrow(iteration)
-dirs.create(iteration$folder_coord)
-
-#### Write 
-qs::qsave(iteration, here_input_analysis("iteration-patter.qs"))
-
-#### Validation
-# Validate match between iteration and file_detections
-cl_lapply(split(iteration, seq_len(nrow(iteration))), function(sim) {
-  # sim <- iteration[1, ]
-  # print(sim$index)
-  vdetections <- qs::qread(sim$file_detections)
-  stopifnot(all(sim$unit_id == sim$unit_id))
-  stopifnot(all(sim$individual_id == vdetections$individual_id))
-  stopifnot(all(sim$time_id == vdetections$time_id))
-  stopifnot(all(vdetections$time_id == lubridate::floor_date(vdetections$timestamp, "months")))
-})
-
-
-###########################
-###########################
-#### Prepare iteration patter: optimisation analysis
-
-# We will explore estimation of latent locations & static parameters
-# (focusing on shape/scale parameters of gamma distribution)
-
-# We explore two optimisation routines:
-# A) optim()
-# - programmatically quick & easy to extend for multiple parameters
-# - but did not work not work well in initial tests 
-# - see analysis-optimisation.R
-# * grid-search
-# - scales poorly with increasing numbers of parameters
-# - but parallelisable
-
-# We'll run optimisation for the following settings:
-# * We consider a subset of N individuals
-# * For each individual, we run the filter/optimisation 3 times 
-# * We'll record outputs in:
-# * sim/optim/individual_id/rep_id/parameter_id (parameter_id = 1)
-# * sim/grid/individual_id/rep_id/parameter_id  (multiple parameters)
-
-if (analysis == "sim") {
-  
-  #### Copy iterations
-  iteration_main <- copy(iteration)
-  
-  #### Define parameters
-  n_id  <- 3L
-  n_rep <- 3L
-  
-  #### Explore possible step length distributions 
-  CJ(shape = seq(1, 10, by = 2),
-     scale = seq(20, 30, by = 1)) |>
-    mutate(row = paste(shape, scale, sep = ", ")) |> 
-    tidyr::expand_grid(x = seq(0, pars$mobility[1], length.out = 100)) |> 
-    ggplot(aes(x, dgamma(x, shape = shape, scale = scale))) +
-    geom_line() +
-    facet_wrap(~row, scales = "free_y") + 
-    theme(axis.text.y = element_blank())
-  # Examine sampling distributions
-  hist(rtrunc(100, "norm", lower = 0, mean = pars$shape[1], sd = 2))
-  hist(rtrunc(100, "norm", lower = 0, mean = pars$scale[1], sd = 2))
-  
-  
-  ###########################
-  #### optim analysis
-  
-  #### Define iteration
-  iteration <- 
-    iteration_main |> 
-    filter(sensitivity == "best") |> 
-    slice(1:n_id) |> 
-    cross_join(data.table(rep_id = 1:n_rep)) |> 
-    mutate(index = row_number(), 
-           parameter_id = 1L, 
-           # Simulate starting values for shape/scale for optimisation
-           shape = rtrunc(n(), "norm", lower = 0, mean = pars$shape[1], sd = 2),
-           scale = rtrunc(n(), "norm", lower = 0, mean = pars$scale[1], sd = 2),
-           file_output = file.path("data", "output", analysis, "optim", "runs", 
-                                   individual_id, rep_id, parameter_id, "optim.qs")) |> 
-    # Select columns, including parameters required by constructor_ac_core()
-    select(index, unit_id, individual_id, rep_id, 
-           shape, scale, phi, mobility, 
-           receiver_alpha, receiver_beta, receiver_gamma, 
-           file_detections, file_output) |> 
-    as.data.table()
-  
-  # Examine starting distributions for optimisation
-  iteration |>
-    select(shape, scale) |> 
-    mutate(row = paste0(shape, scale, ", ")) |> 
-    tidyr::expand_grid(x = seq(0, pars$mobility[1], length.out = 200)) |> 
-    ggplot(aes(x, dgamma(x, shape = shape, scale = scale), 
-               colour = row, group = row)) +
-    geom_line() +
-    theme(axis.text.y = element_blank(), 
-          legend.position = "none")
-  
-  # Record iteration
-  qs::qsave(iteration, here_input_analysis("iteration-patter-optim.qs"))
-  
-  # Build directories
-  dirs.create(dirname(iteration$file_output))
-  
-  
-  ###########################
-  #### Grid-search
-
-  # Define parameter grid
-  # * We know the true parameter values
-  # * We could consider the same bounds of uncertainty as in real-world analyses
-  # * This is relatively well defined 
-  shapes <- sort(c(pars$shape[1], seq(min(pars$shape), max(pars$shape), length.out = 10)))
-  scales <- sort(c(pars$scale[1], seq(min(pars$scale), max(pars$scale), length.out = 10)))
-  grid   <- CJ(shape = shapes, scale = scales) |> 
-    mutate(parameter_id = row_number(), 
-           row =  paste(shape, scale, sep = ", ")) |>
-    select(parameter_id, row, shape, scale) |>
-    as.data.table()
-  # Visualise parameter grid
-  grid |>
-    tidyr::expand_grid(x = seq(0, max(pars$mobility[1]), length.out = 100)) |> 
-    ggplot(aes(x, dgamma(x, shape = shape, scale = scale), 
-               colour = row, group = row)) +
-    geom_line() +
-    theme(axis.text.y = element_blank(), 
-          legend.position = "none")
-  
-  # Define iteration data.table
-  iteration <- 
-    iteration_main |> 
-    filter(sensitivity == "best") |> 
-    select(-parameter_id, -shape, -scale) |> 
-    slice(1:n_id) |> 
-    cross_join(data.table(rep_id = 1:n_rep)) |> 
-    cross_join(grid) |> 
-    mutate(index = row_number()) |> 
-    mutate(file_output = file.path("data", "output", analysis, "grid", "runs", 
-                                   individual_id, rep_id, parameter_id, "grid.qs")) |> 
-    # Select columns, including parameters required by constructor_ac_core()
-    select(index, unit_id, individual_id, rep_id, parameter_id, 
-           shape, scale, mobility, phi, 
-           receiver_alpha, receiver_beta, receiver_gamma,
-           file_detections, file_output) |> 
-    as.data.table()
-  
-  # Record iteration
-  qs::qsave(iteration, here_input_analysis("iteration-patter-grid.qs"))
-  
-  # Build directories
-  dirs.create(dirname(iteration$file_output))
-  
-}
-
-
-###########################
-###########################
-#### Prepare iteration heuristics
-
-# TO DO (MF)
+dirs.create(iteration$folder_output)
 
 
 ###########################
 ###########################
 #### Write outputs
 
+cl_lapply(split(iteration, seq_len(nrow(iteration))), function(d) {
+  
+  # Define file_timeline
+  
+  # Define file_acoustics
+  
+  # Define file_containers_fwd
+  
+  # Define file_containers_bwd
+  
+  nothing()
+})
 
+qs::qsave(iteration, here_input_analysis("iteration.qs"))
+arrow::write_parquet(iteration, here_input_analysis("iteration.parquet"))
 
 
 #### End of code. 
