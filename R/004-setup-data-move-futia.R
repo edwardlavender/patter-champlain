@@ -42,7 +42,8 @@ tb_sync <- qs::qread(here_data_raw("model-move","thunder-bay-2024",
 ###########################
 ###########################
 #### Process data
-### Run HPE filter for Drummond Island data
+
+#### Run HPE filter for Drummond Island data
 # Filter out any positions without an associated HPE or HPEm
 di_sync_short <- 
   di_sync |> 
@@ -74,7 +75,7 @@ di_hpe_filter$cum_percent <- di_hpe_filter$cum_sum/nrow(di_sync_short)*100
 
 di_hpe_filter
 
-# remove lkt detections where HPE associated with > 20 m error for 95% of data
+# Remove lkt detections where HPE associated with > 20 m error for 95% of data
 di_hpe_cutoff <- 
   di_hpe_filter |> 
   filter(ninetyFiveHPEm < 20) |> 
@@ -99,12 +100,12 @@ di_lkt_filtered <-
 
 summary(di_lkt_filtered)
 
-# write to file
+# Write to file
 qs::qsave(di_lkt_filtered, file = here_data("supp","model-move",
                                             "DI_lkt_2013-2014_filtered_May2025.qs"))
 
 
-### Run HPE filter for Thunder Bay data
+#### Run HPE filter for Thunder Bay data
 # Filter out any positions without an associated HPE or HPEm
 tb_sync_short <- 
   tb_sync |> 
@@ -136,7 +137,7 @@ tb_hpe_filter$cum_percent <- tb_hpe_filter$cum_sum/nrow(tb_sync_short)*100
 
 tb_hpe_filter
 
-# remove lkt detections where HPE associated with > 20 m error for 95% of data
+# Remove lkt detections where HPE associated with > 20 m error for 95% of data
 tb_hpe_cutoff <- 
   tb_hpe_filter |> 
   filter(ninetyFiveHPEm < 20) |> 
@@ -151,8 +152,7 @@ tb_lkt_filtered <-
 
 summary(tb_lkt_filtered)
 
-
-# write to file
+# Write to file
 qs::qsave(tb_lkt_filtered, file = here_data("supp","model-move",
                                             "TB_lkt_2021-2024_filtered_May2025.qs"))
 
