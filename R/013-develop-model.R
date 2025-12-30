@@ -114,7 +114,7 @@ pars |>
   mutate(parameter_id = as.character(parameter_id), 
          mobility = as.character(mobility)) |> 
   tidy_numbers(digits = c(4, 4, 4, 4, 4, 0)) |> 
-  tidy_write(here_fig("pars.txt"))
+  tidy_write(here_fig("tables", "pars.txt"))
 
 
 #### End of code.

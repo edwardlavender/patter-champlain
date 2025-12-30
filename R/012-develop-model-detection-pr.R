@@ -257,7 +257,7 @@ pred_patter <-
 #### Publication-quality plot
 
 #### Make plot
-png(here_fig("model-obs.png"), 
+png(here_fig("model", "model-obs", "detection-probability.png"), 
     height = 5, width = 10, units = "in", res = 800)
 gg <- 
   ggplot(dcounts, aes(x = dist, y = prop)) +

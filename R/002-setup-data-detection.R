@@ -104,7 +104,7 @@ surgery |>
          Sex = sex, 
          `Total length (mm)` = length) |> 
   tidy_numbers(digits = c(0, 0, 4, 4, 0)) |> 
-  tidy_write(here_fig("fish.txt"))
+  tidy_write(here_fig("tables", "fish.txt"))
 
 
 ###########################
@@ -235,7 +235,7 @@ moorings |>
          `Longitude (°)` = lon, 
          `Latitude (°)` = lat, 
          `Depth (m)` = depth) |> 
-  tidy_write(here_fig("moorings.txt"))
+  tidy_write(here_fig("tables", "moorings.txt"))
   
 #### Process moorings for modelling
 moorings <- 

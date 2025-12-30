@@ -147,7 +147,7 @@ dmin <- density(vmin, from = 0)
 dmax <- density(vmax, from = 0)
 
 #### Step lengths
-png(here_fig("model-move-step.png"), 
+png(here_fig("model", "model-move", "step-length.png"), 
     height = 4, width = 4, units = "in", res = 800)
 pp <- par(mgp = c(3, 0.7, 0))
 # Set graphical parameters
@@ -207,7 +207,7 @@ dev.off()
 drummond_angle <- vps_angle[site == "Drummond", ]
 thunder_angle  <- vps_angle[site == "Thunder", ]
 # Make plot 
-png(here_fig("model-move-turning-angle.png"), 
+png(here_fig("model", "model-move", "turning-angle.png"), 
     height = 4, width = 4, units = "in", res = 800)
 pp <- par(mgp = c(3, 0.7, 0))
 x <- seq(-pi, pi, length.out = 1e5)
