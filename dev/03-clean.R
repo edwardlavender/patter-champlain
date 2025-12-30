@@ -32,47 +32,40 @@ if (FALSE) {
 
 #### Rebuild directories 
 
+# data/
 dirs.create("data")
 
+# data/input/
 dirs.create(here_input())
 dirs.create(here_input_real())
 dirs.create(here_input_sim())
-dirs.create(here_input("vmap"))
+# dirs.create(here_input("vmap"))
 
+# data/debug/ 
 dirs.create(here_debug())
 
+# data/inst/
 dirs.create(here_data("inst"))
 
+# data/output/sim/main/
 dirs.create(here_output_sim())
-
 dirs.create(here_output_sim_main())
-dirs.create(here_output_sim_main("logs", "R"))
-dirs.create(here_output_sim_main("logs", "R-CMD-BATCH"))
+dirs.create(here_output_sim_main("logs"))
 dirs.create(here_output_sim_main("runs"))
 dirs.create(here_output_sim_main("synthesis"))
 
-# dirs.create(here_output_sim_optim())
-# dirs.create(here_output_sim_optim("logs", "R"))
-# dirs.create(here_output_sim_optim("logs", "R-CMD-BATCH"))
-# dirs.create(here_output_sim_optim("runs"))
-# dirs.create(here_output_sim_optim("synthesis"))
-
-# dirs.create(here_output_sim_grid())
-# dirs.create(here_output_sim_grid("logs", "R"))
-# dirs.create(here_output_sim_grid("logs", "R-CMD-BATCH"))
-# dirs.create(here_output_sim_grid("runs"))
-# dirs.create(here_output_sim_grid("synthesis"))
-
+# data/output/real/main/
 dirs.create(here_output_real_main())
-dirs.create(here_output_real_main("logs", "R"))
-dirs.create(here_output_real_main("logs", "R-CMD-BATCH"))
+dirs.create(here_output_real_main("logs"))
 dirs.create(here_output_real_main("runs"))
 dirs.create(here_output_real_main("synthesis"))
 
+# data/output/sim/main/
 dirs.create(here_data("supp"))
 dirs.create(here_data("supp", "model-move"))
 dirs.create(here_data("supp", "model-obs"))
 
+# data/fig/
 dirs.create(here_fig())
 dirs.create(here_fig("local"))
 dirs.create(here_fig("local", "qgis"))
