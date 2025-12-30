@@ -11,6 +11,7 @@ doc/
 fig/
 R/deprecated/
 R/dev/
+R/extensions/
 Rmd/
 .Renviron
 .Rprofile
