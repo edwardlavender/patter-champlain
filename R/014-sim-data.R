@@ -115,7 +115,7 @@ lobstr::obj_size(xinits)
 
 #### Simulate acoustic observations for each path
 # ETA:
-# * ~3.0 mins (SIA-LAVENDED-M)
+# * ~2.6 mins (SIA-LAVENDED-M)
 # * ~6.5 mins (siam-linux20)
 # * TO DO: Improve speed of Patter.jl.sim_observations()
 tic()

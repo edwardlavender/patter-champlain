@@ -12,7 +12,7 @@ model_move_trout <- function(.pars) {
   phi      <- .pars$phi
   patter::model_move_cxy(.mobility = mobility,
                          .dbn_length = glue::glue("truncated(Gamma({shape}, {scale}), upper = {mobility})"),
-                         .dbn_heading_delta = glue::glue("Normal(0.0, {phi})"))
+                         .dbn_heading_delta = glue::glue("MixtureModel([truncated(Normal(0.0, {phi}), -pi, pi), Uniform(-pi, pi)], [0.99, 0.01])"))
 }
 
 # Initialise the movement process
