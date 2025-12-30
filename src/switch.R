@@ -8,9 +8,9 @@ switch_function <- function(analysis = c("sim", "real"), fun_sim, fun_real) {
   )
 }
 
-switch_constructor_ac_analysis <- function(analysis) {
-  switch_function(analysis, constructor_ac_sim, constructor_ac_real)
-}
+# switch_constructor_ac_analysis <- function(analysis) {
+#   switch_function(analysis, constructor_ac_sim, constructor_ac_real)
+# }
 
 switch_here_input_analysis <- function(analysis) {
   switch_function(analysis, here_input_sim, here_input_real)

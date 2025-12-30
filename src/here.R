@@ -44,13 +44,13 @@ here_output_sim_main <- function(...) {
   here_output("sim", "main", ...)
 }
 
-here_output_sim_optim <- function(...) {
-  here_output("sim", "optim", ...)
-}
-
-here_output_sim_grid <- function(...) {
-  here_output("sim", "grid", ...)
-}
+# here_output_sim_optim <- function(...) {
+#   here_output("sim", "optim", ...)
+# }
+# 
+# here_output_sim_grid <- function(...) {
+#   here_output("sim", "grid", ...)
+# }
 
 here_output_real <- function(...) {
   here_output("real", ...)

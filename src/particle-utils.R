@@ -1,77 +1,78 @@
-# Use containers
-use_containers <- function(.containers, .direction) {
-  !is.null(.containers) && 
-    rlang::has_name(.containers, .direction) && 
-    !is.null(.containers[[.direction]]) && 
-    nrow(.containers[[.direction]]) > 0L
-}
+# # Use containers
+# use_containers <- function(.containers, .direction) {
+#   !is.null(.containers) && 
+#     rlang::has_name(.containers, .direction) && 
+#     !is.null(.containers[[.direction]]) && 
+#     nrow(.containers[[.direction]]) > 0L
+# }
 
 
-# Define batches for particle algorithm
-particle_batch <- function(.sim, .type = c("fwd", "bwd", "smo")) {
-  .type <- match.arg(.type)
-  proj.build::check_names(.sim, "file_output")
-  file.path(dirname(.sim$file_output), paste0(.type, "-", 1:5, ".jld2"))
-}
+# # Define batches for particle algorithm
+# particle_batch <- function(.sim, .type = c("fwd", "bwd", "smo")) {
+#   .type <- match.arg(.type)
+#   proj.build::check_names(.sim, "file_output")
+#   file.path(dirname(.sim$file_output), paste0(.type, "-", 1:5, ".jld2"))
+# }
 
-# particle_placeholder
-# * This function is a placeholder for estimate_coord_particle()
-# * It is used to check the constructor functions work for all datasets
-particle_placeholder <- function(...) {
-  list(forward = NULL, backward = NULL, smooth = NULL)
-}
+# # particle_placeholder
+# # * This function is a placeholder for estimate_coord_particle()
+# # * It is used to check the constructor functions work for all datasets
+# particle_placeholder <- function(...) {
+#   list(forward = NULL, backward = NULL, smooth = NULL)
+# }
 
-# Determine success of particle algorithms
-# * x is the output of particle algorithms
-particle_success <- function(x) {
-  # Set success = FALSE if the smoothing element is empty
-  # * This is due to a convergence failure during smoothing 
-  # * (since .collect = TRUE for the smoother)
-  if (is.null(x$smooth)) {
-    FALSE
-  } else {
-    # Otherwise, extract x$smooth$callstats$convergence
-    x$smooth$callstats$convergence
-  }
-}
+# # Determine success of particle algorithms
+# # * x is the output of particle algorithms
+# particle_success <- function(x) {
+#   # Set success = FALSE if the smoothing element is empty
+#   # * This is due to a convergence failure during smoothing 
+#   # * (since .collect = TRUE for the smoother)
+#   if (is.null(x$smooth)) {
+#     FALSE
+#   } else {
+#     # Otherwise, extract x$smooth$callstats$convergence
+#     x$smooth$callstats$convergence
+#   }
+# }
 
-# Cleanup after particle algorithms
-# * We delete fwd/bwd batch files after use
-#   to minimise storage requirements (on each iteration)
-particle_cleanup <- function(.sim, .cl) {
-  # Delete fwd files
-  fwd <- particle_batch(.sim = .sim, .type = "fwd")
-  sapply(fwd, function(f) {
-    if (file.exists(f)) {
-      unlink(f)
-    }
-  })
-  # Delete bwd files
-  bwd <- particle_batch(.sim = .sim, .type = "bwd")
-  sapply(bwd, function(f) {
-    if (file.exists(f)) {
-      unlink(f)
-    }
-  })
-  invisible(NULL)
-}
+# # Cleanup after particle algorithms
+# # * We delete fwd/bwd batch files after use
+# #   to minimise storage requirements (on each iteration)
+# particle_cleanup <- function(.sim, .cl) {
+#   # Delete fwd files
+#   fwd <- particle_batch(.sim = .sim, .type = "fwd")
+#   sapply(fwd, function(f) {
+#     if (file.exists(f)) {
+#       unlink(f)
+#     }
+#   })
+#   # Delete bwd files
+#   bwd <- particle_batch(.sim = .sim, .type = "bwd")
+#   sapply(bwd, function(f) {
+#     if (file.exists(f)) {
+#       unlink(f)
+#     }
+#   })
+#   invisible(NULL)
+# }
 
-# particle convergence (post-hoc check)
-# * This function expects a list from estimate_coord_particle() 
-#   with $forward, $backward and $smooth elements
-particle_convergence <- function(l) {
-  # Iterate over each element & check $callstats$convergence
-  convergences <- sapply(c("forward", "backward", "smooth"), function(direction) {
-    convergence <- FALSE
-    if (rlang::has_name(l, direction) && !is.null(l[[direction]]$callstats)) {
-      convergence <- l[[direction]]$callstats$convergence
-    }
-    convergence
-  }) 
-  data.table(forward = convergences[1], backward = convergences[2], smooth = convergences[3])
-}
+# # particle convergence (post-hoc check)
+# # * This function expects a list from estimate_coord_particle() 
+# #   with $forward, $backward and $smooth elements
+# particle_convergence <- function(l) {
+#   # Iterate over each element & check $callstats$convergence
+#   convergences <- sapply(c("forward", "backward", "smooth"), function(direction) {
+#     convergence <- FALSE
+#     if (rlang::has_name(l, direction) && !is.null(l[[direction]]$callstats)) {
+#       convergence <- l[[direction]]$callstats$convergence
+#     }
+#     convergence
+#   }) 
+#   data.table(forward = convergences[1], backward = convergences[2], smooth = convergences[3])
+# }
 
 # Collate batches in R
+# TO DO REVISE - THIS MUST BE RUN IN JULIA ON SERVER 
 particle_collate <- function(.sim, .timeline) {
   
   # Check names

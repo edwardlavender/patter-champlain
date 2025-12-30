@@ -12,6 +12,7 @@ fig/
 R/deprecated/
 R/dev/
 R/extensions/
+src-deprecated/
 Rmd/
 .Renviron
 .Rprofile
