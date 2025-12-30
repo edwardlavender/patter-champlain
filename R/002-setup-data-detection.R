@@ -188,7 +188,7 @@ head(moorings)
 rxy <- 
   cbind(moorings$deploy_lon, moorings$deploy_lat) |> 
   terra::vect(crs = "EPSG:4326") |> 
-  terra::project("EPSG:3175") |>
+  terra::project(epsg_utm) |>
   terra::crds()
 stopifnot(nrow(rxy) > 0L)
 stopifnot(all(!is.na(terra::extract(map, rxy)$map_value)))
