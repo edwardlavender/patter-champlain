@@ -194,7 +194,6 @@ dcounts |>
   geom_smooth()
 # Check format consistency
 head(dcounts)
-head(qs::qread(here_data("supp", "model-obs", "futia-raw.qs")))
 
 #### Write to file
 qs::qsave(dcounts, here_data("supp", "model-obs", "klinard-raw.qs"))
