@@ -247,19 +247,23 @@ iteration <-
     # Define input files 
     # * Some files depend on both unit_id & sensitivity parameters
     # * For convenience, we store all files in an {individual_id}/{unit_id}/{parameter_id} directory 
+    # * We use .csv for file import in Julia
+    #   (.parquet & .feather cause issues in Patter.jl)
     folder_input        = file.path("data", "input", analysis, subanalysis, "runs", 
                                     individual_id, time_id, parameter_id), 
-    file_timeline       = file.path(folder_input, "timeline.parquet"),
-    file_acoustics      = file.path(folder_input, "acoustics.parquet"),
-    file_containers_fwd = file.path(folder_input, "containers-fwd.parquet"),
-    file_containers_bwd = file.path(folder_input, "containers-bwd.parquet"),
+    file_timeline       = file.path(folder_input, "timeline.csv"),
+    file_acoustics      = file.path(folder_input, "acoustics.csv"),
+    file_containers_fwd = file.path(folder_input, "containers-fwd.csv"),
+    file_containers_bwd = file.path(folder_input, "containers-bwd.csv"),
     # Define  output files (unit-specific & sensitivity specific)
+    # * We use .feather to record outputs
+    # * We can write these from Julia & read them into R correctly
     folder_output       = file.path("data", "output", analysis, subanalysis, "runs", 
                                     individual_id, time_id, parameter_id),
-    file_states         = file.path(folder_output, "states.parquet"),
-    file_diagnostics    = file.path(folder_output, "diagnostics.parquet"),
-    file_callstats      = file.path(folder_output, "callstats.parquet"),
-    file_particles      = file.path(folder_output, "particles.parquet"),
+    file_states         = file.path(folder_output, "states.feather"),
+    file_diagnostics    = file.path(folder_output, "diagnostics.feather"),
+    file_callstats      = file.path(folder_output, "callstats.feather"),
+    file_particles      = file.path(folder_output, "particles.feather"),
     # Add modelling columns
     n_batch             = 10L,
     n_particle_filter   = ifelse(analysis == "sim", 50000L, 75000L), 
@@ -284,20 +288,23 @@ dirs.create(iteration$folder_output)
 ###########################
 #### Create iteration input files
 
-# ~4.75 mins with 1 cl
+# ~ 2 mins
 
+pbo <- pbapply::pboptions(nout = 2L)
 cl_lapply(split(iteration, seq_len(nrow(iteration))), 
-          .cl = 1L,
+          .cl = 10L,
+          .chunk = TRUE,
           .fun = function(d) {
   
   ## Define file_timeline
+  # * Use write.csv() to avoid issues in Julia with timestamps (e.g., associated with fwrite)
   dets     <- detections[unit_id == d$unit_id, ]
   timeline <- seq(dets$time_id[1], 
                   lubridate::ceiling_date(max(dets$timestamp), "months") - 60 * 2, 
                   by = "2 mins")
   stopifnot(length(timeline) > 20000 & length(timeline) < 30000)
   timeline <- data.table(timestamp = timeline)
-  arrow::write_parquet(timeline, d$file_timeline)
+  write.csv(timeline, d$file_timeline, row.names = FALSE)
   
   ## Define file_acoustics
   # Define moorings, with detection probability parameters
@@ -310,7 +317,7 @@ cl_lapply(split(iteration, seq_len(nrow(iteration))),
     as.data.table()
   # Define acoustics 
   accs <- assemble_acoustics(.timeline = timeline$timestamp, .detections = dets, .moorings = moors)
-  arrow::write_parquet(accs, d$file_acoustics)
+  write.csv(accs, d$file_acoustics, row.names = FALSE)
   
   ## Define acoustic containers (file_containers_fwd, file_containers_bwd)
   containers <- assemble_acoustics_containers(.timeline = timeline$timestamp, 
@@ -319,14 +326,15 @@ cl_lapply(split(iteration, seq_len(nrow(iteration))),
                                               .map = map)
   containers_fwd <- containers$forward
   containers_bwd <- containers$backward
-  arrow::write_parquet(containers_fwd, d$file_acoustics)
-  arrow::write_parquet(containers_bwd, d$file_acoustics)
+  write.csv(containers_fwd, d$file_containers_fwd, row.names = FALSE)
+  write.csv(containers_bwd, d$file_containers_bwd, row.names = FALSE)
   
   nothing()
 })
+pbapply::pboptions(pbo)
 
 qs::qsave(iteration, here_input_analysis("iteration.qs"))
-arrow::write_parquet(iteration, here_input_analysis("iteration.parquet"))
+write.csv(iteration, here_input_analysis("iteration.csv"), row.names = FALSE)
 
 
 #### End of code. 
