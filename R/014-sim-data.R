@@ -32,7 +32,7 @@ expect_no_geospatial()
 
 #### Load data
 fish            <- qs::qread(here_input("fish.qs"))
-moorings        <- qs::qread(here_input_sim("moorings-xy.qs"))
+moorings        <- qs::qread(here_input_sim("main", "moorings-xy.qs"))
 pars_model_move <- qs::qread(here_input("pars-model-move-best.qs"))
 pars_model_obs  <- qs::qread(here_input("pars-model-obs-best.qs"))
 
@@ -78,7 +78,10 @@ total              <- 1L
 paths_by_path      <- list()
 acoustics_by_path  <- list()
 detections_by_path <- list()
-while (count <= n_sim | total < 100) {
+while (count <= n_sim & total < 100) {
+  
+  cli::cat_rule()
+  print(paste(count, ", ", total))
   
   #### Define tagging locations
   # (Extract map_value via Patter for linux handling)
@@ -105,7 +108,7 @@ while (count <= n_sim | total < 100) {
   # Validate that each path starts with the simulated xinit
   stopifnot(dplyr::all_equal(
     xinit[, .(x, y, heading)],
-    paths |> 
+    path |> 
       group_by(path_id) |> 
       slice(1L) |> 
       ungroup() |>
@@ -113,9 +116,9 @@ while (count <= n_sim | total < 100) {
       as.data.table()
   ))
   
-  #### Collate capture/recapture locations for each unit_id
-  # xinits <- 
-  #   paths |> 
+  #### Collate capture/recapture locations
+  # xinit <- 
+  #   path |> 
   #   group_by(path_id) |> 
   #   slice(c(1, n())) |> 
   #   select(path_id, timestep, map_value, x, y) |> 
@@ -153,8 +156,16 @@ while (count <= n_sim | total < 100) {
 toc()
 
 #### Collate datasets
+# Check lists
+stopifnot(length(paths_by_path) == n_sim)
+stopifnot(length(acoustics_by_path) == n_sim)
+stopifnot(length(detections_by_path) == n_sim)
+# Collate data
 paths      <- rbindlist(paths_by_path)
 detections <- rbindlist(detections_by_path)
+# Additional checks
+stopifnot(identical(unique(paths$path_id), 1:n_sim))
+stopifnot(identical(unique(detections$individual_id), 1:n_sim))
 
 #### Validation
 # We should only record detections within receiver_gamma of receiver
