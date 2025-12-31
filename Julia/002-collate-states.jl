@@ -20,11 +20,12 @@ import Pkg
 
 #### Load local packages
 Pkg.activate(".")
+import Arrow
 import CSV
-using DataFrames
-import Dates
 import Patter 
-import Parquet
+using DataFrames
+using Dates
+using JLD2
 
 #### Load datasets (map, iteration)
 # Load map & iteration 
@@ -34,13 +35,15 @@ subanalysis = "main"
 iteration = CSV.read(joinpath("data", "input", analysis, subanalysis, "iteration.csv"), DataFrame)
 
 #### Select iteration 
-row = parse(Int, ARGS[1])
+row = 1
+# row = parse(Int, ARGS[1])
 iter = iteration[row, :]
 
 #### Define local settings
-if Threads.nthreads() != 1
+Threads.nthreads()
+if (Threads.nthreads() != 1) && !isinteractive()
   error("JULIA_NUM_THREADS must be 1 for parallelisation!")
-end 
+end
 
 
 ###########################
@@ -50,25 +53,26 @@ end
 # Define timeline 
 timeline = CSV.read(iter.file_timeline,
                     DataFrame, 
-                    dateformat = "yyyy-mm-dd H:M:S");
+                    dateformat = "yyyy-mm-dd H:M:S")
+timeline.timestamp = DateTime.(timeline.timestamp);
+timeline = timeline.timestamp
 
 # Define smo-{i}.jld2 files
-batch <- smo_batches = [joinpath(iter.folder_patter, "smo-{i}.jld2") for i in 1:iter.n_batch]
+smo_batches = [joinpath(iter.folder_output, "smo-$i.jld2") for i in 1:iter.n_batch]
+smo_batches = smo_batches[isfile.(smo_batches)]
 
 # Collate states Matrix in Julia 
-smo_states = hcat([f["xsmo"] for f in map(jldopen, bbb)]...)
+smo_states = hcat([f["xsmo"] for f in map(jldopen, smo_batches)]...)
 
 # Convert to DataFrame 
 smo_states_df = Patter.r_get_states(smo_states, collect(1:length(timeline)), timeline);
   
-# Collate 'pf_particles' object
-# * This is implemented in R 
-
 # Write output to file
-Parquet.write(iter.file_states, smo_states_df)
+Arrow.write(iter.file_states, smo_states_df)
   
 # Cleanup batches
 foreach(f -> rm(f; force = true), smo_batches)
+readdir(iter.folder_output, join = true)
 
 
 #### End of code. 

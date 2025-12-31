@@ -16,19 +16,20 @@
 
 #### Load base packages
 import Base.Threads
-using BenchmarkTools
-# using Revise
 import Pkg
 
 #### Load local packages
 Pkg.activate(".")
+using BenchmarkTools
+import Arrow
 import CSV
-using DataFrames
-import Dates
 import GeoArrays
 import Parquet
+import Random
+using DataFrames
+using Dates
+using Distributions
 using Patter
-import Random 
 
 #### Load source files
 include("./src/utils.jl")
@@ -39,35 +40,23 @@ analysis  = "sim"
 # analysis  = "real"
 subanalysis = "main"
 env       = GeoArrays.read(joinpath("data", "input", "map.tif"));
+env_init  = Patter.rast(joinpath("data", "input", "map.tif"));
 iteration = CSV.read(joinpath("data", "input", analysis, subanalysis, "iteration.csv"), DataFrame)
 
 #### Select iteration 
-row = parse(Int, ARGS[1])
+row = 1
+# row = parse(Int, ARGS[1])
 iter = iteration[row, :]
 
 #### Define local settings
 # Check JULIA_NUM_THREADS = 1
-if Threads.nthreads() != 1
+Threads.nthreads()
+if (Threads.nthreads() != 1) && !isinteractive()
   error("JULIA_NUM_THREADS must be 1 for parallelisation!")
 end 
 # Set seed
 Random.seed!(123);
 start = now();
-
-
-###########################
-###########################
-#### Prepare data 
-
-#### Examine iterations
-for (n,t) in zip(names(iter), eltype.(eachcol(iter)))
-    println(n, ": ", t)
-end
-
-#### Process column types 
-# iter.D         = Vector(iter.D);
-# iter.D         = Float64.(iter.D);
-iter.sensitivity = string.(iter.sensitivity);
 
 
 ###########################
@@ -79,39 +68,32 @@ iter.sensitivity = string.(iter.sensitivity);
 #### Define movement model
 
 #### Define state 
-state = StateXY
+state = StateCXY
 
 #### Define movement model
 model_move = ModelMoveCXY(env, 
                           iter.mobility, 
-                          truncated(Gamma(iter.k, iter.theta), upper = iter.mobility), 
-                          MixtureModel([truncated(Normal(0.0, iter.sigma), -pi, pi), Uniform(-pi, pi)], [0.99, 0.01]))
+                          truncated(Gamma(iter.shape, iter.scale), upper = iter.mobility), 
+                          MixtureModel([truncated(Normal(0.0, iter.phi), -pi, pi), Uniform(-pi, pi)], [0.99, 0.01]))
 
 
 ###########################
 #### Define observation model 
 
 #### Load timeline 
-timeline = CSV.read(iter.file_timeline,
-                    DataFrame, 
-                    dateformat = "yyyy-mm-dd H:M:S");
+timeline = CSV.read(iter.file_timeline, DataFrame, dateformat = "yyyy-mm-dd H:M:S")
+timeline.timestamp = DateTime.(timeline.timestamp);
+timeline = timeline.timestamp
 
-#### Load acoustic observations
-# Acoustics 
-acoustics = CSV.read(joinpath("data", "input", analysis, subanalysis, "acoustics.csv"), DataFrame);
-first(acoustics, 6)
-# Forward containers 
-containers_fwd = CSV.read(joinpath("data", "input", analysis, subanalysis, "containers-fwd.csv"), DataFrame);
-first(containers_fwd, 6)
-# Backward containers 
-containers_bwd = CSV.read(joinpath("data", "input", analysis, subanalysis, "containers-bwd.csv"), DataFrame);
-first(containers_bwd, 6)
+#### Load acoustic observations & containers
+acoustics      = CSV.read(iter.file_acoustics, DataFrame, dateformat = "yyyy-mm-dd H:M:S")
+containers_fwd = CSV.read(iter.file_containers_fwd, DataFrame, dateformat = "yyyy-mm-dd H:M:S")
+containers_bwd = CSV.read(iter.file_containers_bwd, DataFrame, dateformat = "yyyy-mm-dd H:M:S")
 
-#### Process time stamps
-acoustics.timestamp      = DateTime.(acoustics.timestamp, "yyyy-mm-dd HH:MM:SS");
-containers_fwd.timestamp = DateTime.(containers_fwd.timestamp, "yyyy-mm-dd HH:MM:SS");
-containers_bwd.timestamp = DateTime.(containers_bwd.timestamp, "yyyy-mm-dd HH:MM:SS");
-archival.timestamp       = DateTime.(archival.timestamp, "yyyy-mm-dd HH:MM:SS");
+#### Process columns
+acoustics.timestamp = DateTime.(acoustics.timestamp);
+containers_fwd.timestamp = DateTime.(containers_fwd.timestamp);
+containers_bwd.timestamp = DateTime.(containers_bwd.timestamp);
 
 #### Assemble datasets 
 # Collate datasets & associated `ModelObs` instances into a typed dictionary 
@@ -128,11 +110,22 @@ yobs_bwd        = assemble_yobs(datasets = datasets_bwd,
 ###########################
 #### Run particle algorithms 
 
+#### Define test settings
+if true
+  iter.n_batch = 3
+  iter.n_particle_filter = 20000
+  iter.n_particle_smoother = 500
+  files = filter(f -> endswith(f, ".jld2"), readdir(iter.folder_output; join = true))
+  if length(files) > 0
+    rm.(files; force = true)
+  end 
+end 
+
 #### Set up algorithms 
 # Define batches 
-fwd_batches = [joinpath(iter.folder_patter, "fwd-{i}.jld2") for i in 1:iter.n_batch]
-bwd_batches = [joinpath(iter.folder_patter, "bwd-{i}.jld2") for i in 1:iter.n_batch]
-smo_batches = [joinpath(iter.folder_patter, "smo-{i}.jld2") for i in 1:iter.n_batch]
+fwd_batches = [joinpath(iter.folder_output, "fwd-$i.jld2") for i in 1:iter.n_batch]
+bwd_batches = [joinpath(iter.folder_output, "bwd-$i.jld2") for i in 1:iter.n_batch]
+smo_batches = [joinpath(iter.folder_output, "smo-$i.jld2") for i in 1:iter.n_batch]
 # Define output objects
 fwd = bwd = smo = nothing 
 # Define duration placeholders
@@ -141,7 +134,7 @@ td_fwd = td_bwd = td_smo = NaN
 #### (1) Forward filter 
 
 ## Simulate initial states for the forward filter
-xinit = simulate_states_init(map             = env, 
+xinit = simulate_states_init(map             = env_init, 
                              timeline        = timeline, 
                              state_type      = state,
                              xinit           = nothing, 
@@ -159,11 +152,11 @@ fwd = particle_filter(timeline   = timeline,
                       yobs       = yobs_fwd,
                       model_move = model_move,
                       n_move     = 1,
-                      n_record   = iter.n_particle_smoother
+                      n_record   = iter.n_particle_smoother,
                       direction  = "forward", 
                       batch      = fwd_batches,
-                      progress   = (),
-                      verbose    = false);
+                      progress   = Patter.progress_control(enabled = isinteractive()),
+                      verbose    = isinteractive());
 t2_fwd = now()
 td_fwd = diffsecs(t2_fwd, t1_fwd)
 
@@ -174,11 +167,11 @@ diagnostics          = fwd.diagnostics
 diagnostics.routine .= callstats.routine
 
 #### (2) Backward filter 
-convergence = fwd.diagnostics.convergence 
+convergence = fwd.callstats.convergence[1] 
 if convergence
 
   ## Simulate initial states for the backward filter
-  xinit = simulate_states_init(map             = env, 
+  xinit = simulate_states_init(map           = env_init, 
                              timeline        = timeline, 
                              state_type      = state,
                              xinit           = nothing, 
@@ -191,17 +184,16 @@ if convergence
 
   ## Run the backward filter
   t1_bwd = now()
-  bwd_batches = [joinpath("tmp", "fwd-{i}.jld2") for i in 1:iter.n_batch]
   bwd = particle_filter(timeline   = timeline,
                         xinit      = xinit,
                         yobs       = yobs_bwd,
                         model_move = model_move,
                         n_move     = 1,
-                        n_record   = iter.n_particle_smoother
+                        n_record   = iter.n_particle_smoother,
                         direction  = "backward", 
                         batch      = bwd_batches,
-                        progress   = (),
-                        verbose    = false);
+                        progress   = Patter.progress_control(enabled = isinteractive()),
+                        verbose    = isinteractive());
   t2_bwd = now()
   td_bwd = diffsecs(t2_bwd, t1_bwd)
   
@@ -210,31 +202,33 @@ if convergence
   append!(callstats, bwd.callstats)
   bwd.diagnostics.routine .= bwd.callstats.routine
   append!(diagnostics, bwd.diagnostics)
-  
-  end 
+  convergence = bwd.callstats.convergence[1]
+
+end 
 
 #### (3) Run smoother
 # Set n_sim = 0 and cache = nothing for unrestricted models (n_move = 1)
-convergence = bwd.diagnostics.convergence 
+
 if convergence
 
   ## Run smoother
   t1_smo = now()
   smo = particle_smoother_two_filter(timeline   = timeline,
                                      xfwd       = fwd_batches,
-                                     xbwd       = bwd.batches,
+                                     xbwd       = bwd_batches,
                                      model_move = model_move,
                                      vmap       = nothing,
                                      n_particle = iter.n_particle_smoother,
                                      n_sim      = 0, 
-                                     cache      = nothing, 
+                                     cache      = false, 
                                      batch      = smo_batches, 
-                                     progress   = (), 
-                                     verbose    = false);
+                                     progress   = Patter.progress_control(enabled = isinteractive()), 
+                                     verbose    = isinteractive());
   t2_smo = now()
   td_smo = diffsecs(t2_smo, t1_smo)
 
   ## Collate outputs
+  callstats.n_iter .= Float64.(callstats.n_iter)
   append!(callstats, smo.callstats)
   smo.diagnostics.routine .= smo.callstats.routine
   append!(diagnostics, smo.diagnostics)
@@ -248,6 +242,7 @@ end
                                    
 #### (4) Record results
 # We record all results for which the smoother was run 
+# (i.e., for which the forward and backward filters converged)
 if convergence
 
   # Write particles
@@ -255,22 +250,10 @@ if convergence
   # Parquet.write(iter_file_states, smo_df);
   
   # Write diagnostics 
-  Parquet.write(iter.file_diagnostics, diagnostics);
-  
-  # Write callstats
-  # * key = {individual_id}-{time_id}-{sensitivity}
-  # * time_fwd, time_bwd and time_smo collectively define computation time 
-  # - If NaN -> convergence failure 
-  # - In R, we select rows without convergence failures that also successed with smoothing 
-  callstats = DataFrame(key       = iter.key, 
-                        timestamp = start, 
-                        time_fwd  = td_fwd
-                        time_bwd  = td_bwd
-                        time_smo  = td_smo, 
-                        # Add smoothing callstats
-                        
-                        );
-  CSV.write(iter.file_callstats, callstats);
+  Arrow.write(iter.file_diagnostics, diagnostics)
+
+  # Write callstats 
+  Arrow.write(iter.file_callstats, callstats)
 
 end 
 
@@ -279,6 +262,7 @@ end
 # We only remove smo_{i}.jld2 after collating states (later)
 foreach(f -> rm(f; force = true), fwd_batches)
 foreach(f -> rm(f; force = true), bwd_batches)
+readdir(iter.folder_output, join = true)
 
 
 #### End of code. 
