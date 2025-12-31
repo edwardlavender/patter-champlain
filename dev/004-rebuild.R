@@ -35,15 +35,17 @@ cl_lapply(scripts[1:13L], function(script) {
 # > Data simulation is implemented from R via patter
 # > This code should be run locally (on SIA-LAVENDED)
 # > Then copy data/input/sim onto linux server 
+# > NB: we only need to copy files produced by sim-data.R
+# > We do not need to copy the full contents of the sim/main/ folder!
 # callr::rscript(script[14])
-tic()
-from <- file.path("data", "output", "sim")
-dir_size(from, recursive = TRUE, .unit = "MB")
-dirs.copy(from = from, 
-          to   = file.path("/Volumes", "lavended", "documents", "projects", 
-                           "patter-champlain", "data", "output", "sim"), 
-          cl   = 10L)
-toc()
+list.files(file.path("data", "input", "sim", "main"), full.names = TRUE)
+files <- c("data/input/sim/main/acoustics-by-path.qs", 
+           "data/input/sim/main/detections.qs",       
+           "data/input/sim/main/moorings.qs", 
+           "data/input/sim/main/paths.qs", 
+           "data/input/sim/main/timeline.qs")
+sum(sapply(files, file.size) / 1e6) # 12.8 MB
+# file.copy()
 
 # (3) Prepare analysis
 # > This script can be run locally and/or on the server
