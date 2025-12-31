@@ -430,10 +430,10 @@ length(unique(detections_filtered$individual_id))
 #### Write outputs
 
 qs::qsave(fish, here_input("fish.qs"))
-qs::qsave(moorings_sim, here_input_sim("moorings-xy.qs"))
-qs::qsave(moorings_real, here_input_real("moorings.qs"))
-qs::qsave(detections, here_input_real("detections.qs"))
-qs::qsave(detections_raw, here_input_real("detections-raw.qs"))
+qs::qsave(moorings_sim, here_input_sim("main", "moorings-xy.qs"))
+qs::qsave(moorings_real, here_input_real("main", "moorings.qs"))
+qs::qsave(detections, here_input_real("main", "detections.qs"))
+qs::qsave(detections_raw, here_input_real("main", "detections-raw.qs"))
 
 
 #### End of code. 
