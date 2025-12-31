@@ -95,48 +95,64 @@ file.size(here_input("map.tif")) / 1e6 # MB
 champlain_ll <- terra::project(champlain, "WGS84")
 champlain_ll <- sf::st_as_sf(champlain_ll)
 
-#### Get a high-res North America polgyon
-continent <- ne_download(
-  scale = 10,
-  type = "admin_0_countries",
-  category = "cultural",
-  returnclass = "sf"
-)
-continent <- continent[continent$CONTINENT == "North America", ]
+if (curl::has_internet()) {
+  
+  #### Get a high-res North America polygon
+  continent <- ne_download(
+    scale = 10,
+    type = "admin_0_countries",
+    category = "cultural",
+    returnclass = "sf"
+  )
+  continent <- continent[continent$CONTINENT == "North America", ]
+  
+  #### (optional) Get North American lakes 
+  if (FALSE) {
+    lakes <- ne_download(scale = 10,
+                         type = "lakes",
+                         category = "physical",
+                         returnclass = "sf"
+    ) |> 
+      st_make_valid()
+    # lakes <- sf::st_crop(lakes, continent)
+  }
 
-#### (optional) Get North American lakes 
-lakes <- ne_download(scale = 10,
-                     type = "lakes",
-                     category = "physical",
-                     returnclass = "sf"
-) |> 
-  st_make_valid()
-# lakes <- sf::st_crop(lakes, continent)
+  
+  #### (optional) Get North American rivers 
+  if (FALSE) {
+    rivers <- ne_download(
+      scale = 10,
+      type = "rivers_lake_centerlines",
+      category = "physical",
+      returnclass = "sf"
+    )
+    # rivers <- sf::st_crop(rivers, continent)
+  }
 
-#### (optional) Get North American rivers 
-rivers <- ne_download(
-  scale = 10,
-  type = "rivers_lake_centerlines",
-  category = "physical",
-  returnclass = "sf"
-)
-# rivers <- sf::st_crop(rivers, continent)
+  #### Collect geometries
+  names(champlain_ll$region)
+  continent <- st_geometry(continent)
+  if (FALSE) {
+    lakes     <- st_geometry(lakes)
+    rivers    <- st_geometry(rivers)
+  }
 
-#### Collect geometries
-names(champlain_ll$region)
-continent <- st_geometry(continent)
-lakes     <- st_geometry(lakes)
-rivers    <- st_geometry(rivers)
+  #### Plot layers 
+  plot(continent, col = "gray90")
+  if (FALSE) {
+    plot(lakes, col = "lightblue", border = NA, add = TRUE)
+    plot(rivers, col = "lightblue", lwd = 0.1, add = TRUE)
+  }
+  # plot(st_geometry(champlain_ll), col = "blue", add = TRUE) # slow
+  
+  #### Write continent 
+  st_write(continent, here_fig("local", "qgis", "continent.shp"), append = FALSE)
 
-#### Plot layers 
-plot(continent, col = "gray90")
-plot(lakes, col = "lightblue", border = NA, add = TRUE)
-plot(rivers, col = "lightblue", lwd = 0.1, add = TRUE)
-# plot(st_geometry(champlain_ll), col = "blue", add = TRUE) # slow
+  
+}
 
 #### Write layers
 qsavevect(champlain_utm, here_input("champlain-utm.qs"))
-st_write(continent, here_fig("local", "qgis", "continent.shp"), append = FALSE)
 st_write(champlain_ll, here_fig("local", "qgis", "champlain.shp"), append = FALSE)
 
 
