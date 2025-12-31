@@ -69,70 +69,92 @@ moorings[, receiver_end := max(timeline) + 24 * 60 * 60]
 model_obs <- model_obs_champlain(moorings, pars_model_obs)
 plot(model_obs)
 
-#### Define tagging locations
-# (Extract map_value via Patter for linux handling)
-xinit <- fish[sample.int(n_sim, replace = TRUE), ]
-julia_assign("x0", xinit$x)
-julia_assign("y0", xinit$y)
-xinit[, map_value := julia_eval('[Patter.extract(env, x0[i], y0[i]) for i in eachindex(x0)]')]
-xinit <- model_move_xinit(.xinit = xinit, .n_particle = NULL)
-stopifnot(all(xinit$map_value == 1L))
-
-#### Simulate movement paths (~7 s)
-# This returns a data.table with trajectories
+#### Simulate trajectories and observations
+# This is implemented iteratively to generate exactly n_sim time series for modelling
+# I.e., that pass filter_detections() criteria 
 tic()
-paths <- sim_path_walk(.timeline   = timeline, 
-                       .state      = state_trout(), 
-                       .model_move = model_move,
-                       .xinit      = xinit,
-                       .n_path     = n_sim)
-toc()
-# (optional) Visualise moorings on plot, if .map specified
-# points(model_obs$ModelObsAcousticLogisTrunc$receiver_x, 
-#        model_obs$ModelObsAcousticLogisTrunc$receiver_y)
-# Validate that each path starts with the simulated xinit
-stopifnot(dplyr::all_equal(
-  xinit[, .(x, y, heading)],
-  paths |> 
-    group_by(path_id) |> 
-    slice(1L) |> 
-    ungroup() |>
-    select("x", "y", "heading") |> 
-    as.data.table()
-))
-
-#### Collate capture/recapture locations for each unit_id
-# Select capture/recapture locations
-xinits <- 
-  paths |> 
-  group_by(path_id) |> 
-  slice(c(1, n())) |> 
-  select(path_id, timestep, map_value, x, y) |> 
-  as.data.table()
-# Convert to list
-xinits <- split(xinits, xinits$path_id)
-lobstr::obj_size(xinits)
-
-#### Simulate acoustic observations for each path
-# ETA:
-# * ~2.6 mins (SIA-LAVENDED-M)
-# * ~6.5 mins (siam-linux20)
-# * TO DO: Improve speed of Patter.jl.sim_observations()
-tic()
-acoustics_by_path <- sim_observations(.timeline = timeline, 
-                                      .model_obs = model_obs)
-acoustics_by_path <- acoustics_by_path$ModelObsAcousticLogisTrunc
-toc()
-
-#### Collate detections data.table (to match real-world data structure)
-detections <- lapply(seq_len(n_sim), function(i) {
-  acoustics_by_path[[i]] |> 
+count              <- 1L
+total              <- 1L
+paths_by_path      <- list()
+acoustics_by_path  <- list()
+detections_by_path <- list()
+while (count <= n_sim | total < 100) {
+  
+  #### Define tagging locations
+  # (Extract map_value via Patter for linux handling)
+  xinit <- fish[sample.int(1L, replace = TRUE), ]
+  julia_assign("x0", xinit$x)
+  julia_assign("y0", xinit$y)
+  xinit[, map_value := julia_eval('[Patter.extract(env, x0[i], y0[i]) for i in eachindex(x0)]')]
+  xinit <- model_move_xinit(.xinit = xinit, .n_particle = NULL)
+  stopifnot(all(xinit$map_value == 1L))
+  
+  #### Simulate movement paths (~1.6 s)
+  # This returns a data.table with trajectories
+  tic()
+  path <- sim_path_walk(.timeline   = timeline, 
+                        .state      = state_trout(), 
+                        .model_move = model_move,
+                        .xinit      = xinit,
+                        .n_path     = 1L)
+  path[, path_id := count]
+  toc()
+  # (optional) Visualise moorings on plot, if .map specified
+  # points(model_obs$ModelObsAcousticLogisTrunc$receiver_x, 
+  #        model_obs$ModelObsAcousticLogisTrunc$receiver_y)
+  # Validate that each path starts with the simulated xinit
+  stopifnot(dplyr::all_equal(
+    xinit[, .(x, y, heading)],
+    paths |> 
+      group_by(path_id) |> 
+      slice(1L) |> 
+      ungroup() |>
+      select("x", "y", "heading") |> 
+      as.data.table()
+  ))
+  
+  #### Collate capture/recapture locations for each unit_id
+  # xinits <- 
+  #   paths |> 
+  #   group_by(path_id) |> 
+  #   slice(c(1, n())) |> 
+  #   select(path_id, timestep, map_value, x, y) |> 
+  #   as.data.table()
+  
+  #### Simulate acoustic observations (~5.5 s)
+  tic()
+  acoustics <- sim_observations(.timeline = timeline, 
+                                .model_obs = model_obs)
+  acoustics <- acoustics$ModelObsAcousticLogisTrunc[[1]]
+  toc()
+  
+  #### Collate detections data.table (to match real-world data structure)
+  detections <- 
+    acoustics |> 
     filter(obs == 1L) |> 
-    mutate(individual_id = i, time_id = lubridate::floor_date(timestamp, "months")) |> 
+    mutate(individual_id = count, time_id = lubridate::floor_date(timestamp, "months")) |> 
     select(individual_id, time_id, timestamp, receiver_id = sensor_id, 
            receiver_x, receiver_y, receiver_alpha, receiver_beta, receiver_gamma) |> 
     as.data.table()
-}) |> rbindlist()
+  
+  #### Filter detections
+  n <- nrow(filter_detections(detections[1, ]))
+  
+  #### Record outputs, if successful
+  if (n > 0L) {
+    paths_by_path[[count]]      <- copy(path)
+    acoustics_by_path[[count]]  <- copy(acoustics)
+    detections_by_path[[count]] <- copy(detections)
+    count <- count + 1L
+  }
+  total <- total + 1L
+  
+}
+toc()
+
+#### Collate datasets
+paths      <- rbindlist(paths_by_path)
+detections <- rbindlist(detections_by_path)
 
 #### Validation
 # We should only record detections within receiver_gamma of receiver
@@ -150,12 +172,11 @@ stopifnot(all(positions$dist <= positions$receiver_gamma))
 ###########################
 #### Write datasets to file
 
-qs::qsave(timeline, here_input_sim("timeline.qs"))
-qs::qsave(xinits, here_input_sim("xinits.qs"))
-qs::qsave(paths, here_input_sim("paths.qs"))
-qs::qsave(moorings, here_input_sim("moorings.qs"))
-qs::qsave(acoustics_by_path, here_input_sim("acoustics-by-path.qs"))
-qs::qsave(detections, here_input_sim("detections.qs"))
+qs::qsave(timeline, here_input_sim("main", "timeline.qs"))
+qs::qsave(paths, here_input_sim("main", "paths.qs"))
+qs::qsave(moorings, here_input_sim("main", "moorings.qs"))
+qs::qsave(acoustics_by_path, here_input_sim("main", "acoustics-by-path.qs"))
+qs::qsave(detections, here_input_sim("main", "detections.qs"))
 
 
 #### End of code. 
