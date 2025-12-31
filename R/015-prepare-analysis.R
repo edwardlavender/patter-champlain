@@ -48,15 +48,11 @@ pars      <- qs::qread(here_input("pars-patter.qs"))
 analysis <- "sim"
 # analysis <- "real"
 subanalysis <- "main"
-stopifnot(analysis %in% c("sim", "real"))
-stopifnot(subanalysis == "main")
-
-#### Define analysis-specific routines
-here_input_analysis <- switch_here_input_analysis_subanalysis(analysis, subanalysis)
 
 #### Define analysis-specific data
-detections <- qs::qread(here_input_analysis("detections.qs"))
-moorings   <- qs::qread(here_input_analysis("moorings.qs"))
+here_input_analysis <- switch_here_input_analysis_subanalysis(analysis, subanalysis)
+detections          <- qs::qread(here_input_analysis("detections.qs"))
+moorings            <- qs::qread(here_input_analysis("moorings.qs"))
 if (analysis == "real") {
   detections_raw <- qs::qread(here_input_analysis("detections-raw.qs"))
 }
@@ -288,7 +284,10 @@ dirs.create(iteration$folder_output)
 ###########################
 #### Create iteration input files
 
-# ~ 2 mins
+# Duration:
+# ~2 mins for simulations
+# ~
+# --> write.csv() is slow but works best with Julia
 
 pbo <- pbapply::pboptions(nout = 2L)
 cl_lapply(split(iteration, seq_len(nrow(iteration))), 
@@ -333,6 +332,17 @@ cl_lapply(split(iteration, seq_len(nrow(iteration))),
 })
 pbapply::pboptions(pbo)
 
+#### Check total size of input directories
+# With write.csv:
+# * 71.3612 MB per iteration
+# * 15,230.96 MB for simulations
+# * 197.4948 MB for real-world analysis
+dir_size(iteration$folder_input[1])
+dir_size(file.path("data", "input", analysis, subanalysis), recursive = TRUE)
+2723 * 15230.96 / 210 / 1e3
+
+         
+#### Write iteration
 qs::qsave(iteration, here_input_analysis("iteration.qs"))
 write.csv(iteration, here_input_analysis("iteration.csv"), row.names = FALSE)
 
