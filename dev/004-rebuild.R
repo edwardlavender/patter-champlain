@@ -14,6 +14,7 @@
 #### Rerun selected scripts
 
 library(proj.verse)
+library(tictoc)
 
 # List scripts
 scripts <- list.files(here_r(), full.names = TRUE)
@@ -35,6 +36,14 @@ cl_lapply(scripts[1:13L], function(script) {
 # > This code should be run locally (on SIA-LAVENDED)
 # > Then copy data/input/sim onto linux server 
 # callr::rscript(script[14])
+tic()
+from <- file.path("data", "output", "sim")
+dir_size(from, recursive = TRUE, .unit = "MB")
+dirs.copy(from = from, 
+          to   = file.path("/Volumes", "lavended", "documents", "projects", 
+                           "patter-champlain", "data", "output", "sim"), 
+          cl   = 10L)
+toc()
 
 # (3) Prepare analysis
 # > This script can be run locally and/or on the server
