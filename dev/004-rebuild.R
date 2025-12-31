@@ -25,7 +25,7 @@ scripts
 # > This code can be run on Windows/MacOS/Linux
 # > Run scripts 1:13 sequentially, in isolation
 # > These scripts can be run independently locally/on a server to set up files etc.
-cl_lapply(scripts[1:13], function(script) {
+cl_lapply(scripts[1:13L], function(script) {
   print(script)
   callr::rscript(script)
 })
