@@ -23,6 +23,7 @@ Sys.setenv("JULIA_SESSION" = FALSE)
 library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = TRUE)
+library(ggplot2)
 library(proj.verse)
 files_source_r(here_src())
 
