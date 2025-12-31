@@ -43,6 +43,21 @@ env       = GeoArrays.read(joinpath("data", "input", "map.tif"));
 env_init  = Patter.rast(joinpath("data", "input", "map.tif"));
 iteration = CSV.read(joinpath("data", "input", analysis, subanalysis, "iteration.csv"), DataFrame)
 
+#### (optional) Use test settings
+if true
+  # Focus on a few iterations
+  iteration = iteration[1:4, :]
+  # Reduce batches & particle numbers
+  iteration.n_batch .= 3
+  iteration.n_particle_filter .= 20000
+  iteration.n_particle_smoother .= 500
+  # Clean up old files
+  files = filter(f -> endswith(f, ".jld2"), readdir(ititerationer.folder_output; join=true))
+  if length(files) > 0
+    rm.(files; force=true)
+  end
+end
+
 #### Select iteration 
 row = 1
 # row = parse(Int, ARGS[1])
@@ -109,17 +124,6 @@ yobs_bwd        = assemble_yobs(datasets = datasets_bwd,
 ###########################
 ###########################
 #### Run particle algorithms 
-
-#### Define test settings
-if true
-  iter.n_batch = 3
-  iter.n_particle_filter = 20000
-  iter.n_particle_smoother = 500
-  files = filter(f -> endswith(f, ".jld2"), readdir(iter.folder_output; join = true))
-  if length(files) > 0
-    rm.(files; force = true)
-  end 
-end 
 
 #### Set up algorithms 
 # Define batches 
