@@ -27,8 +27,8 @@ files_source_r(here_src())
 
 #### Load data
 map         <- terra::rast(here_input("map.tif"))
-detections  <- qs::qread(here_input_real("detections.qs"))
-moorings    <- qs::qread(here_input_real("moorings.qs"))
+detections  <- qs::qread(here_input_real("main", "detections.qs"))
+moorings    <- qs::qread(here_input_real("main", "moorings.qs"))
 
 
 ###########################
