@@ -27,6 +27,7 @@ library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
 library(ggplot2)
+library(patter)
 library(proj.verse)
 library(spatial.extensions)
 library(tictoc)
@@ -34,6 +35,7 @@ library(truncdist)
 files_source_r(here_src())
 
 #### Load data
+map       <- terra::rast(here_input("map.tif"))
 champlain <- qreadvect(here_input("champlain-utm.qs"))
 pars      <- qs::qread(here_input("pars-patter.qs"))
 
@@ -50,14 +52,13 @@ stopifnot(analysis %in% c("sim", "real"))
 stopifnot(subanalysis == "main")
 
 #### Define analysis-specific routines
-# TO DO IMPLEMENT MAIN 
-here_input_analysis <- switch_here_input_analysis(analysis)
+here_input_analysis <- switch_here_input_analysis_subanalysis(analysis, subanalysis)
 
 #### Define analysis-specific data
 detections <- qs::qread(here_input_analysis("detections.qs"))
+moorings   <- qs::qread(here_input_analysis("moorings.qs"))
 if (analysis == "real") {
   detections_raw <- qs::qread(here_input_analysis("detections-raw.qs"))
-  moorings       <- qs::qread(here_input_analysis("moorings.qs"))
 }
 
 
@@ -209,15 +210,6 @@ unitsets <-
   arrange(individual_id, time_id) |> 
   mutate(unit_id = row_number()) |> 
   select(unit_id, individual_id, time_id, timestamp) |>
-  mutate(
-    # Define unit-specific input files
-    folder_input        = file.path("data", "input", analysis, subanalysis, "runs", 
-                                    individual_id, time_id), 
-    file_timeline       = file.path(folder_input, "timeline.parquet"),
-    file_acoustics      = file.path(folder_input, "acoustics.parquet"),
-    file_containers_fwd = file.path(folder_input, "containers-fwd.parquet"),
-    file_containers_bwd = file.path(folder_input, "containers-bwd.parquet")
-  ) |>
   as.data.table()
 # Update detections with unit_id
 detections <- 
@@ -226,13 +218,6 @@ detections <-
             by = c("individual_id", "time_id")) |> 
   select(unit_id, individual_id, time_id, timestamp, receiver_id) |> 
   as.data.table()
-
-#### Build directories
-if (FALSE) {
-  unlink(file.path("data", "input", analysis, subanalysis), recursive = TRUE)
-}
-dirs.create(unitsets$folder_input_runs)
-dirs.create(unitsets$folder_output_runs)
 
 #### Checks
 # Visually validate matching between unitsets & detections
@@ -259,19 +244,27 @@ iteration <-
   unitsets |> 
   cross_join(pars) |> 
   mutate(
-    # Define unit-specific & sensitivity specififc output files (see Julia scripts)
+    # Define input files 
+    # * Some files depend on both unit_id & sensitivity parameters
+    # * For convenience, we store all files in an {individual_id}/{unit_id}/{parameter_id} directory 
+    folder_input        = file.path("data", "input", analysis, subanalysis, "runs", 
+                                    individual_id, time_id, parameter_id), 
+    file_timeline       = file.path(folder_input, "timeline.parquet"),
+    file_acoustics      = file.path(folder_input, "acoustics.parquet"),
+    file_containers_fwd = file.path(folder_input, "containers-fwd.parquet"),
+    file_containers_bwd = file.path(folder_input, "containers-bwd.parquet"),
+    # Define  output files (unit-specific & sensitivity specific)
     folder_output       = file.path("data", "output", analysis, subanalysis, "runs", 
                                     individual_id, time_id, parameter_id),
     file_states         = file.path(folder_output, "states.parquet"),
     file_diagnostics    = file.path(folder_output, "diagnostics.parquet"),
     file_callstats      = file.path(folder_output, "callstats.parquet"),
-    file_particles      = file.path(folder_output, "particles.parquet")) |> 
-  # Add modelling columns
-  mutate(
+    file_particles      = file.path(folder_output, "particles.parquet"),
+    # Add modelling columns
     n_batch             = 10L,
     n_particle_filter   = ifelse(analysis == "sim", 50000L, 75000L), 
     n_particle_smoother = ifelse(analysis == "sim", 1500L, 2000L), 
-  )
+  ) |> 
   as.data.table()
 
 #### Check nrow
@@ -280,24 +273,54 @@ nrow(iteration)
 
 #### Build directories 
 if (FALSE) {
+  unlink(iteration$folder_input, recursive = TRUE)
   unlink(iteration$folder_output, recursive = TRUE)
 }
+dirs.create(iteration$folder_input)
 dirs.create(iteration$folder_output)
 
 
 ###########################
 ###########################
-#### Write outputs
+#### Create iteration input files
 
-cl_lapply(split(iteration, seq_len(nrow(iteration))), function(d) {
+# ~4.75 mins with 1 cl
+
+cl_lapply(split(iteration, seq_len(nrow(iteration))), 
+          .cl = 1L,
+          .fun = function(d) {
   
-  # Define file_timeline
+  ## Define file_timeline
+  dets     <- detections[unit_id == d$unit_id, ]
+  timeline <- seq(dets$time_id[1], 
+                  lubridate::ceiling_date(max(dets$timestamp), "months") - 60 * 2, 
+                  by = "2 mins")
+  stopifnot(length(timeline) > 20000 & length(timeline) < 30000)
+  timeline <- data.table(timestamp = timeline)
+  arrow::write_parquet(timeline, d$file_timeline)
   
-  # Define file_acoustics
+  ## Define file_acoustics
+  # Define moorings, with detection probability parameters
+  moors <- 
+    moorings |> 
+    lazy_dt(immutable = TRUE) |> 
+    mutate(receiver_alpha = d$receiver_alpha, 
+           receiver_beta = d$receiver_beta, 
+           receiver_gamma = d$receiver_gamma) |> 
+    as.data.table()
+  # Define acoustics 
+  accs <- assemble_acoustics(.timeline = timeline$timestamp, .detections = dets, .moorings = moors)
+  arrow::write_parquet(accs, d$file_acoustics)
   
-  # Define file_containers_fwd
-  
-  # Define file_containers_bwd
+  ## Define acoustic containers (file_containers_fwd, file_containers_bwd)
+  containers <- assemble_acoustics_containers(.timeline = timeline$timestamp, 
+                                              .acoustics = accs,
+                                              .mobility = d$mobility, 
+                                              .map = map)
+  containers_fwd <- containers$forward
+  containers_bwd <- containers$backward
+  arrow::write_parquet(containers_fwd, d$file_acoustics)
+  arrow::write_parquet(containers_bwd, d$file_acoustics)
   
   nothing()
 })
