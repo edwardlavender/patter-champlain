@@ -32,7 +32,7 @@ using JLD2
 analysis  = "sim"
 # analysis  = "real"
 subanalysis = "main"
-iteration = CSV.read(joinpath("data", "input", analysis, subanalysis, "iteration.csv"), DataFrame)
+iteration = DataFrame(Arrow.Table(joinpath("data", "input", analysis, subanalysis, "iteration.feather")))
 
 #### Select iteration 
 row = 1
@@ -51,10 +51,8 @@ end
 #### Collate states
 
 # Define timeline 
-timeline = CSV.read(iter.file_timeline,
-                    DataFrame, 
-                    dateformat = "yyyy-mm-dd H:M:S")
-timeline.timestamp = DateTime.(timeline.timestamp);
+timeline = DataFrame(Arrow.Table(iter.file_timeline))
+timeline.timestamp = DateTime.(timeline.timestamp)
 timeline = timeline.timestamp
 
 # Define smo-{i}.jld2 files
