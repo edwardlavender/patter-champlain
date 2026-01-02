@@ -70,7 +70,15 @@ if (FALSE) {
 #### Collate states 
 # Run 001-run-algorithms.jl for example individual & check file size for it$file_states (MB)
 if (FALSE) {
-  file.size(it$file_states) / 1e6
+  # For sim, iteration[1, ]: 678.995 MB
+  file.size(it$file_states) / 1e6 
+  
+  # There is little benefit in rewriting as qs: 
+  tmp.qs <- tempfile(fileext = ".qs")
+  qs::qsave(it_states, tmp.qs, preset = "custom", algorithm = "zstd", compress_level = 9L) # 628.6245 MB
+  qs::qsave(it_states, tmp.qs, preset = "archive") # 625.6087
+  qs::qread(tmp.qs)
+  file.size(tmp.qs) / 1e6
 }
 
 
