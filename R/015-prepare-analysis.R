@@ -45,8 +45,8 @@ pars      <- qs::qread(here_input("pars-patter.qs"))
 #### Select analysis
 
 #### Define analysis 
-analysis <- "sim"
-# analysis <- "real"
+# analysis <- "sim"
+analysis <- "real"
 subanalysis <- "main"
 
 #### Define analysis-specific data
@@ -282,6 +282,11 @@ dirs.create(iteration$folder_output)
 ###########################
 #### Create iteration input files
 
+#### Duration
+# "sim": 46 s (10 cl, 2 chunks per core)
+# "real": 12 m 55 s (10 cl, 2 chunks per core)
+# (There is some speed benefit of chunking)
+
 #### Write options (derived for analysis = "sim")
 # write.csv
 # * Simple, avoids issues in Julia e.g., with time stamps, but:
@@ -351,13 +356,15 @@ cl_lapply(split(iteration, seq_len(nrow(iteration))),
 pbapply::pboptions(pbo)
 
 #### Check total size of input directories
-# With write_feather_compressed():
-# * 0.69476 MB per iteration
-# * 184.3025 MB for simulations
-# * 1060 for real-world analysis (estimated)
+# For sim, with write_feather_compressed():
+# * 0.69476 MB for iteration[1, ]
+# * 184.3025 MB for all iterations
+# * 1060 for real-world analysis
+# For real, with write_feather_compressed():
+# * 0.324784 for iteration[1, ]
+# * 782.3067 MB for all iterations
 dir_size(iteration$folder_input[1])
 dir_size(file.path("data", "input", analysis, subanalysis), recursive = TRUE)
-2723 * 81.82257 / 210
 
 #### Write iteration
 qs::qsave(iteration, here_input_analysis("iteration.qs"))
