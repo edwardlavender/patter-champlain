@@ -35,8 +35,21 @@ subanalysis = "main"
 iteration = DataFrame(Arrow.Table(joinpath("data", "input", analysis, subanalysis, "iteration.feather")))
 
 #### Select iteration 
-row = 1
-# row = parse(Int, ARGS[1])
+if isinteractive()
+    row = 1
+else
+    if length(ARGS) < 1
+        error("Row index not provided")
+    end
+    row = try
+        parse(Int, ARGS[1])
+    catch
+        error("Row index is NA")
+    end
+    if !(1 ≤ row ≤ size(iteration, 1))
+        error("Invalid row index.")
+    end
+end
 iter = iteration[row, :]
 
 #### Define local settings

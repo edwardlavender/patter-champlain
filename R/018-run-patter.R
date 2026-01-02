@@ -75,8 +75,20 @@ tic()
 # > We can safely run ≈ 5 cpus 
 
 ## (B) Select iteration & load data 
-# TO DO Use command_args here
-it <- iteration[1, ]
+# it <- iteration[1, ]
+if (interactive()) {
+  row <- 1L
+} else {
+  args <- commandArgs(trailingOnly = TRUE)
+  row <- as.integer(args[1])
+  if (is.na(row)) {
+    stop("Row index is NA")
+  }
+  if (!(row %in% 1:nrow(iteration))) {
+    stop("Invalid row index.")
+  }
+}
+it  <- iteration[row, ]
 
 ## (C) Load iteration-specific datasets
 it_states <- it_diagnostics <- NULL
