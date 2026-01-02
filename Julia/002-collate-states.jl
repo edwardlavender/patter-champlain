@@ -56,21 +56,28 @@ timeline.timestamp = DateTime.(timeline.timestamp)
 timeline = timeline.timestamp
 
 # Define smo-{i}.jld2 files
-smo_batches = [joinpath(iter.folder_output, "smo-$i.jld2") for i in 1:iter.n_batch]
+# > This returns String[] if no files exist 
+smo_batches = [joinpath(iter.folder_output, "smod-$i.jld2") for i in 1:iter.n_batch]
 smo_batches = smo_batches[isfile.(smo_batches)]
 
-# Collate states Matrix in Julia 
-smo_states = hcat([f["xsmo"] for f in map(jldopen, smo_batches)]...)
+# Collate states, if smo-$i.jld2 files have been produced 
+# (i.e., if the two filters converged)
+if length(smo_batches) > 0
 
-# Convert to DataFrame 
-smo_states_df = Patter.r_get_states(smo_states, collect(1:length(timeline)), timeline);
+  # Collate states Matrix in Julia 
+  smo_states = hcat([f["xsmo"] for f in map(jldopen, smo_batches)]...)
+
+  # Convert to DataFrame 
+  smo_states_df = Patter.r_get_states(smo_states, collect(1:length(timeline)), timeline);
   
-# Write output to file
-Arrow.write(iter.file_states, smo_states_df; compress = Arrow.ZstdCompressor(level = 9))
+  # Write output to file
+  Arrow.write(iter.file_states, smo_states_df; compress = Arrow.ZstdCompressor(level = 9))
+
+end 
   
 # Cleanup batches
 foreach(f -> rm(f; force = true), smo_batches)
-readdir(iter.folder_output, join = true)
+# readdir(iter.folder_output, join = true)
 
 
 #### End of code. 
