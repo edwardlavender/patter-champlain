@@ -41,10 +41,10 @@ analysis  = "sim"
 subanalysis = "main"
 env       = GeoArrays.read(joinpath("data", "input", "map.tif"));
 env_init  = Patter.rast(joinpath("data", "input", "map.tif"));
-iteration = CSV.read(joinpath("data", "input", analysis, subanalysis, "iteration.csv"), DataFrame)
+iteration = DataFrame(Arrow.Table(joinpath("data", "input", analysis, subanalysis, "iteration.feather")))
 
 #### (optional) Use test settings
-if true
+if false
   # Focus on a few iterations
   iteration = iteration[1:4, :]
   # Reduce batches & particle numbers
@@ -59,6 +59,10 @@ if true
 end
 
 #### Select iteration 
+# Set column types as needed
+iteration.n_particle_filter = Int.(iteration.n_particle_filter);
+iteration.n_particle_smoother = Int.(iteration.n_particle_smoother);
+# Select row 
 row = 1
 # row = parse(Int, ARGS[1])
 iter = iteration[row, :]
@@ -95,20 +99,50 @@ model_move = ModelMoveCXY(env,
 ###########################
 #### Define observation model 
 
-#### Load timeline 
-timeline = CSV.read(iter.file_timeline, DataFrame, dateformat = "yyyy-mm-dd H:M:S")
-timeline.timestamp = DateTime.(timeline.timestamp);
+#### Load timeline #
+timeline = DataFrame(Arrow.Table(iter.file_timeline))
+timeline.timestamp = DateTime.(timeline.timestamp)
 timeline = timeline.timestamp
+# timeline = CSV.read(iter.file_timeline, DataFrame, dateformat = "yyyy-mm-dd H:M:S")
+# timeline.timestamp = DateTime.(timeline.timestamp)
+# timeline = timeline.timestamp
 
 #### Load acoustic observations & containers
-acoustics      = CSV.read(iter.file_acoustics, DataFrame, dateformat = "yyyy-mm-dd H:M:S")
-containers_fwd = CSV.read(iter.file_containers_fwd, DataFrame, dateformat = "yyyy-mm-dd H:M:S")
-containers_bwd = CSV.read(iter.file_containers_bwd, DataFrame, dateformat = "yyyy-mm-dd H:M:S")
+# acoustics      = CSV.read(iter.file_acoustics, DataFrame, dateformat = "yyyy-mm-dd H:M:S")
+# containers_fwd = CSV.read(iter.file_containers_fwd, DataFrame, dateformat = "yyyy-mm-dd H:M:S")
+# containers_bwd = CSV.read(iter.file_containers_bwd, DataFrame, dateformat = "yyyy-mm-dd H:M:S")
+acoustics = DataFrame(Arrow.Table(iter.file_acoustics))
+containers_fwd = DataFrame(Arrow.Table(iter.file_containers_fwd))
+containers_bwd = DataFrame(Arrow.Table(iter.file_containers_bwd))
 
 #### Process columns
+# Timestamps
 acoustics.timestamp = DateTime.(acoustics.timestamp);
 containers_fwd.timestamp = DateTime.(containers_fwd.timestamp);
 containers_bwd.timestamp = DateTime.(containers_bwd.timestamp);
+# Acoustic columns
+acoustics.sensor_id = Int.(acoustics.sensor_id);
+acoustics.obs = Int.(acoustics.obs);
+acoustics.receiver_x = Float64.(acoustics.receiver_x);
+acoustics.receiver_y = Float64.(acoustics.receiver_y);
+acoustics.receiver_alpha = Float64.(acoustics.receiver_alpha);
+acoustics.receiver_beta = Float64.(acoustics.receiver_beta);
+acoustics.receiver_gamma = Float64.(acoustics.receiver_gamma);
+# containers_fwd
+containers_fwd
+containers_fwd.obs = Int.(containers_fwd.obs);
+containers_fwd.sensor_id = Int.(containers_fwd.sensor_id);
+containers_fwd.centroid_x = Float64.(containers_fwd.centroid_x);
+containers_fwd.centroid_y = Float64.(containers_fwd.centroid_y);
+containers_fwd.radius = Float64.(containers_fwd.radius);
+# containers_bwd
+containers_bwd.obs = Int.(containers_bwd.obs);
+containers_bwd.sensor_id = Int.(containers_bwd.sensor_id);
+containers_bwd.centroid_x = Float64.(containers_bwd.centroid_x);
+containers_bwd.centroid_y = Float64.(containers_bwd.centroid_y);
+containers_bwd.radius = Float64.(containers_bwd.radius);
+# # > This is necessary to avoid issues with data imported via Arrow
+# > This is not necessary for data imported from CSV
 
 #### Assemble datasets 
 # Collate datasets & associated `ModelObs` instances into a typed dictionary 
@@ -254,10 +288,10 @@ if convergence
   # Parquet.write(iter_file_states, smo_df);
   
   # Write diagnostics 
-  Arrow.write(iter.file_diagnostics, diagnostics)
+  Arrow.write(iter.file_diagnostics, diagnostics; compress = Arrow.ZstdCompressor(level = 9))
 
   # Write callstats 
-  Arrow.write(iter.file_callstats, callstats)
+  Arrow.write(iter.file_callstats, callstats; compress = Arrow.ZstdCompressor(level = 9))
 
 end 
 

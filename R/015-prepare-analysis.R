@@ -243,14 +243,12 @@ iteration <-
     # Define input files 
     # * Some files depend on both unit_id & sensitivity parameters
     # * For convenience, we store all files in an {individual_id}/{unit_id}/{parameter_id} directory 
-    # * We use .csv for file import in Julia
-    #   (.parquet & .feather cause issues in Patter.jl)
     folder_input        = file.path("data", "input", analysis, subanalysis, "runs", 
                                     individual_id, time_id, parameter_id), 
-    file_timeline       = file.path(folder_input, "timeline.csv"),
-    file_acoustics      = file.path(folder_input, "acoustics.csv"),
-    file_containers_fwd = file.path(folder_input, "containers-fwd.csv"),
-    file_containers_bwd = file.path(folder_input, "containers-bwd.csv"),
+    file_timeline       = file.path(folder_input, "timeline.feather"),
+    file_acoustics      = file.path(folder_input, "acoustics.feather"),
+    file_containers_fwd = file.path(folder_input, "containers-fwd.feather"),
+    file_containers_bwd = file.path(folder_input, "containers-bwd.feather"),
     # Define  output files (unit-specific & sensitivity specific)
     # * We use .feather to record outputs
     # * We can write these from Julia & read them into R correctly
@@ -284,11 +282,32 @@ dirs.create(iteration$folder_output)
 ###########################
 #### Create iteration input files
 
-# Duration:
-# ~2 mins for simulations
-# ~
-# --> write.csv() is slow but works best with Julia
+#### Write options (derived for analysis = "sim")
+# write.csv
+# * Simple, avoids issues in Julia e.g., with time stamps, but:
+# * ~2 min to write all files for simulations (below)
+# * 71.3612 MB per iteration
+# * 15,230.96 MB for all simulations
+# fwrite
+# * faster but causes issues with timestamps
+# arrow::write_feather()
+# * works with Julia, if we set object types in Julia
+# * 46 s for simulations 
+# * 0.69476 MB per iteration
+# * 184.3025 MB for simulations
+# write_feather_compressed() and compression_level = 9
+# --> 46 s
+# --> 0.270096 MB
+# --> 81.95327 MB
+# write_feather_compressed() and compression_level = 22
+# * 2 min 32 s
+# * 0.268848 MB per iteration
+# * 81.21565 MB for all iterations 
+# > We use write_feather_compressed() and compression_level = 9
+# > The marginal gains of max compression are v. limited
+#   compared to the speed cost of writing files (important for real-world)
 
+#### Write files 
 pbo <- pbapply::pboptions(nout = 2L)
 cl_lapply(split(iteration, seq_len(nrow(iteration))), 
           .cl = 10L,
@@ -296,14 +315,13 @@ cl_lapply(split(iteration, seq_len(nrow(iteration))),
           .fun = function(d) {
   
   ## Define file_timeline
-  # * Use write.csv() to avoid issues in Julia with timestamps (e.g., associated with fwrite)
   dets     <- detections[unit_id == d$unit_id, ]
   timeline <- seq(dets$time_id[1], 
                   lubridate::ceiling_date(max(dets$timestamp), "months") - 60 * 2, 
                   by = "2 mins")
   stopifnot(length(timeline) > 20000 & length(timeline) < 30000)
   timeline <- data.table(timestamp = timeline)
-  write.csv(timeline, d$file_timeline, row.names = FALSE)
+  write_feather_compressed(timeline, d$file_timeline)
   
   ## Define file_acoustics
   # Define moorings, with detection probability parameters
@@ -316,7 +334,7 @@ cl_lapply(split(iteration, seq_len(nrow(iteration))),
     as.data.table()
   # Define acoustics 
   accs <- assemble_acoustics(.timeline = timeline$timestamp, .detections = dets, .moorings = moors)
-  write.csv(accs, d$file_acoustics, row.names = FALSE)
+  write_feather_compressed(accs, d$file_acoustics)
   
   ## Define acoustic containers (file_containers_fwd, file_containers_bwd)
   containers <- assemble_acoustics_containers(.timeline = timeline$timestamp, 
@@ -325,26 +343,25 @@ cl_lapply(split(iteration, seq_len(nrow(iteration))),
                                               .map = map)
   containers_fwd <- containers$forward
   containers_bwd <- containers$backward
-  write.csv(containers_fwd, d$file_containers_fwd, row.names = FALSE)
-  write.csv(containers_bwd, d$file_containers_bwd, row.names = FALSE)
+  write_feather_compressed(containers_fwd, d$file_containers_fwd)
+  write_feather_compressed(containers_bwd, d$file_containers_bwd)
   
   nothing()
 })
 pbapply::pboptions(pbo)
 
 #### Check total size of input directories
-# With write.csv:
-# * 71.3612 MB per iteration
-# * 15,230.96 MB for simulations
-# * 197.4948 MB for real-world analysis
+# With write_feather_compressed():
+# * 0.69476 MB per iteration
+# * 184.3025 MB for simulations
+# * 1060 for real-world analysis (estimated)
 dir_size(iteration$folder_input[1])
 dir_size(file.path("data", "input", analysis, subanalysis), recursive = TRUE)
-2723 * 15230.96 / 210 / 1e3
+2723 * 81.82257 / 210
 
-         
 #### Write iteration
 qs::qsave(iteration, here_input_analysis("iteration.qs"))
-write.csv(iteration, here_input_analysis("iteration.csv"), row.names = FALSE)
+write_feather_compressed(iteration, here_input_analysis("iteration.feather"))
 
 
 #### End of code. 

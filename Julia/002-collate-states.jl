@@ -68,7 +68,7 @@ smo_states = hcat([f["xsmo"] for f in map(jldopen, smo_batches)]...)
 smo_states_df = Patter.r_get_states(smo_states, collect(1:length(timeline)), timeline);
   
 # Write output to file
-Arrow.write(iter.file_states, smo_states_df)
+Arrow.write(iter.file_states, smo_states_df; compress = Arrow.ZstdCompressor(level = 9))
   
 # Cleanup batches
 foreach(f -> rm(f; force = true), smo_batches)
