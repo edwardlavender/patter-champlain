@@ -121,7 +121,8 @@ if (TRUE) {
 # (optional) TO DO Move this code to appropriate synthesis script
 # Plot raw time series (light grey)
 # Add modelled time series, coloured by region as in map
-if (analysis == "real") {
+overwrite <- FALSE
+if (analysis == "real" & overwrite) {
   
   #### Define colour scheme
   # Define scheme 
@@ -373,8 +374,45 @@ dir_size(iteration$folder_input[1])
 dir_size(file.path("data", "input", analysis, subanalysis), recursive = TRUE)
 
 #### Write iteration
+# Write full dataset 
 qs::qsave(iteration, here_input_analysis("iteration.qs"))
 write_feather_compressed(iteration, here_input_analysis("iteration.feather"))
+# Write subsampled datasets
+if (analysis == "real") {
+  
+  # Sample 100 rows for the initial validation analysis 
+  n <- nrow(iteration[sensitivity == "best", ])
+  size <- 100L
+  sample.int(n, size)
+  pos <- c(
+    6, 10, 19, 21, 23, 24, 33, 37, 38, 47, 48, 49, 54, 55, 57, 59, 61, 64, 72, 78,
+    81, 84, 87, 88, 95, 103, 108, 112, 115, 119, 120, 128, 130, 131, 132, 134, 139,
+    148, 153, 156, 158, 159, 161, 162, 165, 167, 168, 174, 178, 181, 184, 186, 188,
+    189, 190, 191, 193, 197, 199, 200, 202, 203, 207, 221, 227, 229, 239, 241, 242,
+    244, 246, 251, 276, 288, 292, 299, 303, 305, 311, 312, 314, 315, 319, 321, 325,
+    326, 327, 331, 334, 352, 367, 372, 373, 377, 380, 382, 383, 384, 387, 389
+  )
+  
+  # Define an initial validation dataset
+  iteration_1 <- lapply(split(iteration, iteration$sensitivity), function(d) {
+    d[pos, ]
+  }) |> rbindlist()
+  
+  # Define remaining dataset
+  iteration_2 <- lapply(split(iteration, iteration$sensitivity), function(d) {
+    d[-pos, ]
+  }) |> rbindlist()
+
+  # Check nrow
+  stopifnot(sum(c(nrow(iteration_1), nrow(iteration_2))) == nrow(iteration))
+  
+  # Write to file 
+  qs::qsave(iteration, here_input_analysis("iteration-1.qs"))
+  qs::qsave(iteration, here_input_analysis("iteration-2.qs"))
+  write_feather_compressed(iteration, here_input_analysis("iteration-1.feather"))
+  write_feather_compressed(iteration, here_input_analysis("iteration-2.feather"))
+    
+}
 
 
 #### End of code. 
