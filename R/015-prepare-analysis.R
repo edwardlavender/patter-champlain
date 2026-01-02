@@ -257,7 +257,7 @@ iteration <-
     file_states         = file.path(folder_output, "states.feather"),
     file_diagnostics    = file.path(folder_output, "diagnostics.feather"),
     file_callstats      = file.path(folder_output, "callstats.feather"),
-    file_particles      = file.path(folder_output, "particles.feather"),
+    file_occupancy      = file.path(folder_output, "occupancy.tif"),
     # Add modelling columns
     n_batch             = 10L,
     n_particle_filter   = ifelse(analysis == "sim", 50000L, 75000L), 
@@ -313,47 +313,53 @@ dirs.create(iteration$folder_output)
 #   compared to the speed cost of writing files (important for real-world)
 
 #### Write files 
-pbo <- pbapply::pboptions(nout = 2L)
-cl_lapply(split(iteration, seq_len(nrow(iteration))), 
-          .cl = 10L,
-          .chunk = TRUE,
-          .fun = function(d) {
+overwrite <- FALSE
+if (overwrite) {
   
-  ## Define file_timeline
-  dets     <- detections[unit_id == d$unit_id, ]
-  timeline <- seq(dets$time_id[1], 
-                  lubridate::ceiling_date(max(dets$timestamp), "months") - 60 * 2, 
-                  by = "2 mins")
-  stopifnot(length(timeline) > 20000 & length(timeline) < 30000)
-  timeline <- data.table(timestamp = timeline)
-  write_feather_compressed(timeline, d$file_timeline)
+  pbo <- pbapply::pboptions(nout = 2L)
+  cl_lapply(
+    split(iteration, seq_len(nrow(iteration))), 
+    .cl = 10L,
+    .chunk = TRUE,
+    .fun = function(d) {
+      
+      ## Define file_timeline
+      dets     <- detections[unit_id == d$unit_id, ]
+      timeline <- seq(dets$time_id[1], 
+                      lubridate::ceiling_date(max(dets$timestamp), "months") - 60 * 2, 
+                      by = "2 mins")
+      stopifnot(length(timeline) > 20000 & length(timeline) < 30000)
+      timeline <- data.table(timestamp = timeline)
+      write_feather_compressed(timeline, d$file_timeline)
+      
+      ## Define file_acoustics
+      # Define moorings, with detection probability parameters
+      moors <- 
+        moorings |> 
+        lazy_dt(immutable = TRUE) |> 
+        mutate(receiver_alpha = d$receiver_alpha, 
+               receiver_beta = d$receiver_beta, 
+               receiver_gamma = d$receiver_gamma) |> 
+        as.data.table()
+      # Define acoustics 
+      accs <- assemble_acoustics(.timeline = timeline$timestamp, .detections = dets, .moorings = moors)
+      write_feather_compressed(accs, d$file_acoustics)
+      
+      ## Define acoustic containers (file_containers_fwd, file_containers_bwd)
+      containers <- assemble_acoustics_containers(.timeline = timeline$timestamp, 
+                                                  .acoustics = accs,
+                                                  .mobility = d$mobility, 
+                                                  .map = map)
+      containers_fwd <- containers$forward
+      containers_bwd <- containers$backward
+      write_feather_compressed(containers_fwd, d$file_containers_fwd)
+      write_feather_compressed(containers_bwd, d$file_containers_bwd)
+      
+      nothing()
+    })
+  pbapply::pboptions(pbo)
   
-  ## Define file_acoustics
-  # Define moorings, with detection probability parameters
-  moors <- 
-    moorings |> 
-    lazy_dt(immutable = TRUE) |> 
-    mutate(receiver_alpha = d$receiver_alpha, 
-           receiver_beta = d$receiver_beta, 
-           receiver_gamma = d$receiver_gamma) |> 
-    as.data.table()
-  # Define acoustics 
-  accs <- assemble_acoustics(.timeline = timeline$timestamp, .detections = dets, .moorings = moors)
-  write_feather_compressed(accs, d$file_acoustics)
-  
-  ## Define acoustic containers (file_containers_fwd, file_containers_bwd)
-  containers <- assemble_acoustics_containers(.timeline = timeline$timestamp, 
-                                              .acoustics = accs,
-                                              .mobility = d$mobility, 
-                                              .map = map)
-  containers_fwd <- containers$forward
-  containers_bwd <- containers$backward
-  write_feather_compressed(containers_fwd, d$file_containers_fwd)
-  write_feather_compressed(containers_bwd, d$file_containers_bwd)
-  
-  nothing()
-})
-pbapply::pboptions(pbo)
+}
 
 #### Check total size of input directories
 # For sim, with write_feather_compressed():
