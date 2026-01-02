@@ -60,28 +60,44 @@ iteration           <- qs::qread(here_input_analysis("iteration.qs"))
 
 #### (2) Run R workflows 
 
-## (A) Select iteration & load data 
+tic()
+
+## (A) Review implementation  
+# For "sim" iteration[1, ]:
+# * Memory required per iteration : 1.80 GB 
+# * Time required per iteration   : 19.757 s
+# * ETA for 210 iteration         : 1.15 hrs on 1 cl (19.757 * 210 / 60 / 60)
+
+# For "real" iteration[1, ]:
+# * Memory required per iteration : 2.47 GB 
+# * Time required per iteration   : 25.695 s
+# * ETA for 2723 iteration        : 19.43541 hrs on 1 cl (25.695 * 2723 / 60 / 60)
+# > We can safely run ≈ 5 cpus 
+
+## (B) Select iteration & load data 
 # TO DO Use command_args here
 it <- iteration[1, ]
 
-## (B) Load iteration-specific datasets
+## (C) Load iteration-specific datasets
 it_states <- it_diagnostics <- NULL
 if (file.exists(it$file_states)) {
   it_states <- arrow::read_feather(it$file_states) |> setDT()
+  # lobstr::obj_size(it_states) # 1.61 GB. 2.14 GB
 }
 if (file.exists(it$file_diagnostics)) {
   it_diagnostics <- arrow::read_feather(it$file_diagnostics) |> setDT()
+  # lobstr::obj_size(it_diagnostics) # 3.48 MB
 }
 
-## (B) Make map (~5.06 s)
+## (D) Make map (~5.06 s)
 if (!is.null(it_states)) {
   tic()
-  occupancy <- map_pou(.map = map, .coord = it_states, .plot = FALSE)$ud
+  occupancy <- patter::map_pou(.map = map, .coord = it_states, .plot = FALSE)$ud
   terra::writeRaster(occupancy, it$file_occupancy, overwrite = TRUE)
   toc()
 }
 
-#### (4) Update diagnostics
+#### (E) Update diagnostics
 # Compute areas spanned by 50 % and 95 % of the distribution 
 if (!is.null(it_states) & !is.null(it_diagnostics)) {
   
@@ -120,7 +136,7 @@ if (!is.null(it_states) & !is.null(it_diagnostics)) {
     it_diagnostics$m2_core[1] / A * 100
     it_diagnostics$m2_home[1] / A * 100
     # Visualise entire area spanned by distribution 
-    occupancy_1 <- map_pou(.map = map, .coord = it_states[timestep == 1L, ])$ud
+    occupancy_1 <- patter::map_pou(.map = map, .coord = it_states[timestep == 1L, ])$ud
     terra::plot(occupancy_1 > 0)
   }
 
@@ -130,12 +146,15 @@ if (!is.null(it_states) & !is.null(it_diagnostics)) {
   
 }
 
-#### (5) Clean up 
+#### (F) Clean up 
 # We only store callstats, diagnostics and maps
 # We delete iteration$file_states (these files are generally >= 678.995 MB)
-# file.size(it$file_states) / 1e6 # 678.995 MB for "sim" iteration[1, ]
-unlink(it$file_states)
+# file.size(it$file_states) / 1e6
+# unlink(it$file_states)
 
+
+# lobstr::mem_used()
+toc()
 
 
 #### End of code. 
