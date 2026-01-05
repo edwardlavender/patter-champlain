@@ -56,7 +56,6 @@ iteration           <- qs::qread(here_input_analysis("iteration.qs"))
 
 #### (2) Run R workflows (mapping)
 
-## Review implementation  
 # For "sim" iteration[1, ]:
 # * Memory required per iteration : 251.46 MB 
 # * Time required per iteration   : 1.012 s
