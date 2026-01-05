@@ -260,7 +260,8 @@ iteration <-
     file_callstats      = file.path(folder_output, "callstats.feather"),
     file_occupancy      = file.path(folder_output, "occupancy.tif"),
     # Add modelling columns
-    n_batch             = 10L,
+    # NB: n_batch must be <= 9L due to a bug in Patter.jl
+    n_batch             = 9L,
     n_particle_filter   = ifelse(analysis == "sim", 50000L, 75000L), 
     n_particle_smoother = ifelse(analysis == "sim", 1500L, 2000L), 
   ) |> 

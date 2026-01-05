@@ -282,7 +282,7 @@ if (analysis == "sim") {
 # We use a maximum of {mb_available} memory in total
 n_record     <- 2000
 n_cpu        <- 20
-mb_available <- 25e3
+mb_available <- 30e3
 mb_required  <- p_mem(n_record, 22320, 4, n_cpu) * 3
 p_batch(mb_required, mb_available)
 
