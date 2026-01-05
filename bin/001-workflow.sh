@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
-trap 'kill -- -$$' EXIT
 
 # Define global settings 
 NROW=210
@@ -21,14 +20,9 @@ for (( BATCH_START = 1; BATCH_START <= NROW; BATCH_START += NROW_PER_BATCH )); d
   # --------------------------------
   # A) Run Julia workflow I (parallel)
   # --------------------------------
-  for (( i = BATCH_START; i <= BATCH_END; i++ )); do
-    (
-      julia ./Julia/001-run-algorithms.jl "$i"
-    ) || echo "Julia I error (row $i)" >&2 &
-
-    (( $(jobs -r | wc -l) >= N_CPU_JULIA )) && wait -n
-  done
-  wait
+  seq "$BATCH_START" "$BATCH_END" |
+    xargs -n 1 -P "$N_CPU_JULIA" -I {} \
+      bash -c 'julia ./Julia/001-run-algorithms.jl "$1" || echo "Julia I error (row $1)" >&2' _ {}
 
   # --------------------------------
   # B) Run Julia workflow II (per row, serial)
@@ -43,12 +37,8 @@ for (( BATCH_START = 1; BATCH_START <= NROW; BATCH_START += NROW_PER_BATCH )); d
   # C) Run R workflow (per row, limited parallelism)
   # --------------------------------
   # Each iteration requires > 1.80 GB of memory
-  for (( i = BATCH_START; i <= BATCH_END; i++ )); do
-    (
-      Rscript ./R/018-run-patter.R "$i"
-    ) || echo "R error (row $i)" >&2 &
+  seq "$BATCH_START" "$BATCH_END" |
+    xargs -n 1 -P "$N_CPU_R" -I {} \
+      bash -c 'Rscript ./R/018-run-patter.R "$1" || echo "R error (row $1)" >&2' _ {}
 
-    (( $(jobs -r | wc -l) >= N_CPU_R )) && wait -n
-  done
-  wait
 done
