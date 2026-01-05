@@ -67,6 +67,15 @@ iteration           <- qs::qread(here_input_analysis("iteration.qs"))
 # * ETA for 2723 iteration        : TO DO
 # > We can safely run ≈ TO DO N CPUs
 
+# Subset iterations
+# > We will produce maps for all iterations associated with pou-{i}.feather files
+# > These were produced when both forward and backward filters were run successfully
+success <- sapply(iteration$folder_output, function(folder) {
+  length(list.files(folder, "pou-")) > 0L
+})
+iteration <- iteration[success, ]
+stopifnot(nrow(iteration) > 0L)
+
 # Define cluster
 tic()
 cl <- parallel::makeCluster(2L)
@@ -89,17 +98,11 @@ cl_lapply(split(iteration, seq_len(nrow(iteration))),
   map         <- terra::rast("./data/input/map.tif")
   it_timeline <- arrow::read_feather(it$file_timeline)$timestamp
   
-  # Identify POU files
-  # * These are produced if both forward and backward filters were run successfully
-  files <- list.files(it$folder_output, full.names = TRUE, pattern = "pou-")
-  if (length(files) == 0L) {
-    # Handle convergence failures
-    return(invisible(NULL))
-  }
-  
   # Compute a data.table of POU (x, y, mark = probability mass)
   coord <- 
-    files |> 
+    # List files 
+    # (convergence failures handled above)
+    list.files(it$folder_output, full.names = TRUE, pattern = "pou-") |> 
     lapply(arrow::read_feather) |>
     rbindlist() |> 
     arrange(timestep, x, y) |> 
