@@ -2,7 +2,7 @@
 
 julia_version = "1.12.3"
 manifest_format = "2.0"
-project_hash = "3d6a152eaa56ad075c537da19b296a0f9a6e52b3"
+project_hash = "be59c4b4b1b9b74f9976c1277f3bbb73884559ed"
 
 [[deps.Adapt]]
 deps = ["LinearAlgebra", "Requires"]
@@ -118,50 +118,10 @@ git-tree-sha1 = "0836c647014903bedccf23ba72b5ebb8c89a7db8"
 uuid = "179af706-886a-5703-950a-314cd64e0468"
 version = "0.2.5"
 
-[[deps.CSV]]
-deps = ["CodecZlib", "Dates", "FilePathsBase", "InlineStrings", "Mmap", "Parsers", "PooledArrays", "PrecompileTools", "SentinelArrays", "Tables", "Unicode", "WeakRefStrings", "WorkerUtilities"]
-git-tree-sha1 = "deddd8725e5e1cc49ee205a1964256043720a6c3"
-uuid = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
-version = "0.10.15"
-
-[[deps.CategoricalArrays]]
-deps = ["Compat", "DataAPI", "Future", "Missings", "Printf", "Requires", "Statistics", "Unicode"]
-git-tree-sha1 = "73acb4ed51b1855e1b5ce5c610334363a98d13f1"
-uuid = "324d7699-5711-5eae-9e2f-1d82baa6b597"
-version = "1.0.2"
-
-    [deps.CategoricalArrays.extensions]
-    CategoricalArraysArrowExt = "Arrow"
-    CategoricalArraysJSONExt = "JSON"
-    CategoricalArraysRecipesBaseExt = "RecipesBase"
-    CategoricalArraysSentinelArraysExt = "SentinelArrays"
-    CategoricalArraysStatsBaseExt = "StatsBase"
-    CategoricalArraysStructTypesExt = "StructTypes"
-
-    [deps.CategoricalArrays.weakdeps]
-    Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
-    JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
-    RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
-    SentinelArrays = "91c51154-3ec4-41a3-a24f-3f23e20d615c"
-    StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-    StructTypes = "856f2bd8-1eba-4b0a-8007-ebc267875bd4"
-
 [[deps.Chain]]
 git-tree-sha1 = "765487f32aeece2cf28aa7038e29c31060cb5a69"
 uuid = "8be319e6-bccf-4806-a6f7-6fae938471bc"
 version = "1.0.0"
-
-[[deps.CodecZlib]]
-deps = ["TranscodingStreams", "Zlib_jll"]
-git-tree-sha1 = "962834c22b66e32aa10f7611c08c8ca4e20749a9"
-uuid = "944b1d66-785c-5afd-91f1-9de20f533193"
-version = "0.7.8"
-
-[[deps.CodecZstd]]
-deps = ["TranscodingStreams", "Zstd_jll"]
-git-tree-sha1 = "da54a6cd93c54950c15adf1d336cfd7d71f51a56"
-uuid = "6b39b394-51ab-5f42-8807-6242bab2b4c2"
-version = "0.8.7"
 
 [[deps.ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
@@ -265,11 +225,6 @@ deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 version = "1.11.0"
 
-[[deps.Decimals]]
-git-tree-sha1 = "e98abef36d02a0ec385d68cd7dadbce9b28cbd88"
-uuid = "abce61dc-4473-55a0-ba07-351d65e31d42"
-version = "0.4.1"
-
 [[deps.DimensionalData]]
 deps = ["Adapt", "ArrayInterface", "ConstructionBase", "DataAPI", "Dates", "Extents", "Interfaces", "IntervalSets", "InvertedIndices", "IteratorInterfaceExtensions", "LinearAlgebra", "OrderedCollections", "PrecompileTools", "Random", "RecipesBase", "Statistics", "TableTraits", "Tables"]
 git-tree-sha1 = "147961441e5cb35da0af404aa4684d2e74ec68eb"
@@ -364,17 +319,6 @@ version = "1.17.1"
 
     [deps.FileIO.weakdeps]
     HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-
-[[deps.FilePathsBase]]
-deps = ["Compat", "Dates"]
-git-tree-sha1 = "3bab2c5aa25e7840a4b065805c0cdfc01f3068d2"
-uuid = "48062228-2e41-5def-b9a4-89aafe57970f"
-version = "0.9.24"
-weakdeps = ["Mmap", "Test"]
-
-    [deps.FilePathsBase.extensions]
-    FilePathsBaseMmapExt = "Mmap"
-    FilePathsBaseTestExt = "Test"
 
 [[deps.FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
@@ -725,12 +669,6 @@ git-tree-sha1 = "8e6a74641caf3b84800f2ccd55dc7ab83893c10b"
 uuid = "d3a379c0-f9a3-5b72-a4c0-6bf4d2e8af0f"
 version = "2.17.0+0"
 
-[[deps.LittleEndianBase128]]
-deps = ["Test"]
-git-tree-sha1 = "2cad132b52c86e0ccfc75116362ab57f0047893a"
-uuid = "1724a1d5-ab78-548d-94b3-135c294f96cf"
-version = "0.3.0"
-
 [[deps.LogExpFunctions]]
 deps = ["DocStringExtensions", "IrrationalConstants", "LinearAlgebra"]
 git-tree-sha1 = "13ca9e2586b89836fd20cccf56e57e2b9ae7f38f"
@@ -899,12 +837,6 @@ deps = ["OffsetArrays"]
 git-tree-sha1 = "0fac6313486baae819364c52b4f483450a9d793f"
 uuid = "5432bcbf-9aad-5242-b902-cca2824c8663"
 version = "0.5.12"
-
-[[deps.Parquet]]
-deps = ["CategoricalArrays", "CodecZlib", "CodecZstd", "DataAPI", "Dates", "Decimals", "LittleEndianBase128", "Missings", "Mmap", "SentinelArrays", "Snappy", "Tables", "Thrift"]
-git-tree-sha1 = "b34432cb917ae43123f1648eeb2a87ae8c5d2aa0"
-uuid = "626c502c-15b0-58ad-a749-f091afb673ae"
-version = "0.8.6"
 
 [[deps.Parsers]]
 deps = ["Dates", "PrecompileTools", "UUIDs"]
@@ -1091,12 +1023,6 @@ git-tree-sha1 = "c5391c6ace3bc430ca630251d02ea9687169ca68"
 uuid = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 version = "1.1.2"
 
-[[deps.Snappy]]
-deps = ["CEnum", "snappy_jll"]
-git-tree-sha1 = "098adf970792fd9404788f4558e94958473f7d57"
-uuid = "59d4ed8c-697a-5b28-a4c7-fe95c22820f9"
-version = "0.4.3"
-
 [[deps.Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
 version = "1.11.0"
@@ -1257,23 +1183,6 @@ git-tree-sha1 = "1feb45f88d133a655e001435632f019a9a1bcdb6"
 uuid = "62fd8b95-f654-4bbd-a8a5-9c27f68ccd50"
 version = "0.1.1"
 
-[[deps.Test]]
-deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
-uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-version = "1.11.0"
-
-[[deps.Thrift]]
-deps = ["CodecZlib", "CodecZstd", "Distributed", "Sockets", "ThriftJuliaCompiler_jll", "TranscodingStreams"]
-git-tree-sha1 = "bc24b4dc9ec4b34bca36659ae7efae9085442d80"
-uuid = "8d9c9c80-f77e-5080-9541-c6f69d204e22"
-version = "0.8.5"
-
-[[deps.ThriftJuliaCompiler_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "949a51ca85d31b063531eed49e38a6c9b9bae58b"
-uuid = "815b9798-8dd0-5549-95cc-3cf7d01bce66"
-version = "0.12.1+0"
-
 [[deps.Thrift_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "boost_jll"]
 git-tree-sha1 = "4d16a4b4eab80099c19342b10d0bdb252c39bea6"
@@ -1316,17 +1225,6 @@ version = "1.27.0"
     Latexify = "23fbe1c1-3f47-55db-b15f-69d7ec21a316"
     NaNMath = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
     Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
-
-[[deps.WeakRefStrings]]
-deps = ["DataAPI", "InlineStrings", "Parsers"]
-git-tree-sha1 = "b1be2855ed9ed8eac54e5caff2afcdb442d52c23"
-uuid = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
-version = "1.4.2"
-
-[[deps.WorkerUtilities]]
-git-tree-sha1 = "cd1659ba0d57b71a464a29e64dbc67cfe83d54e7"
-uuid = "76eceee3-57b5-4d4a-8e66-0e911cebbf60"
-version = "1.6.1"
 
 [[deps.XML2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Zlib_jll"]

@@ -22,13 +22,12 @@ import Pkg
 Pkg.activate(".")
 using BenchmarkTools
 import Arrow
-import CSV
 import GeoArrays
-import Parquet
 import Random
 using DataFrames
 using Dates
 using Distributions
+using JLD2
 using Patter
 
 #### Load source files
@@ -45,14 +44,12 @@ iteration = DataFrame(Arrow.Table(joinpath("data", "input", analysis, subanalysi
 
 #### (optional) Use test settings
 if false
-  # Focus on a few iterations
-  iteration = iteration[1:4, :]
-  # Reduce batches & particle numbers
-  iteration.n_batch .= 3
-  iteration.n_particle_filter .= 20000
+  # Reduce particle numbers
+  iteration.receiver_gamma .= 100000.0
+  iteration.n_particle_filter   .= 10000
   iteration.n_particle_smoother .= 500
-  # Clean up old files
-  files = filter(f -> endswith(f, ".jld2"), readdir(ititerationer.folder_output; join=true))
+  # Clean up old files for iteration[1, ]
+  files = filter(f -> endswith(f, ".jld2"), readdir(iteration.folder_output[1]; join=true))
   if length(files) > 0
     rm.(files; force=true)
   end
@@ -112,18 +109,16 @@ model_move = ModelMoveCXY(env,
 ###########################
 #### Define observation model 
 
-#### Load timeline #
+#### Load timeline 
+# Define timeline 
 timeline = DataFrame(Arrow.Table(iter.file_timeline))
 timeline.timestamp = DateTime.(timeline.timestamp)
 timeline = timeline.timestamp
-# timeline = CSV.read(iter.file_timeline, DataFrame, dateformat = "yyyy-mm-dd H:M:S")
-# timeline.timestamp = DateTime.(timeline.timestamp)
-# timeline = timeline.timestamp
+# Define time steps & timesteps_by_batch
+timesteps          = collect(1:length(timeline))
+timesteps_by_batch = Patter.split_indices(timesteps, Int(iter.n_batch))
 
 #### Load acoustic observations & containers
-# acoustics      = CSV.read(iter.file_acoustics, DataFrame, dateformat = "yyyy-mm-dd H:M:S")
-# containers_fwd = CSV.read(iter.file_containers_fwd, DataFrame, dateformat = "yyyy-mm-dd H:M:S")
-# containers_bwd = CSV.read(iter.file_containers_bwd, DataFrame, dateformat = "yyyy-mm-dd H:M:S")
 acoustics = DataFrame(Arrow.Table(iter.file_acoustics))
 containers_fwd = DataFrame(Arrow.Table(iter.file_containers_fwd))
 containers_bwd = DataFrame(Arrow.Table(iter.file_containers_bwd))
@@ -172,19 +167,26 @@ yobs_bwd        = assemble_yobs(datasets = datasets_bwd,
 ###########################
 #### Run particle algorithms 
 
+
+###########################
 #### Set up algorithms 
+
 # Define batches 
 fwd_batches = [joinpath(iter.folder_output, "fwd-$i.jld2") for i in 1:iter.n_batch]
 bwd_batches = [joinpath(iter.folder_output, "bwd-$i.jld2") for i in 1:iter.n_batch]
 smo_batches = [joinpath(iter.folder_output, "smo-$i.jld2") for i in 1:iter.n_batch]
+pou_batches = [joinpath(iter.folder_output, "pou-$i.feather") for i in 1:iter.n_batch]
+
 # Define output objects
 fwd = bwd = smo = nothing 
+
 # Define duration placeholders
 td_fwd = td_bwd = td_smo = NaN
 
-#### (1) Forward filter 
+###########################
+#### Forward filter 
 
-## Simulate initial states for the forward filter
+#### Simulate initial states for the forward filter
 xinit = simulate_states_init(map             = env_init, 
                              timeline        = timeline, 
                              state_type      = state,
@@ -196,7 +198,7 @@ xinit = simulate_states_init(map             = env_init,
                              direction       = "forward", 
                              output          = "Vector");
 
-## Run the forward filter
+#### Run the forward filter
 t1_fwd = now()
 fwd = particle_filter(timeline   = timeline,
                       xinit      = xinit,
@@ -211,17 +213,22 @@ fwd = particle_filter(timeline   = timeline,
 t2_fwd = now()
 td_fwd = diffsecs(t2_fwd, t1_fwd)
 
-## Collect outputs
+#### Collect outputs
 # (To conserve disk space, we do not record states)
-callstats            = fwd.callstats
-diagnostics          = fwd.diagnostics 
-diagnostics.routine .= callstats.routine
+callstats               = fwd.callstats
+diagnostics             = fwd.diagnostics 
+diagnostics.routine    .= callstats.routine
+diagnostics.ncell_core .= NaN
+diagnostics.ncell_home .= NaN
 
+
+###########################
 #### (2) Backward filter 
+
 convergence = fwd.callstats.convergence[1] 
 if convergence
 
-  ## Simulate initial states for the backward filter
+  #### Simulate initial states for the backward filter
   xinit = simulate_states_init(map           = env_init, 
                              timeline        = timeline, 
                              state_type      = state,
@@ -233,7 +240,7 @@ if convergence
                              direction       = "backward", 
                              output          = "Vector");
 
-  ## Run the backward filter
+  #### Run the backward filter
   t1_bwd = now()
   bwd = particle_filter(timeline   = timeline,
                         xinit      = xinit,
@@ -248,21 +255,24 @@ if convergence
   t2_bwd = now()
   td_bwd = diffsecs(t2_bwd, t1_bwd)
   
-  ## Collect outputs
-  # (To conserve disk space, we do not record states)
+  #### Collect outputs
   append!(callstats, bwd.callstats)
-  bwd.diagnostics.routine .= bwd.callstats.routine
+  bwd.diagnostics.routine    .= bwd.callstats.routine
+  bwd.diagnostics.ncell_core .= NaN
+  bwd.diagnostics.ncell_home .= NaN
   append!(diagnostics, bwd.diagnostics)
   convergence = bwd.callstats.convergence[1]
 
 end 
 
-#### (3) Run smoother
-# Set n_sim = 0 and cache = nothing for unrestricted models (n_move = 1)
+
+###########################
+#### Smoother
 
 if convergence
 
-  ## Run smoother
+  #### Run smoother
+  # Set n_sim = 0 and cache = nothing for unrestricted models (n_move = 1)
   t1_smo = now()
   smo = particle_smoother_two_filter(timeline   = timeline,
                                      xfwd       = fwd_batches,
@@ -278,28 +288,89 @@ if convergence
   t2_smo = now()
   td_smo = diffsecs(t2_smo, t1_smo)
 
-  ## Collate outputs
-  callstats.n_iter .= Float64.(callstats.n_iter)
-  append!(callstats, smo.callstats)
-  smo.diagnostics.routine .= smo.callstats.routine
-  append!(diagnostics, smo.diagnostics)
-
-  ## Define smoothed DataFrame of states
-  # * This requires bringing all smoothed files into memory
-  # * This is not feasible
-  # * Hence, this is implemented separately via Patter.pf_particles()
+  #### Collate smoother/summary outputs
+  # This is implemented below 
                                      
 end 
-                                   
-#### (4) Record results
+
+#### Clean up fwd_batches and bwd_batches
+# This is implemented at the earliest possible stage
+# We remove smo batch files after collating results 
+foreach(f -> rm(f; force=true), fwd_batches)
+foreach(f -> rm(f; force=true), bwd_batches)
+
+
+###########################
+###########################
+#### Collate outputs 
+
+if convergence
+
+  #### (1) Collate callstats 
+  callstats.n_iter .= Float64.(callstats.n_iter)
+  append!(callstats, smo.callstats)
+
+  #### (2) Collate state-dependent outputs by batch 
+  # This is implemented batch-wise to manage memory
+  areas_by_batch = Vector{DataFrame}(undef, iter.n_batch)
+  for i in eachindex(smo_batches)
+    
+    # Define DataFrame of states for batch from Matrix (rows: particles; columns: time steps)
+    @load smo_batches[i] xsmo
+    smo_states = Patter.r_get_states(xsmo, timesteps_by_batch[i], timeline[timesteps_by_batch[i]])
+    
+    # (A) Compute grid cell weights, for mapping 
+    # * This is a summarised DataFrame, with one row for each timestep & grid cell with the weight 
+    # * We write this straight to file to keep memory usage low (over all batches)
+    # * We collate DataFrames in R (summing weights over all time steps) for mapping 
+    coord = map_marks(env, smo_states)
+    Arrow.write(pou_batches[i], coord; compress = Arrow.ZstdCompressor(level = 9))
+
+    # (B) Compute area (ncell) spanned by 50 % and 95 % of the probability mass, for diagnostics
+    areas_by_batch[i] = map_uncertainty(coord)
+
+  end
+
+  #### Collate diagnostics over all batches, including area (ncell) spanned by 50 % and 95 % of the distribution 
+  ncells                      = vcat(areas_by_batch...)
+  smo.diagnostics.routine    .= smo.callstats.routine
+  smo.diagnostics.ncell_core .= ncells.ncell_core
+  smo.diagnostics.ncell_home .= ncells.ncell_home
+  append!(diagnostics, smo.diagnostics)
+
+  #### Collate smoothed DataFrame of states
+  # This is too memory intensive for parallel applications
+  # smo_batches = smo_batches[isfile.(smo_batches)]
+  # if length(smo_batches) > 0
+  #   # Collate states Matrix in Julia 
+  #   smo_states = hcat([f["xsmo"] for f in map(jldopen, smo_batches)]...)
+  #   # Convert to DataFrame 
+  #   smo_states_df = Patter.r_get_states(smo_states, collect(1:length(timeline)), timeline)
+  # end
+
+end 
+
+
+###########################
+###########################
+#### Record results
+
+#### Cleanup smoothed batches
+# This is implemented at the earliest possible stage
+foreach(f -> rm(f; force=true), smo_batches)
+readdir(iter.folder_output, join=true)
+
+#### Write outputs 
 # We record all results for which the smoother was run 
 # (i.e., for which the forward and backward filters converged)
 if convergence
 
-  # Write particles
-  # (This is not currently implemented)
-  # Parquet.write(iter_file_states, smo_df);
+  # Write states
+  # (This is not currently implemented) 
   
+  # Write map map_marks
+  # (This is implemented above)
+
   # Write diagnostics 
   Arrow.write(iter.file_diagnostics, diagnostics; compress = Arrow.ZstdCompressor(level = 9))
 
@@ -308,12 +379,7 @@ if convergence
 
 end 
 
-#### (5) Cleanup batches
-# We remove fwd_{i}.jld2 & bwd_{i}.jld2 files
-# We only remove smo_{i}.jld2 after collating states (later)
-foreach(f -> rm(f; force = true), fwd_batches)
-foreach(f -> rm(f; force = true), bwd_batches)
-readdir(iter.folder_output, join = true)
+
 
 
 #### End of code. 
