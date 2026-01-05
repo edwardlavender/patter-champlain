@@ -79,7 +79,7 @@ toc()
 
 # Make maps
 tic()
-cl_lapply(split(iteration, seq_len(nrow(iteration)))[1], 
+cl_lapply(split(iteration, seq_len(nrow(iteration))), 
           .cl = cl,
           .fun = function(it) {
   
