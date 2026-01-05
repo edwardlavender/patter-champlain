@@ -16,22 +16,21 @@
 library(proj.verse)
 library(tictoc)
 
-# List scripts
-scripts <- list.files(here_r(), full.names = TRUE)
+# (1) Resolve dependencies
+# Use renv::restore() to manage R dependencies
+# Ensure Julia dependencies installed on server 
 
-# Check scripts
-scripts
-
-# (1) Set up project 
+# (2) Run scripts 
 # > This code can be run on Windows/MacOS/Linux
 # > Run scripts 1:13 sequentially, in isolation
 # > These scripts can be run independently locally/on a server to set up files etc.
+scripts <- list.files(here_r(), full.names = TRUE)
 cl_lapply(scripts[1:13L], function(script) {
   print(script)
   callr::rscript(script)
 })
 
-# (2) Simulate data
+# (3) Simulate data
 # > Data simulation is implemented from R via patter
 # > This code should be run locally (on SIA-LAVENDED)
 # > Then copy data/input/sim onto linux server 
@@ -47,17 +46,17 @@ files <- c("data/input/sim/main/acoustics-by-path.qs",
 sum(sapply(files, file.size) / 1e6) # 12.8 MB
 # file.copy()
 
-# (3) Prepare analysis
+# (4) Prepare analysis
 # > This script can be run locally and/or on the server
 
-# (4) Trial patter
+# (5) Trial patter
 # > This script runs patter via R and should be run locally
 
-# (5) Run patter
+# (6) Run patter
 # > Run Julia scripts at scale via bash on server 
 # > Monitor workflow via run-patter.R on server
 
-# (6) Synthesise results
+# (7) Synthesise results
 # > These scripts need to be run on the server, where patter outputs live
 
 
