@@ -285,8 +285,8 @@ dirs.create(iteration$folder_output)
 #### Create iteration input files
 
 #### Duration
-# "sim": 46 s (10 cl, 2 chunks per core)
-# "real": 12 m 55 s (10 cl, 2 chunks per core)
+# "sim": 46 s on SIA-LAVENDED or 76 s on siam-linux20 (10 cl, 2 chunks per core) 
+# "real": 12 m 55 s or 16 min 19 s on siam-linux20 (10 cl, 2 chunks per core)
 # (There is some speed benefit of chunking)
 
 #### Write options (derived for analysis = "sim")
