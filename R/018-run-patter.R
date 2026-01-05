@@ -89,9 +89,17 @@ cl_lapply(split(iteration, seq_len(nrow(iteration)))[1],
   map         <- terra::rast("./data/input/map.tif")
   it_timeline <- arrow::read_feather(it$file_timeline)$timestamp
   
+  # Identify POU files
+  # * These are produced if both forward and backward filters were run successfully
+  files <- list.files(it$folder_output, full.names = TRUE, pattern = "pou-")
+  if (length(files) == 0L) {
+    # Handle convergence failures
+    return(invisible(NULL))
+  }
+  
   # Compute a data.table of POU (x, y, mark = probability mass)
   coord <- 
-    list.files(it$folder_output, full.names = TRUE, pattern = "pou-") |> 
+    files |> 
     lapply(arrow::read_feather) |>
     rbindlist() |> 
     arrange(timestep, x, y) |> 
