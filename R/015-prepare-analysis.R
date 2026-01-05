@@ -45,8 +45,8 @@ pars      <- qs::qread(here_input("pars-patter.qs"))
 #### Select analysis
 
 #### Define analysis 
-# analysis <- "sim"
-analysis <- "real"
+analysis <- "sim"
+# analysis <- "real"
 subanalysis <- "main"
 
 #### Define analysis-specific data
@@ -315,7 +315,7 @@ dirs.create(iteration$folder_output)
 
 #### Write files 
 overwrite <- FALSE
-if (overwrite) {
+if (!file.exists(iteration$file_timeline[1]) | overwrite) {
   
   pbo <- pbapply::pboptions(nout = 2L)
   cl_lapply(

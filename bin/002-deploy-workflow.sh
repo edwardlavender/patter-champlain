@@ -15,6 +15,7 @@
 # NROW=2723
 
 # Open tmux and run workflow:
+# cd ~/Documents/work/projects/move-smc/patter/projects/patter-trout/patter-champlain
 # cd ~/documents/projects/patter-champlain
 # tmux ls
 # tmux new -s ch
