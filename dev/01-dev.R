@@ -68,6 +68,7 @@ if (!requireNamespace("arrow", quietly = TRUE) &
   )
   install.packages("arrow", 
                    repos = "https://packagemanager.rstudio.com/all/__linux__/focal/latest")
+  arrow::arrow_info()
   options(op)
 }
 # commonmark/(r)markdown packages (for README documentation)
