@@ -6,7 +6,8 @@
 # 1) This script provides a generic workflow for running particle algorithms 
 
 #### Prerequisites
-# 1) Run simulations
+# 1) Generate particle algorithm outputs via run-algorithms.jl
+# 2) This code should be run on the same machine (where the particle outputs live)
 
 
 ###########################
@@ -29,7 +30,7 @@ library(tictoc)
 files_source_r(here_src())
 
 #### Load data
-map <- terra::rast(here_input("map.tif"))
+# NA
 
 
 ###########################
@@ -50,123 +51,81 @@ iteration           <- qs::qread(here_input_analysis("iteration.qs"))
 ###########################
 #### Run patter
 
-#### (1) Run Julia workflows 
-
-## (A) Run algorithms 
+#### (1) Run Julia workflow
 # Run 001-run-algorithms.jl via tmux/bash
 
-## (B) Collate states 
-# Run 001-run-algorithms.jl via tmux/bash
+#### (2) Run R workflows (mapping)
 
-#### (2) Run R workflows 
-
-tic()
-
-## (A) Review implementation  
+## Review implementation  
 # For "sim" iteration[1, ]:
-# * Memory required per iteration : 1.80 GB 
-# * Time required per iteration   : 19.757 s
-# * ETA for 210 iteration         : 1.15 hrs on 1 cl (19.757 * 210 / 60 / 60)
+# * Memory required per iteration : 251.46 MB 
+# * Time required per iteration   : 1.012 s
+# * ETA for 210 iteration         : 3.5 mins on 1 cl (1.012 * 210 / 60)
 
 # For "real" iteration[1, ]:
-# * Memory required per iteration : 2.47 GB 
-# * Time required per iteration   : 25.695 s
-# * ETA for 2723 iteration        : 19.43541 hrs on 1 cl (25.695 * 2723 / 60 / 60)
-# > We can safely run ≈ 5 cpus 
+# * Memory required per iteration : TO DO
+# * Time required per iteration   : TO DO
+# * ETA for 2723 iteration        : TO DO
+# > We can safely run ≈ TO DO N CPUs
 
-## (B) Select iteration & load data 
-# it <- iteration[1, ]
-if (interactive()) {
-  row <- 1L
-} else {
-  args <- commandArgs(trailingOnly = TRUE)
-  row <- as.integer(args[1])
-  if (is.na(row)) {
-    stop("Row index is NA")
-  }
-  if (!(row %in% 1:nrow(iteration))) {
-    stop("Invalid row index.")
-  }
-}
-it  <- iteration[row, ]
-
-## (C) Load iteration-specific datasets
-it_states <- it_diagnostics <- NULL
-if (file.exists(it$file_states)) {
-  it_states <- arrow::read_feather(it$file_states) |> setDT()
-  # lobstr::obj_size(it_states) # 1.61 GB. 2.14 GB
-}
-if (file.exists(it$file_diagnostics)) {
-  it_diagnostics <- arrow::read_feather(it$file_diagnostics) |> setDT()
-  # lobstr::obj_size(it_diagnostics) # 3.48 MB
-}
-
-## (D) Make map (~5.06 s)
-if (!is.null(it_states)) {
-  tic()
-  occupancy <- patter::map_pou(.map = map, .coord = it_states, .plot = FALSE)$ud
-  terra::writeRaster(occupancy, it$file_occupancy, overwrite = TRUE)
-  toc()
-}
-
-#### (E) Update diagnostics
-# Compute areas spanned by 50 % and 95 % of the distribution 
-if (!is.null(it_states) & !is.null(it_diagnostics)) {
-  
-  #### Compute area (m^2) spanned by 50 % distribution (~7.219 s)
-  tic()
-  area_core <- particle_hr(.map = map, 
-                           .coord = it_states, 
-                           .percentage = 0.50,
-                           .summarise = FALSE)
-  toc()
-  
-  #### Compute area  (m^2) spanned by 95 % distribution (~6.445 s)
-  tic()
-  area_home <- particle_hr(.map = map, 
-                           .coord = it_states, 
-                           .percentage = 0.95,
-                           .summarise = FALSE)
-  toc()
-
-  #### Update diagnostics
-  stopifnot(all(area_core$area <= area_home$area))
-  it_diagnostics[, m2_core := area_core$area[match(timestep, area_core$timestep)]]
-  it_diagnostics[, m2_home := area_home$area[match(timestep, area_home$timestep)]]
-  
-  #### Visual check
-  if (FALSE) {
-    # Check areas (m^2) for the first time step
-    it_diagnostics[1, ]
-    # Check areas (number of grid cells)
-    A <- prod(terra::res(map))
-    it_diagnostics$m2_core[1] / A
-    it_diagnostics$m2_home[1] / A
-    # Check areas (percentage of entire study area, excluding NAs)
-    # > This is < 1 % of the size of the study area
-    A <- terra::expanse(map)[2]
-    it_diagnostics$m2_core[1] / A * 100
-    it_diagnostics$m2_home[1] / A * 100
-    # Visualise entire area spanned by distribution 
-    occupancy_1 <- patter::map_pou(.map = map, .coord = it_states[timestep == 1L, ])$ud
-    terra::plot(occupancy_1 > 0)
-  }
-
-  #### Overwrite it$file_diagnostics
-  write_feather_compressed(it_diagnostics, it$file_diagnostics)
-  # arrow::read_feather(it$file_diagnostics)
-  
-}
-
-#### (F) Clean up 
-# We only store callstats, diagnostics and maps
-# We delete iteration$file_states (these files are generally >= 678.995 MB)
-# file.size(it$file_states) / 1e6
-# unlink(it$file_states)
-
-
-# lobstr::mem_used()
+# Define cluster
+tic()
+cl <- parallel::makeCluster(2L)
+parallel::clusterEvalQ(cl, {
+  library(data.table)
+  library(dtplyr)
+  library(dplyr, warn.conflicts = FALSE)
+})
 toc()
+
+# Make maps
+tic()
+cl_lapply(split(iteration, seq_len(nrow(iteration)))[1], 
+          .cl = cl,
+          .fun = function(it) {
+  
+  # Read data
+  # tic()
+  # it <- iteration[1, ]
+  map         <- terra::rast("./data/input/map.tif")
+  it_timeline <- arrow::read_feather(it$file_timeline)$timestamp
+  
+  # Compute a data.table of POU (x, y, mark = probability mass)
+  coord <- 
+    list.files(it$folder_output, full.names = TRUE, pattern = "pou-") |> 
+    lapply(arrow::read_feather) |>
+    rbindlist() |> 
+    arrange(timestep, x, y) |> 
+    group_by(x, y) |> 
+    summarise(mark = sum(mark)) |> 
+    ungroup() |> 
+    mutate(mark = mark / length(it_timeline)) |> 
+    as.data.table()
+  
+  # Verify that weights sum to one 
+  stopifnot(all.equal(1, sum(coord$mark)))
+  
+  # Map occupancy 
+  occupancy <- terra::rasterize(coord, map, values = coord$mark)
+  occupancy <- terra::classify(occupancy, cbind(NA, 0))
+  occupancy <- terra::mask(occupancy, map)
+  names(occupancy) <- "map_value"
+  # terra::plot(occupancy)
+
+  # Write to file
+  terra::writeRaster(occupancy, it$file_occupancy, overwrite = TRUE)
+  
+  # (optional) Cleanup pou-{i}.feather files
+  # unlink(list.files(it$folder_output, full.names = TRUE, pattern = "pou-"))
+  
+  # lobstr::mem_used()
+  # toc()
+  invisible(NULL)
+  
+})
+toc()
+
+# terra::rast(iteration$file_occupancy[1])
 
 
 #### End of code. 
