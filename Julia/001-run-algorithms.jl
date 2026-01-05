@@ -49,9 +49,9 @@ if false
   iteration.n_particle_filter   .= 10000
   iteration.n_particle_smoother .= 500
   # Clean up old files for iteration[1, ]
-  files = filter(f -> endswith(f, ".jld2"), readdir(iteration.folder_output[1]; join=true))
+  files = filter(f -> endswith(f, ".jld2"), readdir(iteration.folder_output[1]; join = true))
   if length(files) > 0
-    rm.(files; force=true)
+    rm.(files; force = true)
   end
 end
 
@@ -296,8 +296,8 @@ end
 #### Clean up fwd_batches and bwd_batches
 # This is implemented at the earliest possible stage
 # We remove smo batch files after collating results 
-foreach(f -> rm(f; force=true), fwd_batches)
-foreach(f -> rm(f; force=true), bwd_batches)
+foreach(f -> rm(f; force = true), fwd_batches)
+foreach(f -> rm(f; force = true), bwd_batches)
 
 
 ###########################
@@ -357,8 +357,7 @@ end
 
 #### Cleanup smoothed batches
 # This is implemented at the earliest possible stage
-foreach(f -> rm(f; force=true), smo_batches)
-readdir(iter.folder_output, join=true)
+foreach(f -> rm(f; force = true), smo_batches)
 
 #### Write outputs 
 # We record all results for which the smoother was run 
@@ -379,7 +378,7 @@ if convergence
 
 end 
 
-
+# readdir(iter.folder_output, join = true)
 
 
 #### End of code. 
