@@ -404,7 +404,7 @@ if (!file.exists(iteration$file_timeline[1]) | overwrite) {
         
         # Check residency
         # (Use reduced tolerance to handle floating point issue above)
-        stopifnot(all.equal(sum(residency_sim$estimate), 1,  tolerance = 0.01))
+        stopifnot(isTRUE(all.equal(sum(residency_sim$estimate), 1,  tolerance = 0.01)))
         qs::qsave(residency_sim, d$file_residency_sim)
         
       }

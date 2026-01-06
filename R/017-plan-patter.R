@@ -225,7 +225,7 @@ if (Sys.getenv("JULIA_SESSION") == "FALSE") {
     as.data.table()
     
   # Verify that weights sum to one 
-  stopifnot(all.equal(1, sum(coord$mark)))
+  stopifnot(isTRUE(all.equal(1, sum(coord$mark))))
 
   # Map occupancy 
   occupancy <- terra::rasterize(coord, map, values = coord$mark)
@@ -246,7 +246,7 @@ if (Sys.getenv("JULIA_SESSION") == "FALSE") {
   if (!is.null(it_states)) {
     # Use map_pou() to verify occupancy 
     occupancy_2 <- patter::map_pou(map, it_states, .plot = FALSE)$ud
-    stopifnot(terra::all.equal(occupancy, occupancy_2, maxcell = terra::ncell(occupancy)))
+    stopifnot(isTRUE(terra::all.equal(occupancy, occupancy_2, maxcell = terra::ncell(occupancy))))
     # Visual check
     pp <- par(mfrow = c(1, 2))
     terra::plot(occupancy)

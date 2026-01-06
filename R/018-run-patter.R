@@ -114,7 +114,7 @@ cl_lapply(split(iteration, seq_len(nrow(iteration))),
     as.data.table()
   
   # Verify that weights sum to one 
-  stopifnot(all.equal(1, sum(coord$mark)))
+  stopifnot(isTRUE(all.equal(1, sum(coord$mark))))
   
   # Map occupancy 
   occupancy <- terra::rasterize(coord, map, values = coord$mark)
