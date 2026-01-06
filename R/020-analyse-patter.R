@@ -183,7 +183,41 @@ dev.off()
 toc()
 
 #### Summarise area spanned by 95 % of the distribution
-# TO DO, modify code above
+# Summary statistics (ncell_core)
+diagnostics |> 
+  filter(routine == "smoother: two-filter") |> 
+  summarise(utils.add::basic_stats(ncell_core, na.rm = TRUE))
+# Summary statistics (ncell_home)
+diagnostics |> 
+  filter(routine == "smoother: two-filter") |> 
+  summarise(utils.add::basic_stats(ncell_home, na.rm = TRUE))
+# Visualisation (~14 s)
+tic()
+png(here_fig_analysis("nell.png"), 
+    height = 3, width = 6, units = "in", res = 800)
+p <-
+  diagnostics |> 
+  lazy_dt() |> 
+  filter(routine == "smoother: two-filter") |> 
+  select(Core = "ncell_core", Home = "ncell_home") |>
+  tidyr::pivot_longer(
+    cols = c(Core, Home),
+    names_to = "type",
+    values_to = "ncell"
+  ) |>
+  as_tibble() |> 
+  ggplot(aes(ncell, fill = type)) + 
+  geom_density() + 
+  xlab("Area (number of cells)") + ylab("Kernel density") + 
+  guides(fill = "none") +
+  facet_wrap(~type, nrow = 1, scales = "fixed") +
+  scale_x_continuous(expand = c(0, 0)) + 
+  scale_y_continuous(expand = c(0, 0)) +
+  theme_bw() + 
+  theme(plot.margin = margin(t = 10, r = 20, b = 10, l = 20, unit = "pt"))
+print(p)
+dev.off()
+toc()
 
 
 ###########################
