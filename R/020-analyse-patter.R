@@ -160,6 +160,8 @@ diagnostics |>
   group_by(routine) |> 
   reframe(utils.add::basic_stats(ess, na.rm = TRUE))
 # Visualisation (~14 s)
+# TO DO Fix scientific notation here
+# (This is ignored on the final panel)
 tic()
 png(here_fig_analysis("ess.png"), 
     height = 5, width = 10, units = "in", res = 800)
@@ -169,11 +171,11 @@ p <-
   as_tibble() |> 
   ggplot(aes(ess, fill = routine)) + 
   geom_density() + 
-  scale_x_continuous(expand = c(0, 0)) + 
-  scale_y_continuous(expand = c(0, 0), labels = prettyGraphics::sci_notation) +
   xlab("Effective sample size") + ylab("Kernel density") + 
   guides(fill = "none") +
   facet_wrap(~routine, nrow = 1, scales = "free") +
+  scale_x_continuous(expand = c(0, 0)) + 
+  scale_y_continuous(expand = c(0, 0), labels = prettyGraphics::sci_notation) +
   theme_bw() + 
   theme(plot.margin = margin(t = 10, r = 20, b = 10, l = 20, unit = "pt"))
 print(p)
