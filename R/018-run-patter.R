@@ -79,7 +79,7 @@ stopifnot(nrow(iteration) > 0L)
 
 # Define cluster
 tic()
-cl <- parallel::makeCluster(2L)
+cl <- parallel::makeCluster(5L)
 parallel::clusterEvalQ(cl, {
   library(data.table)
   library(dtplyr)
