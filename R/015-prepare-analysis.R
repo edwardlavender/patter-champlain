@@ -46,8 +46,8 @@ pars       <- qs::qread(here_input("pars-patter.qs"))
 #### Select analysis
 
 #### Define analysis 
-# analysis <- "sim"
-analysis <- "real"
+analysis <- "sim"
+# analysis <- "real"
 subanalysis <- "main"
 
 #### Define analysis-specific data
@@ -109,7 +109,7 @@ stopifnot(all(ck >= 50))
 
 #### Summarise (real) detection dataset used for modelling 
 # cf. raw data summary statistics (setup-data-detection.R)
-if (TRUE) {
+if (FALSE) {
   nrow(detections)
   length(unique(detections$individual_id))
   range(detections$timestamp)
@@ -233,6 +233,7 @@ cl_lapply(split(unitsets, seq_len(nrow(unitsets))), function(sim) {
 iteration <- 
   unitsets |> 
   cross_join(pars) |> 
+  mutate(index = row_number(), .before = 1L) |> 
   mutate(
     # Define input files 
     # * Some files depend on both unit_id & sensitivity parameters
