@@ -36,7 +36,7 @@ files_source_r(here_src())
 
 #### Load data
 map       <- terra::rast(here_input("map.tif"))
-champlain <- qreadvect(here_input("champlain-utm.qs"))
+regions   <- terra::rast(here_input("regions.tif"))
 pars      <- qs::qread(here_input("pars-patter.qs"))
 
 
@@ -53,6 +53,9 @@ subanalysis <- "main"
 here_input_analysis <- switch_here_input_analysis_subanalysis(analysis, subanalysis)
 detections          <- qs::qread(here_input_analysis("detections.qs"))
 moorings            <- qs::qread(here_input_analysis("moorings.qs"))
+if (analysis == "sim") {
+  paths     <- qs::qread(here_input_sim("main", "paths.qs"))
+}
 if (analysis == "real") {
   detections_raw <- qs::qread(here_input_analysis("detections-raw.qs"))
 }
@@ -138,7 +141,7 @@ if (analysis == "real" & overwrite) {
   # Add to moorings
   moorings <- 
     moorings |> 
-    mutate(region = terra::extract(champlain, cbind(receiver_x, receiver_y))$region, 
+    mutate(region = terra::extract(regions, cbind(receiver_x, receiver_y))$map_value, 
            col = cols$col[match(region, cols$region)]) |> 
     as.data.table()
   stopifnot(all(!is.na(moorings$col)))
@@ -259,6 +262,15 @@ iteration <-
     file_diagnostics    = file.path(folder_output, "diagnostics.feather"),
     file_callstats      = file.path(folder_output, "callstats.feather"),
     file_occupancy      = file.path(folder_output, "occupancy.tif"),
+    file_path_sim       = if_else(rep(analysis == "sim", n()),
+                                  file.path(folder_output, "path-sim.qs"),
+                                  NA_character_), 
+    file_occupancy_sim  = if_else(rep(analysis == "sim", n()),
+                                  file.path(folder_output, "occupancy-sim.tif"),
+                                  NA_character_), 
+    file_residency_sim  = if_else(rep(analysis == "sim", n()),
+                                  file.path(folder_output, "residency-sim.qs"),
+                                  NA_character_), 
     # Add modelling columns
     # NB: n_batch must be <= 9L due to a bug in Patter.jl
     n_batch             = 9L,
@@ -326,6 +338,7 @@ if (!file.exists(iteration$file_timeline[1]) | overwrite) {
     .fun = function(d) {
       
       ## Define file_timeline
+      # d     <- iteration[1, ]
       dets     <- detections[unit_id == d$unit_id, ]
       timeline <- seq(dets$time_id[1], 
                       lubridate::ceiling_date(max(dets$timestamp), "months") - 60 * 2, 
@@ -357,17 +370,52 @@ if (!file.exists(iteration$file_timeline[1]) | overwrite) {
       write_feather_compressed(containers_fwd, d$file_containers_fwd)
       write_feather_compressed(containers_bwd, d$file_containers_bwd)
       
+      ## Define file_occupancy_sim and file_residency_sim
+      if (analysis == "sim") {
+        
+        # Read maps (required to enable parallelisation, above)
+        .map     <- terra::rast(here_input("map.tif"))
+        .regions <- terra::rast(here_input("regions.tif"))
+        
+        # Define file_path_sim
+        path <- paths[path_id == d$individual_id, ]
+        qs::qsave(path, d$file_path_sim)
+        
+        # Define file_occupancy_sim
+        occupancy_sim <- map_pou(.map, path, .plot = FALSE)$ud
+        terra::writeRaster(occupancy_sim, d$file_occupancy_sim, overwrite = TRUE)
+        
+        # Define file_residency_sim 
+        residency_sim <- 
+          occupancy_sim |> 
+          terra::zonal(.regions, fun = "sum", na.rm = TRUE) |> 
+          lazy_dt() |> 
+          mutate(path_id = path$path_id[1]) |>
+          select("path_id", region = "map_value", estimate = "map_value.1") |>
+          as.data.table()
+        stopifnot(all.equal(sum(residency_sim$estimate), 1))
+        qs::qsave(residency_sim, d$file_residency_sim)
+        
+      }
+      
       nothing()
     })
   pbapply::pboptions(pbo)
   
 }
 
+# Spot checks
+if (analysis == "sim") {
+  stopifnot(all(file.exists(iteration$file_path_sim)))
+  stopifnot(all(file.exists(iteration$file_occupancy_sim)))
+  stopifnot(all(file.exists(iteration$file_residency_sim)))
+  # lapply_qplot_sim(iteration, .n_plot = 4L)
+}
+
 #### Check total size of input directories
 # For sim, with write_feather_compressed():
 # * 0.69476 MB for iteration[1, ]
 # * 184.3025 MB for all iterations
-# * 1060 for real-world analysis
 # For real, with write_feather_compressed():
 # * 0.324784 for iteration[1, ]
 # * 782.3067 MB for all iterations
