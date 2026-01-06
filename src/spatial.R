@@ -114,3 +114,42 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
   }
 
 }
+
+# Compute JS divergence between two SpatRaster probability distributions
+# Copied from wahoo-flapper
+if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
+  
+  # Compute JS divergence between two SpatRaster probability distributions
+  spatJS <- function(r1, r2) {
+    
+    # Extract values
+    v <- data.table(v1 = terra::values(r1)[, 1],
+                    v2 = terra::values(r2)[, 1])
+    v <- v[!is.na(v1) & !is.na(v2), ]
+    
+    # Define p and q
+    v1 <- v$v1
+    v2 <- v$v2
+    p  <- v1 / sum(v1)
+    q  <- v2 / sum(v2)
+    m  <- 0.5 * (p + q)
+    pos <- which(m != 0)
+    p <- p[pos]
+    q <- q[pos]
+    m <- m[pos]
+    
+    # Compute KL divergences
+    z <- p * (log(p) - log(m))
+    z[p == 0] <- 0
+    kl_pm <- sum(z)
+    
+    z <- q * (log(q) - log(m))
+    z[q == 0] <- 0
+    kl_qm <- sum(z)
+    
+    # Jensen–Shannon divergence
+    0.5 * kl_pm + 0.5 * kl_qm
+    
+  }
+  
+}
