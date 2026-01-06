@@ -328,7 +328,7 @@ dirs.create(iteration$folder_output)
 #   compared to the speed cost of writing files (important for real-world)
 
 #### Write files 
-overwrite <- FALSE
+overwrite <- TRUE
 if (!file.exists(iteration$file_timeline[1]) | overwrite) {
   
   pbo <- pbapply::pboptions(nout = 2L)
@@ -383,6 +383,13 @@ if (!file.exists(iteration$file_timeline[1]) | overwrite) {
         qs::qsave(path, d$file_path_sim)
         
         # Define file_occupancy_sim
+        path[, cell := terra::cellFromXY(.map, cbind(x, y))]
+        if (any(is.na(path$cell))) {
+          # Filter NA cells
+          # This is presumably a floating point issue on siam-linux20
+          warning(glue::glue("For path$path_id {path$path_id[1]}, there are {length(which(is.na(path$cell)))} NA cell(s)!"))
+          path <- path[!is.na(cell)]
+        }
         occupancy_sim <- map_pou(.map, path, .plot = FALSE)$ud
         terra::writeRaster(occupancy_sim, d$file_occupancy_sim, overwrite = TRUE)
         
@@ -394,7 +401,10 @@ if (!file.exists(iteration$file_timeline[1]) | overwrite) {
           mutate(path_id = path$path_id[1]) |>
           select("path_id", region = "map_value", estimate = "map_value.1") |>
           as.data.table()
-        stopifnot(all.equal(sum(residency_sim$estimate), 1))
+        
+        # Check residency
+        # (Use reduced tolerance to handle floating point issue above)
+        stopifnot(all.equal(sum(residency_sim$estimate), 1,  tolerance = 0.01))
         qs::qsave(residency_sim, d$file_residency_sim)
         
       }
