@@ -73,6 +73,7 @@ iteration           <- qs::qread(here_input_analysis("iteration.qs"))
 success <- sapply(iteration$folder_output, function(folder) {
   length(list.files(folder, "pou-")) > 0L
 })
+table(success)
 iteration <- iteration[success, ]
 stopifnot(nrow(iteration) > 0L)
 
