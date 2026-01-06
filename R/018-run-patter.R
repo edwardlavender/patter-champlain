@@ -96,6 +96,7 @@ cl_lapply(split(iteration, seq_len(nrow(iteration))),
   # tic()
   # it <- iteration[1, ]
   map         <- terra::rast("./data/input/map.tif")
+  regions     <- terra::rast("./data/input/regions.tif")
   it_timeline <- arrow::read_feather(it$file_timeline)$timestamp
   
   # Compute a data.table of POU (x, y, mark = probability mass)
@@ -121,8 +122,23 @@ cl_lapply(split(iteration, seq_len(nrow(iteration))),
   occupancy <- terra::mask(occupancy, map)
   names(occupancy) <- "map_value"
   # terra::plot(occupancy)
+  
+  # Estimate residency
+  residency <- 
+    occupancy |> 
+    terra::zonal(regions, fun = "sum", na.rm = TRUE) |> 
+    lazy_dt() |> 
+    mutate(unit_id           = it$unit_id,
+           individual_id     = it$individual_id,
+           time_id           = it$time_id,
+           sensitivity       = it$sensitivity,
+           sensitivity_label = it$sensitivity_label) |>
+    select("unit_id", "individual_id", "time_id", "sensitivity", "sensitivity_label",
+           region = "map_value", estimate = "map_value.1") |>
+    as.data.table()
 
   # Write to file
+  qs::qsave(residency, it$file_residency)
   terra::writeRaster(occupancy, it$file_occupancy, overwrite = TRUE)
   
   # (optional) Cleanup pou-{i}.feather files
