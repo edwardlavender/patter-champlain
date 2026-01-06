@@ -35,9 +35,10 @@ library(truncdist)
 files_source_r(here_src())
 
 #### Load data
-map       <- terra::rast(here_input("map.tif"))
-regions   <- terra::rast(here_input("regions.tif"))
-pars      <- qs::qread(here_input("pars-patter.qs"))
+map        <- terra::rast(here_input("map.tif"))
+regions    <- terra::rast(here_input("regions.tif"))
+regions_cs <- qs::qread(here_input("regions-colour-scheme.qs"))
+pars       <- qs::qread(here_input("pars-patter.qs"))
 
 
 ###########################
@@ -45,8 +46,8 @@ pars      <- qs::qread(here_input("pars-patter.qs"))
 #### Select analysis
 
 #### Define analysis 
-analysis <- "sim"
-# analysis <- "real"
+# analysis <- "sim"
+analysis <- "real"
 subanalysis <- "main"
 
 #### Define analysis-specific data
@@ -126,23 +127,12 @@ if (TRUE) {
 # Add modelled time series, coloured by region as in map
 overwrite <- FALSE
 if (analysis == "real" & overwrite) {
-  
-  #### Define colour scheme
-  # Define scheme 
-  cols <- tribble(
-    ~region,            ~col,
-    "Main Lake Central", "#6c81de", 
-    "Main Lake North",   "#9834df", 
-    "Main Lake South",   "#e41ea5", 
-    "Malletts Bay",      "#df756d", 
-    "Missisquoi Bay",    "#87e93b", 
-    "Northeast Arm",     "#22e45f", 
-    "South Lake",        "#0dcbd9")
+
   # Add to moorings
   moorings <- 
     moorings |> 
     mutate(region = terra::extract(regions, cbind(receiver_x, receiver_y))$map_value, 
-           col = cols$col[match(region, cols$region)]) |> 
+           col = regions_cs$col[match(region, regions_cs$region)]) |> 
     as.data.table()
   stopifnot(all(!is.na(moorings$col)))
   
@@ -328,7 +318,7 @@ dirs.create(iteration$folder_output)
 #   compared to the speed cost of writing files (important for real-world)
 
 #### Write files 
-overwrite <- TRUE
+overwrite <- FALSE
 if (!file.exists(iteration$file_timeline[1]) | overwrite) {
   
   pbo <- pbapply::pboptions(nout = 2L)
