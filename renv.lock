@@ -1,6 +1,6 @@
 {
   "R": {
-    "Version": "4.5.2",
+    "Version": "4.5.1",
     "Repositories": [
       {
         "Name": "CRAN",
@@ -1952,7 +1952,7 @@
       "NeedsCompilation": "yes",
       "Author": "Gábor Csárdi [aut, cre], Hadley Wickham [ctb], Kirill Müller [ctb], Salim Brüggemann [ctb] (<https://orcid.org/0000-0002-5329-5987>), Posit Software, PBC [cph, fnd]",
       "Maintainer": "Gábor Csárdi <gabor@posit.co>",
-      "Repository": "https://packagemanager.posit.co/cran/latest"
+      "Repository": "CRAN"
     },
     "clipr": {
       "Package": "clipr",
@@ -3606,7 +3606,7 @@
       "NeedsCompilation": "no",
       "Author": "Hadley Wickham [aut, cre] (ORCID: <https://orcid.org/0000-0003-4757-117X>), Max Kuhn [aut], Davis Vaughan [aut], Posit Software, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>)",
       "Maintainer": "Hadley Wickham <hadley@posit.co>",
-      "Repository": "https://packagemanager.posit.co/cran/latest"
+      "Repository": "RSPM"
     },
     "geosphere": {
       "Package": "geosphere",
@@ -3850,7 +3850,7 @@
       "NeedsCompilation": "no",
       "Author": "Gábor Csárdi [cre, ctb], Jennifer Bryan [aut], Hadley Wickham [aut], Posit Software, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>)",
       "Maintainer": "Gábor Csárdi <csardi.gabor@gmail.com>",
-      "Repository": "https://packagemanager.posit.co/cran/latest"
+      "Repository": "RSPM"
     },
     "gitcreds": {
       "Package": "gitcreds",
@@ -5788,6 +5788,63 @@
       "Maintainer": "Hadley Wickham <hadley@posit.co>",
       "Repository": "CRAN"
     },
+    "move": {
+      "Package": "move",
+      "Version": "4.2.6",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Visualizing and Analyzing Animal Track Data",
+      "Authors@R": "c(person(\"Bart\", \"Kranstauber\", role = c(\"aut\", \"cre\"), email = \"b.kranstauber@uva.nl\"), person(\"Marco\", \"Smolla\", role = \"aut\"), person(family= \"Scharf\",given='Anne K', role = \"aut\") )",
+      "Description": "Contains functions to access movement data stored in 'movebank.org' as well as tools to visualize and statistically analyze animal movement data, among others functions to calculate dynamic Brownian Bridge Movement Models. Move helps addressing movement ecology questions.",
+      "License": "GPL (>= 3)",
+      "URL": "https://bartk.gitlab.io/move/",
+      "BugReports": "https://gitlab.com/bartk/move/-/issues",
+      "LazyLoad": "yes",
+      "LazyData": "yes",
+      "LazyDataCompression": "xz",
+      "Depends": [
+        "geosphere (>= 1.4-3)",
+        "methods",
+        "sp",
+        "raster (>= 3.6-14)",
+        "R (>= 3.5.0)"
+      ],
+      "Suggests": [
+        "adehabitatHR",
+        "adehabitatLT",
+        "markdown",
+        "rmarkdown",
+        "circular",
+        "ggmap",
+        "mapproj",
+        "testthat",
+        "knitr",
+        "ggplot2",
+        "leaflet",
+        "lubridate",
+        "ctmm",
+        "amt",
+        "bcpa",
+        "EMbC",
+        "solartime"
+      ],
+      "Imports": [
+        "httr",
+        "memoise",
+        "terra",
+        "xml2",
+        "Rcpp"
+      ],
+      "LinkingTo": [
+        "Rcpp"
+      ],
+      "RoxygenNote": "7.2.3",
+      "VignetteBuilder": "knitr",
+      "NeedsCompilation": "yes",
+      "Author": "Bart Kranstauber [aut, cre], Marco Smolla [aut], Anne K Scharf [aut]",
+      "Maintainer": "Bart Kranstauber <b.kranstauber@uva.nl>",
+      "Repository": "CRAN"
+    },
     "nlme": {
       "Package": "nlme",
       "Version": "3.1-168",
@@ -6145,7 +6202,8 @@
         "proj.build",
         "rlang",
         "spatial.extensions",
-        "terra"
+        "terra",
+        "viridis"
       ],
       "Suggests": [
         "actel",
@@ -6182,7 +6240,7 @@
       "RemoteUsername": "edwardlavender",
       "RemoteRepo": "patter.workflows",
       "RemoteRef": "main",
-      "RemoteSha": "982f949175c336bed01f2df6518ffc48303ec592",
+      "RemoteSha": "ed5d2529d35f2063e4069920ff34c711a9047027",
       "Remotes": "github::edwardlavender/proj.build, github::edwardlavender/proj.file, github::edwardlavender/proj.lapply, github::edwardlavender/spatial.extensions, github::YuriNiella/RSP"
     },
     "pbapply": {
@@ -9868,7 +9926,7 @@
       "NeedsCompilation": "yes",
       "Author": "Gábor Csárdi [aut, cre], Kuba Podgórski [ctb], Rich Geldreich [ctb], Posit Software, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>)",
       "Maintainer": "Gábor Csárdi <csardi.gabor@gmail.com>",
-      "Repository": "https://packagemanager.posit.co/cran/latest"
+      "Repository": "RSPM"
     },
     "zoo": {
       "Package": "zoo",
