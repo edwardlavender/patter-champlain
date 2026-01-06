@@ -157,6 +157,27 @@ qsavevect(champlain_utm, here_input("champlain-utm.qs"))
 st_write(champlain_ll, here_fig("local", "qgis", "champlain.shp"), append = FALSE)
 
 
+###########################
+###########################
+#### Define regions colour scheme
+
+# Define colour scheme 
+regions_cs <- tibble::tribble(
+  ~region,            ~col,
+  "Missisquoi Bay",    "#87e93b", 
+  "Northeast Arm",     "#22e45f", 
+  "Malletts Bay",      "#df756d", 
+  "Main Lake North",   "#9834df", 
+  "Main Lake Central", "#6c81de", 
+  "Main Lake South",   "#e41ea5", 
+  "South Lake",        "#0dcbd9"
+) |> 
+  mutate(region = factor(region, levels = region)) |>
+  as.data.table()
+
+qs::qsave(regions_cs, here_input("regions-colour-scheme.qs"))
+
+
 #### End of code. 
 ###########################
 ###########################
