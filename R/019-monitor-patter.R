@@ -53,8 +53,6 @@ iteration           <- qs::qread(here_input_analysis("iteration.qs"))
 #### Monitor progress
 table(file.exists(iteration$file_callstats))
 table(file.exists(iteration$file_diagnostics))
-table(file.exists(iteration$file_states))
-table(file.exists(iteration$file_occupancy))
 
 
 #### End of code. 
