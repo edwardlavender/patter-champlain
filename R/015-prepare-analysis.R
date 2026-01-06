@@ -262,6 +262,7 @@ iteration <-
     file_diagnostics    = file.path(folder_output, "diagnostics.feather"),
     file_callstats      = file.path(folder_output, "callstats.feather"),
     file_occupancy      = file.path(folder_output, "occupancy.tif"),
+    file_residency      = file.path(folder_output, "residency.qs"),
     file_path_sim       = if_else(rep(analysis == "sim", n()),
                                   file.path(folder_output, "path-sim.qs"),
                                   NA_character_), 
