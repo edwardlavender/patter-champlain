@@ -55,6 +55,12 @@ iteration            <- qs::qread(here_input_analysis("iteration.qs"))
 table(file.exists(iteration$file_callstats))
 table(file.exists(iteration$file_diagnostics))
 
+#### Monitor number of Julia processes running
+# Display for user user "lavended" up to N = 30 processes
+if (Sys.info()[["nodename"]] == "siam-linux20") {
+  system("top -b -n 1 | awk 'NR==1 || $2==\"lavended\"' | head -n 30")
+}
+
 #### Check rows with missing files
 iteration[!file.exists(file_callstats), .(index, unit_id, individual_id, time_id, sensitivity)]
 
