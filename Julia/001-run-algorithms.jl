@@ -360,23 +360,18 @@ end
 foreach(f -> rm(f; force = true), smo_batches)
 
 #### Write outputs 
-# We record all results for which the smoother was run 
-# (i.e., for which the forward and backward filters converged)
-if convergence
 
-  # Write states
-  # (This is not currently implemented) 
-  
-  # Write map map_marks
-  # (This is implemented above)
+# (1) Write callstats 
+Arrow.write(iter.file_callstats, callstats; compress = Arrow.ZstdCompressor(level = 9))
 
-  # Write diagnostics 
-  Arrow.write(iter.file_diagnostics, diagnostics; compress = Arrow.ZstdCompressor(level = 9))
+# (2) Write diagnostics 
+Arrow.write(iter.file_diagnostics, diagnostics; compress = Arrow.ZstdCompressor(level = 9))
 
-  # Write callstats 
-  Arrow.write(iter.file_callstats, callstats; compress = Arrow.ZstdCompressor(level = 9))
+# (3) Write states (if convergence)
+# (This is not currently implemented) 
 
-end 
+# (4) Write map map_marks (if convergence)
+# (This is implemented above)
 
 # readdir(iter.folder_output, join = true)
 
