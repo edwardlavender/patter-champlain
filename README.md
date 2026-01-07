@@ -52,7 +52,7 @@ The key elements of the workflow are as follows:
 
 ## Dependencies
 
-The project was built in [R](https://www.r-project.org/) (version 4.5.2)
+The project was built in [R](https://www.r-project.org/) (version 4.5.1)
 in [RStudio](https://www.rstudio.com/) and implements local dependency
 management using
 [`renv`](https://rstudio.github.io/renv/articles/renv.html). This can be
@@ -72,7 +72,7 @@ The project structure is as follows:
       from Blanchfield et
       al. ([2023](https://doi.org/10.1186/s40462-023-00417-x)), used to
       inform the movement model;
-    - `model-obs/klinard-et-al-2019/` contains detection-probabilility
+    - `model-obs/klinard-et-al-2019/` contains detection-probability
       datasets, from Klinard et
       al. ([2019](https://doi.org/10.1186/s40317-019-0179-1)), used to
       inform the detection probability model;
