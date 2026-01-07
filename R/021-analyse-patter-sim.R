@@ -33,10 +33,10 @@ library(tictoc)
 files_source_r(here_src())
 
 #### Load data
-map        <- terra::rast(here_input("map.tif"))
-regions_cs <- qs::qread(here_input("regions-colour-scheme.qs"))
-iteration  <- qs::qread(here_input_sim("main", "iteration.qs"))
-paths      <- qs::qread(here_input_sim("main", "paths.qs"))
+map           <- terra::rast(here_input("map.tif"))
+regions_cs    <- qs::qread(here_input("regions-colour-scheme.qs"))
+iteration     <- qs::qread(here_input_sim("main", "iteration.qs"))
+paths         <- qs::qread(here_input_sim("main", "paths.qs"))
 champlain_utm <- qreadvect(here_input("champlain-utm.qs"))
 
 
