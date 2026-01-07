@@ -24,6 +24,7 @@ set.seed(123L)
 library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
 library(proj.verse)
 library(tictoc)
 files_source_r(here_src())
@@ -58,11 +59,18 @@ callstats <- lapply(iteration$index, function(i) {
   iteration$file_callstats[iteration$index == i] |> 
     arrow::read_feather() |> 
     mutate(index = i, .before = 1L) |> 
-    cbind(iteration[index == i, .(individual_id, time_id, sensitivity)]) |> 
+    cbind(iteration[index == i, .(individual_id, time_id, sensitivity, sensitivity_label)]) |> 
     as.data.table()
-  }) |> rbindlist()
-# Compute total run time
-sum(callstats$time)
+  }) |> 
+  rbindlist() |> 
+  mutate(routine_label = stringr::str_to_sentence(routine), .after = routine) |> 
+  mutate(routine_label = factor(routine_label, levels = c("Filter: forward", 
+                                                          "Filter: backward", 
+                                                          "Smoother: two-filter"))) |> 
+  as.data.table()
+
+# Compute total run time (days)
+sum(callstats$time) / 60 / 60 / 24
 
 #### Compute total output size (MB, GB)
 # Compute folder sizes
@@ -74,13 +82,20 @@ sum(iteration$folder_output_mb) / 1e3
 
 #### Identify convergence
 # Collate diagnostics
-diagnostics <- cl_lapply(iteration$index, function(i) {
-  iteration$file_diagnostics[iteration$index == i] |> 
-    arrow::read_feather() |> 
-    mutate(index = i, .before = 1L) |> 
-    cbind(iteration[index == i, .(individual_id, time_id, sensitivity)]) |> 
-    as.data.table()
-}) |> rbindlist()
+diagnostics <- 
+  cl_lapply(iteration$index, function(i) {
+    iteration$file_diagnostics[iteration$index == i] |> 
+      arrow::read_feather() |> 
+      mutate(index = i, .before = 1L) |> 
+      cbind(iteration[index == i, .(individual_id, time_id, sensitivity)]) |> 
+      as.data.table()
+  }) |> 
+  rbindlist()  |> 
+  mutate(routine_label = stringr::str_to_sentence(routine), .after = routine) |> 
+  mutate(routine_label = factor(routine_label, levels = c("Filter: forward", 
+                                                          "Filter: backward", 
+                                                          "Smoother: two-filter"))) |> 
+  as.data.table()
 # Define convergence for an example individual
 diagnostics |> 
   filter(index == 1L) |> 
@@ -127,23 +142,81 @@ diagnostics <- diagnostics[index %in% successful_indices, ]
 ###########################
 #### Summarise callstats
 
-#### Compute computation time (mins)
-# Summary statistics
+#### Summarise computation time (mins)
+# Summary statisics, by routine
 callstats |> 
   group_by(routine) |> 
   reframe(utils.add::basic_stats(time / 60))
-# Visualisation (~1 s)
+# Summary statistics, by routine & sensitivity 
+callstats |> 
+  group_by(routine, sensitivity) |> 
+  reframe(utils.add::basic_stats(time / 60)) |> 
+  as.data.table()
+
+#### Visualise total computation time
+# > For simulations, total computation time varies from 150 - 190 mins (~3 hours)
 tic()
-png(here_fig_analysis("computation-time.png"), 
+png(here_fig_analysis("computation-time-total.png"), 
     height = 4, width = 5, units = "in", res = 800)
 p <- 
   callstats |> 
-  mutate(routine = stringr::str_to_sentence(routine)) |> 
+  group_by(index) |> 
+  mutate(time = sum(time) / 60) |> 
+  slice(1L) |> 
   as_tibble() |> 
-  ggplot(aes(routine, time / 60, fill = routine)) + 
+  ggplot(aes("Total", time)) + 
+  geom_violin() + 
+  xlab("Category") + ylab("Total computation time (mins)")
+print(p)
+dev.off()
+
+#### Visualise total computation time by sensitivity
+# This is simply to check whether any sensitivity runs 
+# are associated with much longer computation times
+# There are no substantial differences in computation time between runs
+tic()
+png(here_fig_analysis("computation-time-total-by-sensitivity.png"), 
+    height = 4, width = 6, units = "in", res = 800)
+p <- 
+  callstats |> 
+  group_by(index) |> 
+  mutate(time = sum(time) / 60) |> 
+  slice(1L) |> 
+  as_tibble() |> 
+  ggplot(aes(sensitivity_label, time, fill = sensitivity_label)) + 
+  geom_violin() + 
+  xlab("Sensitivity") + ylab("Total computation time (mins)") + 
+  labs(fill = "Sensitivity")
+print(p)
+dev.off()
+
+#### Visualise computation time by routine (~1 s)
+tic()
+png(here_fig_analysis("computation-time-by-routine.png"), 
+    height = 4, width = 5, units = "in", res = 800)
+p <- 
+  callstats |> 
+  as_tibble() |> 
+  ggplot(aes(routine_label, time / 60, fill = routine_label)) + 
   geom_violin() + 
   xlab("Routine") + ylab("Computation time (mins)") + 
   guides(fill = "none") +
+  theme_bw()
+print(p)
+dev.off()
+toc()
+
+#### Visualise computation time routine & sensitivity (~3 s)
+tic()
+png(here_fig_analysis("computation-time-by-routine-and-sensitivity.png"), 
+    height = 4, width = 12, units = "in", res = 800)
+p <- 
+  callstats |> 
+  ggplot(aes(sensitivity_label, time / 60, fill = sensitivity_label)) + 
+  geom_violin() + 
+  xlab("Sensitivity") + ylab("Computation time (mins)") + 
+  labs(fill = "Sensitivity") + 
+  facet_wrap(~routine_label) + 
   theme_bw()
 print(p)
 dev.off()
@@ -160,24 +233,25 @@ diagnostics |>
   group_by(routine) |> 
   reframe(utils.add::basic_stats(ess, na.rm = TRUE))
 # Visualisation (~14 s)
-# TO DO Fix scientific notation here
-# (This is ignored on the final panel)
 tic()
-png(here_fig_analysis("ess.png"), 
+png(here_fig_analysis("diagnostics-ess.png"), 
     height = 5, width = 10, units = "in", res = 800)
 p <-
   diagnostics |> 
-  mutate(routine = stringr::str_to_sentence(routine)) |> 
-  as_tibble() |> 
-  ggplot(aes(ess, fill = routine)) + 
+  ggplot(aes(ess, fill = routine_label)) + 
   geom_density() + 
-  xlab("Effective sample size") + ylab("Kernel density") + 
+  xlab("Effective sample size") + ylab("Relative kernel density") + 
   guides(fill = "none") +
-  facet_wrap(~routine, nrow = 1, scales = "free") +
-  scale_x_continuous(expand = c(0, 0)) + 
-  scale_y_continuous(expand = c(0, 0), labels = prettyGraphics::sci_notation) +
+  facet_wrap(~routine_label, nrow = 1, scales = "free") +
+  scale_x_continuous(expand = c(0, 0), limits = c(0, NA)) + 
+  scale_y_continuous(expand = c(0, 0), 
+                     labels = function(x) prettyGraphics::sci_notation(x, magnitude = 1L)) + 
   theme_bw() + 
-  theme(plot.margin = margin(t = 10, r = 20, b = 10, l = 20, unit = "pt"))
+  theme(
+    plot.margin = margin(t = 10, r = 20, b = 10, l = 20, unit = "pt"), 
+    # Hide y axis tick mark labels
+    # This is necessary b/c sci_notation is ignored on the final panel
+    axis.text.y = element_blank())
 print(p)
 dev.off()
 toc()
@@ -193,7 +267,7 @@ diagnostics |>
   summarise(utils.add::basic_stats(ncell_home, na.rm = TRUE))
 # Visualisation (~14 s)
 tic()
-png(here_fig_analysis("nell.png"), 
+png(here_fig_analysis("diagnostics-nell.png"), 
     height = 3, width = 6, units = "in", res = 800)
 p <-
   diagnostics |> 
