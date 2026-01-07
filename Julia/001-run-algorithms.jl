@@ -41,6 +41,7 @@ subanalysis = "main"
 env       = GeoArrays.read(joinpath("data", "input", "map.tif"));
 env_init  = Patter.rast(joinpath("data", "input", "map.tif"));
 iteration = DataFrame(Arrow.Table(joinpath("data", "input", analysis, subanalysis, "iteration.feather")))
+# iteration = iteration[iteration.index .∈ Ref([7, 13, 14, 119, 133, 140, 147, 161, 166, 168, 176, 178, 179, 182, 195, 196]), :];
 
 #### (optional) Use test settings
 if false
