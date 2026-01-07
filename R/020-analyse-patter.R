@@ -70,6 +70,8 @@ callstats <- lapply(iteration$index, function(i) {
   as.data.table()
 
 # Compute total run time (days)
+# > sim     : 22.98759 / 20              # 1.14 days on 20 cores
+# > ETA real: 22.98759 / 210 * 2723 / 20 # 14 days on 20 cores
 sum(callstats$time) / 60 / 60 / 24
 
 #### Compute total output size (MB, GB)
@@ -78,6 +80,7 @@ iteration[, folder_output_mb :=
             sapply(seq_len(nrow(iteration)),
                    \(i) dir_size(iteration$folder_output[i], recursive = TRUE))]
 # Check total size (GB)
+# > sim: 4.190048 GB
 sum(iteration$folder_output_mb) / 1e3
 
 #### Identify convergence
@@ -124,7 +127,33 @@ convergence <-
 # Check convergence
 convergence
 table(convergence$success)
+table(convergence$success, convergence$sensitivity == "best")
+table(convergence$sensitivity[convergence$success == FALSE])
 convergence[success == FALSE, ]
+utils.add::basic_stats(convergence$pass_smoother, na.rm = TRUE)
+utils.add::basic_stats(convergence$pass_smoother[convergence$success], na.rm = TRUE)
+
+#### Review convergence failures
+## sim:
+# index pass_filter pass_smoother success individual_id    time_id sensitivity
+# <int>      <lgcl>         <num>  <lgcl>         <int>     <POSc>      <char>
+# 1:     7       FALSE           NaN   FALSE             1 2025-01-01       ac(+)
+# 2:    13       FALSE           NaN   FALSE             2 2025-01-01       ac(-)
+# 3:    14       FALSE           NaN   FALSE             2 2025-01-01       ac(+)
+# 4:    63        TRUE     0.4146057   FALSE             9 2025-01-01       ac(+)
+# 5:   119       FALSE           NaN   FALSE            17 2025-01-01       ac(+)
+# 6:   133       FALSE           NaN   FALSE            19 2025-01-01       ac(+)
+# 7:   140       FALSE           NaN   FALSE            20 2025-01-01       ac(+)
+# 8:   147       FALSE           NaN   FALSE            21 2025-01-01       ac(+)
+# 9:   161       FALSE           NaN   FALSE            23 2025-01-01       ac(+)
+# 10:   166       FALSE           NaN   FALSE            24 2025-01-01    angle(+)
+# 11:   168       FALSE           NaN   FALSE            24 2025-01-01       ac(+)
+# 12:   176       FALSE           NaN   FALSE            26 2025-01-01        best
+# 13:   178       FALSE           NaN   FALSE            26 2025-01-01     step(+)
+# 14:   179       FALSE           NaN   FALSE            26 2025-01-01    angle(-)
+# 15:   182       FALSE           NaN   FALSE            26 2025-01-01       ac(+)
+# 16:   195       FALSE           NaN   FALSE            28 2025-01-01       ac(-)
+# 17:   196       FALSE           NaN   FALSE            28 2025-01-01       ac(+)
 
 #### Filter by convergence (for subsequent steps)
 # Get successful indices
@@ -143,9 +172,16 @@ diagnostics <- diagnostics[index %in% successful_indices, ]
 #### Summarise callstats
 
 #### Summarise computation time (mins)
-# Summary statisics, by routine
+# Total computation time
 callstats |> 
-  group_by(routine) |> 
+  group_by(index) |>
+  summarise(time = sum(time)) |> 
+  ungroup() |> 
+  summarise(utils.add::basic_stats(time / 60))
+# Summary statisics, by routine
+callstats |>
+  mutate(routine = if_else(grepl("^filter:", routine), "filter", routine)) |>
+  group_by(routine) |>
   reframe(utils.add::basic_stats(time / 60))
 # Summary statistics, by routine & sensitivity 
 callstats |> 
@@ -259,12 +295,16 @@ toc()
 #### Summarise area spanned by 95 % of the distribution
 # Summary statistics (ncell_core)
 diagnostics |> 
+  filter(sensitivity == "best") |> 
   filter(routine == "smoother: two-filter") |> 
   summarise(utils.add::basic_stats(ncell_core, na.rm = TRUE))
 # Summary statistics (ncell_home)
 diagnostics |> 
+  filter(sensitivity == "best") |> 
   filter(routine == "smoother: two-filter") |> 
   summarise(utils.add::basic_stats(ncell_home, na.rm = TRUE))
+# cf. 31298 grid cells in lake (not NA)
+terra::freq(map)
 # Visualisation (~14 s)
 tic()
 png(here_fig_analysis("diagnostics-nell.png"), 
