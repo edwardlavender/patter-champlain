@@ -198,6 +198,58 @@ if (!file.exists(file_residency_skill) | overwrite) {
 
 ###########################
 ###########################
+#### Example plots
+
+#### Select individual 
+it        <- iteration[1, ]
+path      <- qs::qread(it$file_path)
+occupancy <- terra::rast(it$file_occupancy)
+residency <- residency_skill[individual_id == it$individual_id & sensitivity == "best", ]
+stopifnot(it$sensitivity == "best")
+
+#### Map simulated path for example individual
+png(here_fig_sim("main", "example-path.png"), 
+    height = 5, width = 5, units = "in", res = 800)
+# Create base map with correct legend for path 
+terra::plot(map,
+            col = viridis::inferno(nrow(path)),
+            range = range(path$timestep), 
+            type = "continuous",
+            legend = TRUE, 
+            pax = list(labels = FALSE, lwd.ticks = 0))
+# Cover base map colouration
+terra::plot(map, col = "lightgrey", legend = FALSE, add = TRUE)
+# Add path & coastline
+patter:::add_sp_path(path$x, path$y, lwd = 0.25, length = 0.01, 
+                     col = viridis::inferno(nrow(path))) |> 
+  suppressWarnings()
+terra::lines(champlain_utm)
+dev.off()
+
+#### Map occupancy distribution for example individual
+png(here_fig_sim("main", "example-occupancy.png"), 
+    height = 5, width = 5, units = "in", res = 800)
+terra::plot(occupancy, pax = list(labels = FALSE, lwd.ticks = 0))
+terra::lines(champlain_utm)
+dev.off()
+
+#### Map residency error for example individual
+# Update spatial layer with skill 
+champlain_utm$skill <- residency$skill[match(champlain_utm$region, residency$region)]
+# Choose y limits to be symmetrical to force diverging colour scale centred at zero
+mx <- max(abs(residency$skill))
+# Make map
+png(here_fig_sim("main", "example-residency.png"), 
+    height = 5, width = 5, units = "in", res = 800)
+terra::plot(champlain_utm,y = "skill",
+            range = c(-mx, mx), 
+            col = terra::map.pal("differences", 100), type = "continuous", 
+            pax = list(labels = FALSE, lwd.ticks = 0))
+dev.off()
+
+
+###########################
+###########################
 #### Visualise skill
 
 #### Visualise occupancy skill (best maps)
