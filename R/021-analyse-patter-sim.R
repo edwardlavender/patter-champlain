@@ -42,6 +42,34 @@ champlain_utm <- qreadvect(here_input("champlain-utm.qs"))
 
 ###########################
 ###########################
+#### Visualise simulated paths
+
+# This is useful to understand the causes of convergence failures (~25 s)
+# > We have a convergence failure for individual 26
+if (FALSE) {
+  tic()
+  png(here_fig_sim("main", "paths.png"), 
+      height = 12, width = 12, units = "in", res = 800)
+  pp <- par(mfrow = c(3, 10))
+  cl_lapply(split(paths, paths$path_id), function(path) {
+    # path <- paths[path_id == 1L]
+    terra::plot(map, 
+                main = path$path_id[1],
+                legend = FALSE, 
+                col = "lightgrey", 
+                pax = list(labels = FALSE))
+    patter:::add_sp_path(path$x, path$y, lwd = 0.25, length = 0.01) |> 
+      suppressWarnings()
+    nothing()
+  })
+  dev.off()
+  toc()
+}
+
+
+
+###########################
+###########################
 #### Compute skill metrics 
 
 #### Compute ncell
@@ -53,7 +81,7 @@ nc <- terra::freq(map)[["count"]]
 # > It is useful for future comparisons against other methods
 # > Other metrics e.g., EMD are more intepretable in terms of how 'accurate' maps are
 # > But for this work we simply compare simulated tracks & associated maps
-overwrite <- TRUE
+overwrite <- FALSE
 file_occupancy_skill <- here_output_sim_main("synthesis", "occupancy-skill.qs")
 if (!file.exists(file_occupancy_skill) | overwrite) {
   
@@ -128,7 +156,7 @@ if (!file.exists(file_occupancy_skill) | overwrite) {
 
 #### Compute residency skill
 # Compute error between simulated & reconstructed residency estimates _by region_
-overwrite <- TRUE
+overwrite <- FALSE
 file_residency_skill <- here_output_sim_main("synthesis", "residency-skill.qs")
 if (!file.exists(file_residency_skill) | overwrite) {
   
@@ -294,6 +322,19 @@ p <-
         axis.text.x = element_text(angle = 45, hjust = 1)) 
 print(p)
 dev.off()
+
+#### Summarise residency skill (%)
+# Overall residency skill for 'best' analyses
+residency_skill |> 
+  filter(sensitivity == "best") |> 
+  # filter(!(estimate == 0 & simulation == 0)) |> 
+  reframe(utils.add::basic_stats(skill * 100))
+# Residency skill for 'best' analyses split by region
+residency_skill |> 
+  filter(sensitivity == "best") |> 
+  group_by(region) |> 
+  # filter(!(estimate == 0 & simulation == 0)) |> 
+  reframe(utils.add::basic_stats(skill * 100))
 
 
 #### End of code. 
