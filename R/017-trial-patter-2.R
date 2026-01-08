@@ -38,14 +38,15 @@ map <- terra::rast(here_input("map.tif"))
 #### Select analysis
 
 #### Define analysis 
-analysis <- "sim"
-# analysis <- "real"
+# analysis <- "sim"
+analysis <- "real"
 subanalysis <- "main"
 
 #### Define analysis-specific data
 here_input_analysis <- switch_here_input_analysis_subanalysis(analysis, subanalysis)
 here_fig_analysis   <- switch_here_fig_analysis_subanalysis(analysis, subanalysis)
-iteration           <- qs::qread(here_input_analysis("iteration.qs"))
+# iteration           <- qs::qread(here_input_analysis("iteration.qs"))
+iteration           <- qs::qread(here_input_analysis("iteration-1.qs"))
 
 
 ###########################
@@ -57,8 +58,8 @@ julia_connect()
 set_seed()
 set_map(map)
 
-#### Read data for selected individual
-it <- iteration[individual_id == 26 & sensitivity == "best", ]
+#### Select individual & read data 
+# it <- iteration[individual_id == 26 & sensitivity == "best", ]
 timeline  <- arrow::read_feather(it$file_timeline)
 timeline  <- timeline$timestamp
 acoustics <- arrow::read_feather(it$file_acoustics)
