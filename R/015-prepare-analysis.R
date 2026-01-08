@@ -78,7 +78,7 @@ detections <-
 length(unique(detections$individual_id))
 
 #### Focus on individual/time (month) units with sufficient data
-# NB: filter_detectionsd assumes monthly blocks
+# NB: filter_detections assumes monthly blocks
 detections <- filter_detections(detections)
 
 #### Checks
