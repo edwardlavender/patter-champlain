@@ -24,6 +24,7 @@ set.seed(123L)
 library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
+library(glue)
 library(ggplot2)
 library(proj.verse)
 library(tictoc)
@@ -43,9 +44,10 @@ analysis <- "real"
 subanalysis <- "main"
 
 #### Define analysis-specific data
-here_input_analysis <- switch_here_input_analysis_subanalysis(analysis, subanalysis)
-here_fig_analysis   <- switch_here_fig_analysis_subanalysis(analysis, subanalysis)
-iteration           <- qs::qread(here_input_analysis("iteration.qs"))
+here_input_analysis  <- switch_here_input_analysis_subanalysis(analysis, subanalysis)
+here_output_analysis <- switch_here_output_analysis_subanalysis(analysis, subanalysis)
+here_fig_analysis    <- switch_here_fig_analysis_subanalysis(analysis, subanalysis)
+iteration            <- qs::qread(here_input_analysis("iteration.qs"))
 
 
 ###########################
@@ -74,6 +76,13 @@ if (FALSE) {
   }) |> 
     rbindlist()
   
+  #### Check computation time
+  # Estimate total time (minutes) shared across n_cpu
+  n_cpu <- 100L
+  sum(callstats$time) / 60 / n_cpu 
+  # Compute total run time
+  difftime(max(callstats$timestamp), min(callstats$timestamp))
+  
   #### Identify convergence failures
   failures <- 
     callstats |> 
@@ -81,18 +90,60 @@ if (FALSE) {
     filter(convergence == FALSE) |> 
     as.data.table()
   
-  #### Summarise failures by sensitivity 
+  #### Summarise failures
+  # Count failures
+  nrow(failures)
+  # Proportion of failures
+  nrow(failures) / nrow(iteration)
+  # Count failures by sensitivity 
   failures |> 
     group_by(sensitivity) |>
     summarise(n())
-  
+  # Proportion of failures by sensitivity 
+  table(failures$sensitivity) / table(iteration$sensitivity)
+
   #### Check failures
   # All failures 
   failures
   # Failures for main analysis
   failures[sensitivity == "best", ]
-
   
+  #### Record 
+  # Record datasets
+  today <- as.Date(Sys.time())
+  now   <- as.numeric(Sys.time())
+  debug <- here_output_analysis("debug", paste0(today, "-", now))
+  dir.create(debug, recursive = TRUE)
+  qs::qsave(iteration, file.path(debug, "iteration.qs"))
+  qs::qsave(callstats, file.path(debug, "callstats.qs"))
+  qs::qsave(failures, file.path(debug, "failures.qs"))
+  # Record log 
+  iter <- iteration[1, ]
+  glue(
+    '
+    # {today}, {now} -------------------------------------------------------------
+    
+    # Movement model formulation:
+    ModelMoveCXY(env, 
+                {iter$mobility}, 
+                truncated(Gamma({iter$shape}, {iter$scale}), upper = {iter$mobility}), 
+                MixtureModel([truncated(Normal(0.0, {iter$phi}), -pi, pi), Uniform(-pi, pi)], [0.99, 0.01]))
+    
+    # Observation model formulation:
+    truncated(logistic({iter$receiver_alpha} + {iter$receiver_beta} * distance), {iter$receiver_gamma})
+    
+    # Inference settings:
+    n_move = 1L
+    n_particle = {iter$n_particle_filter}
+    
+    # Outcome
+    Nrow iterations: {nrow(iteration)}
+    Proportion failures: {nrow(failures) / nrow(iteration)}
+    Proportion best failures: {length(which(failures$sensitivity == "best")) / length(which(iteration$sensitivity == "best"))}
+    '
+    ) |> 
+    writeLines(file.path(debug, "log.txt"))
+
 }
 
 
