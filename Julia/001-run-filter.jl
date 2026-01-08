@@ -12,6 +12,8 @@
 #### Prerequisites
 # 1) This code can be run interactively or via bash from SIA-LAVENDED or siam-linux20
 #    (It is mainly designed for parallel implementation via bash on siam-linux20)
+# 2) Each run of this script requires ~0.3 % memory on siam-linux20
+#    So we can comfortably use 0.3 * 100 CPUs 
 
 
 ###########################
