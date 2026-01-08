@@ -242,6 +242,29 @@ print(p)
 dev.off()
 toc()
 
+#### As above including the total computation time as a category
+png(here_fig_analysis("computation-time-by-routine-with-total.png"), 
+    height = 2, width = 6, units = "in", res = 800)
+rbind(
+  callstats, 
+  callstats |> 
+    group_by(index) |> 
+    mutate(time = sum(time), 
+           routine_label = "Total") |> 
+    slice(1L) 
+  ) |> 
+  mutate(routine_label = factor(routine_label, c("Filter: forward", 
+                                                 "Filter: backward", 
+                                                 "Smoother: two-filter", 
+                                                 "Total"))) |> 
+  as_tibble() |>
+  ggplot(aes(routine_label, time / 60, fill = routine_label)) + 
+  geom_violin() + 
+  xlab("Routine") + ylab("Computation time (mins)") + 
+  guides(fill = "none") +
+  theme_bw()
+dev.off()
+
 #### Visualise computation time routine & sensitivity (~3 s)
 tic()
 png(here_fig_analysis("computation-time-by-routine-and-sensitivity.png"), 
