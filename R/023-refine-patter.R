@@ -67,39 +67,10 @@ julia_connect()
 set_seed()
 set_map(map)
 
-#### Select individual
-# Read callstats 
-# (This code is modified from analysis-patter.R)
-if (analysis == "sim") {
-  iteration[, file_convergence := file_callstats]
-} else if (analysis == "real") {
-  iteration[, file_convergence := file_callstats_filter]
-}
-table(file.exists(iteration$file_convergence))
-iteration <- iteration[file.exists(file_convergence), ]
-callstats <- lapply(iteration$index, function(i) {
-  iteration$file_convergence[iteration$index == i] |> 
-    arrow::read_feather() |> 
-    mutate(index = i, .before = 1L) |> 
-    cbind(iteration[index == i, .(individual_id, time_id, sensitivity, sensitivity_label)]) |> 
-    as.data.table()
-}) |> 
-  rbindlist()
-# Identify convergence failures
-failures <- 
-  callstats |> 
-  filter(routine == "filter: forward") |> 
-  filter(convergence == FALSE) |> 
-  as.data.table()
-# Summarise failures
-failures |> 
-  group_by(sensitivity) |>
-  summarise(n())
-# Visualise failures
-file_convergence
-
 #### Select individual & read data 
-# it <- iteration[individual_id == 26 & sensitivity == "best", ]
+# For convergence failures, see analysis-patter.R
+# (That code must be run on machine where output files live)
+it <- iteration[individual_id == 26 & sensitivity == "best", ]
 timeline  <- arrow::read_feather(it$file_timeline)
 timeline  <- timeline$timestamp
 acoustics <- arrow::read_feather(it$file_acoustics)

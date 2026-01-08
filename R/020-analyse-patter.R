@@ -38,8 +38,8 @@ map <- terra::rast(here_input("map.tif"))
 #### Select analysis
 
 #### Define analysis 
-analysis <- "sim"
-# analysis <- "real"
+# analysis <- "sim"
+analysis <- "real"
 subanalysis <- "main"
 
 #### Define analysis-specific data
@@ -50,7 +50,47 @@ iteration           <- qs::qread(here_input_analysis("iteration.qs"))
 
 ###########################
 ###########################
-#### Identify convergence 
+#### Analyse trials
+
+if (FALSE) {
+  
+  #### Read callstats for the filter
+  table(file.exists(iteration$file_callstats_filter))
+  iteration <- iteration[file.exists(file_callstats_filter), ]
+  callstats <- lapply(iteration$index, function(i) {
+    iteration$file_callstats_filter[iteration$index == i] |> 
+      arrow::read_feather() |> 
+      mutate(index = i, .before = 1L) |> 
+      cbind(iteration[index == i, .(individual_id, time_id, sensitivity, sensitivity_label)]) |> 
+      as.data.table()
+  }) |> 
+    rbindlist()
+  
+  #### Identify convergence failures
+  failures <- 
+    callstats |> 
+    filter(routine == "filter: forward") |> 
+    filter(convergence == FALSE) |> 
+    as.data.table()
+  
+  #### Summarise failures by sensitivity 
+  failures |> 
+    group_by(sensitivity) |>
+    summarise(n())
+  
+  #### Check failures
+  # All failures 
+  failures
+  # Failures for main analysis
+  failures[sensitivity == "best", ]
+
+  
+}
+
+
+###########################
+###########################
+#### Compute resource requirements
 
 #### Compute total run time
 # Read callstats
@@ -83,8 +123,12 @@ iteration[, folder_output_mb :=
 # > sim: 4.190048 GB
 sum(iteration$folder_output_mb) / 1e3
 
+
+###########################
+###########################
 #### Identify convergence
-# Collate diagnostics
+
+#### Collate diagnostics
 diagnostics <- 
   cl_lapply(iteration$index, function(i) {
     iteration$file_diagnostics[iteration$index == i] |> 
@@ -99,12 +143,14 @@ diagnostics <-
                                                           "Filter: backward", 
                                                           "Smoother: two-filter"))) |> 
   as.data.table()
-# Define convergence for an example individual
+
+#### Define convergence for an example individual
 diagnostics |> 
   filter(index == 1L) |> 
   filter(routine == "smoother: two-filter") |> 
   summarise(prop = length(which(!is.na(ess))) / n())
-# Define convergence 
+
+#### Define convergence 
 convergence <- 
   diagnostics |> 
   lazy_dt() |> 
@@ -124,7 +170,8 @@ convergence <-
   mutate(success = pass_filter & (pass_smoother >= 0.75)) |> 
   left_join(iteration[, .(index, individual_id, time_id, sensitivity)], by = "index") |> 
   as.data.table()
-# Check convergence
+
+#### Check convergence
 convergence
 table(convergence$success)
 table(convergence$success, convergence$sensitivity == "best")
