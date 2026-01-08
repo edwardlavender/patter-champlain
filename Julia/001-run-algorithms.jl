@@ -159,9 +159,9 @@ datasets_fwd    = [acoustics, containers_fwd];
 datasets_bwd    = [acoustics, containers_bwd];
 model_obs_types = [ModelObsAcousticLogisTrunc, ModelObsContainer];
 yobs_fwd        = assemble_yobs(datasets = datasets_fwd,
-                                    model_obs_types = model_obs_types);
+                                model_obs_types = model_obs_types);
 yobs_bwd        = assemble_yobs(datasets = datasets_bwd,
-                                    model_obs_types = model_obs_types);
+                                model_obs_types = model_obs_types);
 
 
 ###########################
@@ -183,6 +183,7 @@ fwd = bwd = smo = nothing
 
 # Define duration placeholders
 td_fwd = td_bwd = td_smo = NaN
+
 
 ###########################
 #### Forward filter 
