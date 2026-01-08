@@ -44,8 +44,8 @@ map <- terra::rast(here_input("map.tif"))
 #### Select analysis
 
 #### Define analysis 
-analysis <- "sim"
-# analysis <- "real"
+# analysis <- "sim"
+analysis <- "real"
 subanalysis <- "main"
 
 #### Define analysis-specific data
@@ -53,6 +53,7 @@ here_input_analysis <- switch_here_input_analysis_subanalysis(analysis, subanaly
 here_fig_analysis   <- switch_here_fig_analysis_subanalysis(analysis, subanalysis)
 iteration           <- qs::qread(here_input_analysis("iteration.qs"))
 if (analysis == "real") {
+  message("Using iteration-1.qs")
   iteration <- qs::qread(here_input_analysis("iteration-1.qs"))
 }
 
@@ -74,9 +75,10 @@ if (analysis == "sim") {
 } else if (analysis == "real") {
   iteration[, file_convergence := file_callstats_filter]
 }
+table(file.exists(iteration$file_convergence))
 iteration <- iteration[file.exists(file_convergence), ]
 callstats <- lapply(iteration$index, function(i) {
-  iteration$file_callstats[iteration$index == i] |> 
+  iteration$file_convergence[iteration$index == i] |> 
     arrow::read_feather() |> 
     mutate(index = i, .before = 1L) |> 
     cbind(iteration[index == i, .(individual_id, time_id, sensitivity, sensitivity_label)]) |> 
@@ -84,11 +86,18 @@ callstats <- lapply(iteration$index, function(i) {
 }) |> 
   rbindlist()
 # Identify convergence failures
-callstats |> 
+failures <- 
+  callstats |> 
   filter(routine == "filter: forward") |> 
   filter(convergence == FALSE) |> 
   as.data.table()
-  
+# Summarise failures
+failures |> 
+  group_by(sensitivity) |>
+  summarise(n())
+# Visualise failures
+file_convergence
+
 #### Select individual & read data 
 # it <- iteration[individual_id == 26 & sensitivity == "best", ]
 timeline  <- arrow::read_feather(it$file_timeline)
