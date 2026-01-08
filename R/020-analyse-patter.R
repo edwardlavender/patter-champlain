@@ -80,8 +80,6 @@ if (FALSE) {
   # Estimate total time (minutes) shared across n_cpu
   n_cpu <- 100L
   sum(callstats$time) / 60 / n_cpu 
-  # Compute total run time
-  difftime(max(callstats$timestamp), min(callstats$timestamp))
   
   #### Identify convergence failures
   failures <- 
@@ -114,14 +112,19 @@ if (FALSE) {
   now   <- as.numeric(Sys.time())
   debug <- here_output_analysis("debug", paste0(today, "-", now))
   dir.create(debug, recursive = TRUE)
-  qs::qsave(iteration, file.path(debug, "iteration.qs"))
+  # qs::qsave(iteration, file.path(debug, "iteration.qs"))
   qs::qsave(callstats, file.path(debug, "callstats.qs"))
   qs::qsave(failures, file.path(debug, "failures.qs"))
   # Record log 
   iter <- iteration[1, ]
   glue(
     '
+    
+    
     # {today}, {now} -------------------------------------------------------------
+    
+    # Changelog 
+    # - Tried n_particle = 150,000: no meaningful improvement
     
     # Movement model formulation:
     ModelMoveCXY(env, 
@@ -140,9 +143,13 @@ if (FALSE) {
     Nrow iterations: {nrow(iteration)}
     Proportion failures: {nrow(failures) / nrow(iteration)}
     Proportion best failures: {length(which(failures$sensitivity == "best")) / length(which(iteration$sensitivity == "best"))}
+    Run time: {sum(callstats$time) / 60} mins 
     '
     ) |> 
-    writeLines(file.path(debug, "log.txt"))
+    cat(file = here_output_analysis("debug", "log.txt"), append = TRUE)
+  
+  # Cleanup
+  # unlink(iteration$file_callstats_filter)
 
 }
 
