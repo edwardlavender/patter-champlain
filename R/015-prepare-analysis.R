@@ -46,8 +46,8 @@ pars       <- qs::qread(here_input("pars-patter.qs"))
 #### Select analysis
 
 #### Define analysis 
-analysis <- "sim"
-# analysis <- "real"
+# analysis <- "sim"
+analysis <- "real"
 subanalysis <- "main"
 
 #### Define analysis-specific data
@@ -238,31 +238,33 @@ iteration <-
     # Define input files 
     # * Some files depend on both unit_id & sensitivity parameters
     # * For convenience, we store all files in an {individual_id}/{unit_id}/{parameter_id} directory 
-    folder_input        = file.path("data", "input", analysis, subanalysis, "runs", 
-                                    individual_id, time_id, parameter_id), 
-    file_timeline       = file.path(folder_input, "timeline.feather"),
-    file_acoustics      = file.path(folder_input, "acoustics.feather"),
-    file_containers_fwd = file.path(folder_input, "containers-fwd.feather"),
-    file_containers_bwd = file.path(folder_input, "containers-bwd.feather"),
+    folder_input          = file.path("data", "input", analysis, subanalysis, "runs", 
+                                      individual_id, time_id, parameter_id), 
+    file_timeline         = file.path(folder_input, "timeline.feather"),
+    file_acoustics        = file.path(folder_input, "acoustics.feather"),
+    file_containers_fwd   = file.path(folder_input, "containers-fwd.feather"),
+    file_containers_bwd   = file.path(folder_input, "containers-bwd.feather"),
     # Define  output files (unit-specific & sensitivity specific)
     # * We use .feather to record outputs
     # * We can write these from Julia & read them into R correctly
-    folder_output       = file.path("data", "output", analysis, subanalysis, "runs", 
-                                    individual_id, time_id, parameter_id),
-    file_states         = file.path(folder_output, "states.feather"),
-    file_diagnostics    = file.path(folder_output, "diagnostics.feather"),
-    file_callstats      = file.path(folder_output, "callstats.feather"),
-    file_occupancy      = file.path(folder_output, "occupancy.tif"),
-    file_residency      = file.path(folder_output, "residency.qs"),
-    file_path_sim       = if_else(rep(analysis == "sim", n()),
-                                  file.path(folder_output, "path-sim.qs"),
-                                  NA_character_), 
-    file_occupancy_sim  = if_else(rep(analysis == "sim", n()),
-                                  file.path(folder_output, "occupancy-sim.tif"),
-                                  NA_character_), 
-    file_residency_sim  = if_else(rep(analysis == "sim", n()),
-                                  file.path(folder_output, "residency-sim.qs"),
-                                  NA_character_), 
+    folder_output         = file.path("data", "output", analysis, subanalysis, "runs", 
+                                      individual_id, time_id, parameter_id),
+    
+    file_callstats_filter = file.path(folder_output, "callstats-forward-filter.feather"),
+    file_callstats        = file.path(folder_output, "callstats.feather"),
+    file_diagnostics      = file.path(folder_output, "diagnostics.feather"),
+    file_states           = file.path(folder_output, "states.feather"),
+    file_occupancy        = file.path(folder_output, "occupancy.tif"),
+    file_residency        = file.path(folder_output, "residency.qs"),
+    file_path_sim         = if_else(rep(analysis == "sim", n()),
+                                    file.path(folder_output, "path-sim.qs"),
+                                    NA_character_), 
+    file_occupancy_sim    = if_else(rep(analysis == "sim", n()),
+                                    file.path(folder_output, "occupancy-sim.tif"),
+                                    NA_character_), 
+    file_residency_sim    = if_else(rep(analysis == "sim", n()),
+                                    file.path(folder_output, "residency-sim.qs"),
+                                    NA_character_), 
     # Add modelling columns
     # NB: n_batch must be <= 9L due to a bug in Patter.jl
     n_batch             = 9L,
