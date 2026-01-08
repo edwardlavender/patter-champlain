@@ -52,6 +52,7 @@ iteration            <- qs::qread(here_input_analysis("iteration.qs"))
 #### Monitor progress
 
 #### Monitor progress
+# table(file.exists(iteration$file_callstats_filter))
 table(file.exists(iteration$file_callstats))
 table(file.exists(iteration$file_diagnostics))
 
@@ -62,6 +63,7 @@ if (Sys.info()[["nodename"]] == "siam-linux20") {
 }
 
 #### Check rows with missing files
+# iteration[!file.exists(file_callstats_filter), .(index, unit_id, individual_id, time_id, sensitivity)]
 iteration[!file.exists(file_callstats), .(index, unit_id, individual_id, time_id, sensitivity)]
 
 #### Check for errors
