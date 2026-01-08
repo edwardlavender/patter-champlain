@@ -252,13 +252,27 @@ dev.off()
 ###########################
 #### Visualise skill
 
+#### Choose individuals
+# We plot maps for a few example individuals
+# We choose maps without convergence failures
+length(unique(iteration$sensitivity))
+iteration[!file.exists(file_occupancy), .(index, individual_id, sensitivity)]
+iteration |> 
+  filter(file.exists(file_occupancy)) |> 
+  group_by(individual_id) |> 
+  filter(n() == 7L) |> 
+  ungroup() |> 
+  slice_sample(n = 3L) |> 
+  pull(individual_id)
+ids <- c(9, 10, 25)
+
 #### Visualise occupancy skill (best maps)
 # (rows: individuals; columns: trajectory, reconstructed map)
 # (A) Define map_dt
 columns <- c("A", "B") # simulation, output
 map_dt <- lapply(columns, function(.column) {
   iteration |> 
-    filter(individual_id %in% 1:3L & sensitivity == "best") |> 
+    filter(individual_id %in% ids & sensitivity == "best") |> 
     mutate(file_ud = file_occupancy, 
            row = individual_id,
            column =  .column) |> 
@@ -290,7 +304,7 @@ dev.off()
 # (A) Define map_dt
 map_dt <- 
   iteration |> 
-  filter(individual_id %in% 1:3L) |> 
+  filter(individual_id %in% ids) |> 
   mutate(file_ud = file_occupancy, 
          row = individual_id, 
          column = sensitivity_label) |> 
@@ -304,7 +318,55 @@ p <- ggmaps(.mapdt = map_dt, .map = map,
 print(p)
 dev.off()
 
-#### Visualise occupancy skill (full)
+#### As above but with trajectories & sensitivities on one plot
+# First column: trajectories; then sensitivities
+# (A) Define map_dt
+columns <- c("Trajectory", levels(iteration$sensitivity_label))
+columns <- factor(columns, levels = columns)
+map_dt <- 
+  rbind(
+    # Trajectory column (1)
+    iteration |> 
+      filter(individual_id %in% ids & sensitivity == "best") |> 
+      mutate(file_ud = file_occupancy, # here_input("map.tif")
+             row = individual_id, 
+             column = factor("Trajectory", levels = columns)) |> 
+      select("file_ud", "row", "column"),
+    # Sensitivity columns 
+    iteration |> 
+      filter(individual_id %in% ids) |> 
+      mutate(file_ud = file_occupancy, 
+             row = individual_id, 
+             column = factor(sensitivity_label, levels = columns)) |> 
+      select("file_ud", "row", "column") |> 
+      as.data.table()
+  ) |> 
+  arrange(row, column) |> 
+  as.data.table()
+# (B) Define simulated paths
+map_paths <- 
+  paths |> 
+  filter(path_id %in% map_dt$row) |> 
+  mutate(row = path_id, 
+         column = columns[1]) |> 
+  select("row", "column", 
+         "timestep", "x", "y") |> 
+  as.data.table()
+stopifnot(nrow(map_paths) > 1L)
+# (C) Make maps
+png(here_fig_sim("main", "maps-full.png"), 
+    height = 14, width = 6, units = "in", res = 800)
+p <- ggmaps(.mapdt = map_dt, .map = map, 
+            .coast = champlain_utm, .geom_coast = list(colour = "black"),
+            .path = map_paths, 
+            .geom_path = list(linewidth = 0.2, arrow = grid::arrow(length = unit(0.001, "cm"))), 
+            .scale_path = scale_colour_gradientn(colours = viridis::inferno(nrow(path)))) + 
+  # Use bold
+  theme(strip.text = element_text(face = "bold"))
+print(p)
+dev.off()
+
+#### Visualise occupancy skill (MAE)
 # This is principally useful as a measure of sensitivity
 # It is hard to understand 'accuracy' from MAE
 # But this provides a baseline for other methods 
@@ -319,7 +381,7 @@ p <-
   scale_y_continuous(labels = prettyGraphics::sci_notation) + 
   xlab("Sensitivity") + 
   ylab(expression("Mean absolute error (" * italic(ME) * ")")) + 
-  labs(fill = "Sensitivity") +
+  labs(fill = "Analysis") +
   theme_bw() +
   theme(panel.grid.minor.y = element_blank(), 
         panel.grid.major.y = element_blank(), 
@@ -337,7 +399,7 @@ p <-
   as_tibble() |> 
   ggplot() + 
   geom_boxplot(aes(region, skill, fill = I(col)), 
-               linewidth = 0.5, size = 1) + 
+               linewidth = 0.5, size = 1, varwidth = TRUE) + 
   geom_hline(yintercept = 0, linetype = 3) + 
   # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
   xlab("Region") + 
@@ -360,12 +422,12 @@ p <-
   residency_skill |>
   ggplot() + 
   geom_boxplot(aes(region, skill, fill = sensitivity_label), 
-               linewidth = 0.25, size = 0.5) + 
+               linewidth = 0.25, size = 0.5, varwidth = TRUE) + 
   geom_hline(yintercept = 0, linetype = 3) + 
   # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
   xlab("Region") + 
   ylab(expression("Residency error (" * italic(RE) * ")")) + 
-  labs(fill = "Sensitivity") +
+  labs(fill = "Analysis") +
   theme_bw() +
   theme(panel.grid.minor.y = element_blank(), 
         panel.grid.major.y = element_blank(), 
