@@ -1,12 +1,18 @@
 ###########################
 ###########################
-#### trial-patter.R
+#### refine-patter.R
 
 #### Aims
 # 1) This script is used to trial/debug the particle filter i.e., convergence failures
+#    - For a subset of time series, we run the particle filter via run-filter.jl
+#    - We identify cases of convergence failures
+#    - In this script, we re-run the filter for those individuals & analyse behaviour of particles
+#    - We then revise model parameters/algorithm settings accordingly in an iterative process
 
 #### Prerequisites
-# 1) Set JULIA_NUM_THREADS = 12
+# 1) Run run-filter.jl to assess convergence quickly via 001-workflow.sh
+# 2) Set JULIA_NUM_THREADS = 12 for this script
+# 3) This script is designed to run on SIA-LAVENDED
 
 
 ###########################
@@ -38,15 +44,17 @@ map <- terra::rast(here_input("map.tif"))
 #### Select analysis
 
 #### Define analysis 
-# analysis <- "sim"
-analysis <- "real"
+analysis <- "sim"
+# analysis <- "real"
 subanalysis <- "main"
 
 #### Define analysis-specific data
 here_input_analysis <- switch_here_input_analysis_subanalysis(analysis, subanalysis)
 here_fig_analysis   <- switch_here_fig_analysis_subanalysis(analysis, subanalysis)
-# iteration           <- qs::qread(here_input_analysis("iteration.qs"))
-iteration           <- qs::qread(here_input_analysis("iteration-1.qs"))
+iteration           <- qs::qread(here_input_analysis("iteration.qs"))
+if (analysis == "real") {
+  iteration <- qs::qread(here_input_analysis("iteration-1.qs"))
+}
 
 
 ###########################
@@ -58,6 +66,29 @@ julia_connect()
 set_seed()
 set_map(map)
 
+#### Select individual
+# Read callstats 
+# (This code is modified from analysis-patter.R)
+if (analysis == "sim") {
+  iteration[, file_convergence := file_callstats]
+} else if (analysis == "real") {
+  iteration[, file_convergence := file_callstats_filter]
+}
+iteration <- iteration[file.exists(file_convergence), ]
+callstats <- lapply(iteration$index, function(i) {
+  iteration$file_callstats[iteration$index == i] |> 
+    arrow::read_feather() |> 
+    mutate(index = i, .before = 1L) |> 
+    cbind(iteration[index == i, .(individual_id, time_id, sensitivity, sensitivity_label)]) |> 
+    as.data.table()
+}) |> 
+  rbindlist()
+# Identify convergence failures
+callstats |> 
+  filter(routine == "filter: forward") |> 
+  filter(convergence == FALSE) |> 
+  as.data.table()
+  
 #### Select individual & read data 
 # it <- iteration[individual_id == 26 & sensitivity == "best", ]
 timeline  <- arrow::read_feather(it$file_timeline)
