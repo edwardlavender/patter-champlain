@@ -52,6 +52,14 @@ iteration           <- qs::qread(here_input_analysis("iteration.qs"))
 ###########################
 #### Analyse trials
 
+# Using a sample real-world time series, we check convergence via run-filter.jl.
+# This script only produces a file_callstats_filter file that records convergence
+# (unlike the full run-algorithms.jl script). 
+# We check those results here. 
+# We further dig into convergence failures in refine-patter.R. 
+# Later sections in this script are designed to analyse the outputs of the 
+# full workflow i..e, run-algorithms.jl. 
+
 if (FALSE) {
   
   #### Read callstats for the filter
