@@ -462,9 +462,13 @@ if (analysis == "real") {
   # Write to file 
   qs::qsave(iteration, here_input_analysis("iteration-1.qs"))
   qs::qsave(iteration, here_input_analysis("iteration-2.qs"))
-  write_feather_compressed(iteration, here_input_analysis("iteration-1.feather"))
-  write_feather_compressed(iteration, here_input_analysis("iteration-2.feather"))
-    
+  write_feather_compressed(iteration_1, here_input_analysis("iteration-1.feather"))
+  write_feather_compressed(iteration_2, here_input_analysis("iteration-2.feather"))
+  
+  # Checks
+  stopifnot(isTRUE(all.equal(nrow(arrow::read_feather(here_input_analysis("iteration-1.feather"))), 700L)))
+  nrow(arrow::read_feather(here_input_analysis("iteration-2.feather")))
+
 }
 
 
