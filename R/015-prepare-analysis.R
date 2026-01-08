@@ -460,8 +460,8 @@ if (analysis == "real") {
   stopifnot(sum(c(nrow(iteration_1), nrow(iteration_2))) == nrow(iteration))
   
   # Write to file 
-  qs::qsave(iteration, here_input_analysis("iteration-1.qs"))
-  qs::qsave(iteration, here_input_analysis("iteration-2.qs"))
+  qs::qsave(iteration_1, here_input_analysis("iteration-1.qs"))
+  qs::qsave(iteration_2, here_input_analysis("iteration-2.qs"))
   write_feather_compressed(iteration_1, here_input_analysis("iteration-1.feather"))
   write_feather_compressed(iteration_2, here_input_analysis("iteration-2.feather"))
   
