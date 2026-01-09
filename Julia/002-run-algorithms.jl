@@ -58,7 +58,8 @@ end
 
 #### Select iteration 
 # Set column types as needed
-iteration.n_particle_filter = Int.(iteration.n_particle_filter);
+iteration.n_resample          = Float64.(iteration.n_particle_filter);
+iteration.n_particle_filter   = Int.(iteration.n_particle_filter);
 iteration.n_particle_smoother = Int.(iteration.n_particle_smoother);
 # Select row 
 if isinteractive()
@@ -207,6 +208,7 @@ fwd = particle_filter(timeline   = timeline,
                       yobs       = yobs_fwd,
                       model_move = model_move,
                       n_move     = 1,
+                      n_resample = iter.n_resample,
                       n_record   = iter.n_particle_smoother,
                       direction  = "forward", 
                       batch      = fwd_batches,
@@ -249,6 +251,7 @@ if convergence
                         yobs       = yobs_bwd,
                         model_move = model_move,
                         n_move     = 1,
+                        n_resample = iter.n_resample,
                         n_record   = iter.n_particle_smoother,
                         direction  = "backward", 
                         batch      = bwd_batches,

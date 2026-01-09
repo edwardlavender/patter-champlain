@@ -45,9 +45,11 @@ subanalysis = "main"
 env       = GeoArrays.read(joinpath("data", "input", "map.tif"));
 env_init  = Patter.rast(joinpath("data", "input", "map.tif"));
 iteration = DataFrame(Arrow.Table(joinpath("data", "input", analysis, subanalysis, "iteration-1.feather")))
+iteration = iteration[iteration.sensitivity .== "best", :];
 
 #### Select iteration 
 # Set column types as needed
+iteration.n_resample        = Float64.(iteration.n_particle_filter);
 iteration.n_particle_filter = Int.(iteration.n_particle_filter);
 # Select row 
 if isinteractive()
@@ -163,6 +165,7 @@ fwd = particle_filter(timeline   = timeline,
                       yobs       = yobs_fwd,
                       model_move = model_move,
                       n_move     = 1,
+                      n_resample = iter.n_particle_filter,
                       n_record   = 1,
                       direction  = "forward", 
                       progress   = Patter.progress_control(enabled = isinteractive()),
