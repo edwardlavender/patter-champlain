@@ -101,8 +101,8 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
       
       plot(detections$timestep, detections$sensor_id, 
            xlab = "Time (steps)", ylab = "Receiver ID", 
-           xlim = c(0, length(timeline)), 
-           main = t)
+           xlim = c(0, length(timeline)))
+      mtext(side = 3, t, line = 0, font = 2)
       if (nrow(det) > 0L) {
         points(det$timestep, det$sensor_id, col = "green", lwd = 2)
       }
