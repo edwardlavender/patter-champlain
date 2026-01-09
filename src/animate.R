@@ -100,7 +100,8 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
       #### Plot detection time series ------------------------------------------
       
       plot(detections$timestep, detections$sensor_id, 
-           xlab = "Time (steps)", ylab = "Receiver ID")
+           xlab = "Time (steps)", ylab = "Receiver ID", 
+           xlim = 0:length(timeline))
       if (nrow(det) > 0L) {
         points(det$timestep, det$sensor_id, col = "green", lwd = 2)
       }
@@ -162,6 +163,7 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
     input   <- gtools::mixedsort(list.files(frames, full.names = TRUE))
     output  <- file.path(mp4, "ani.mp4")
     av::av_encode_video(input, output, framerate = 150)
+    unlink(frames, recursive = TRUE)
     tictoc::toc()
     
     # Open animation (on MacOS)
