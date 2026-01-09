@@ -110,15 +110,36 @@ stopifnot(all(ck >= 50))
 #### Summarise (real) detection dataset used for modelling 
 # cf. raw data summary statistics (setup-data-detection.R)
 if (FALSE) {
+  # Number of observations
   nrow(detections)
+  # Number of individuals
   length(unique(detections$individual_id))
+  # Time ranges (in months & years)
   range(detections$timestamp)
   int <- lubridate::interval(min(detections$timestamp),max(detections$timestamp))
   lubridate::time_length(int, "months")
   lubridate::time_length(int, "years")
+  # Number of receivers with detections
   length(unique(detections$receiver_id))
+  # Number of individual/time_id blocks
   length(unique(paste(detections$individual_id, detections$time_id)))
-  plot(detections$timestamp, detections$individual_id)
+  # (slow) Abacus plot
+  # plot(detections$timestamp, detections$individual_id)
+  # Time until first detection (for forward or backward filter)
+  lagtimes <- 
+    detections |>
+    group_by(individual_id, time_id) |> 
+    summarise(
+      start_obs      = min(timestamp), 
+      end_obs        = max(timestamp),
+      start_timeline = min(time_id), 
+      end_timeline   = time_id[1] + lubridate::as.period("1 month") - 60 * 2,
+      forward_time   = as.numeric(difftime(start_obs, start_timeline, units = "days")), 
+      backward_time  = as.numeric(difftime(end_timeline, end_obs, units = "days"))) |>
+    as.data.table()
+  # Check distributions
+  hist(lagtimes$forward_time)
+  hist(lagtimes$backward_time)
 }
 
 #### Visualise real detection dataset used for modelling 
