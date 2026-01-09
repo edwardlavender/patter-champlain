@@ -104,28 +104,21 @@ if (FALSE) {
   # All failures 
   failures
   # Failures for main analysis
-  failures[sensitivity == "best", ]
+  failures[sensitivity == "best", .(index, individual_id, time_id, sensitivity, routine, n_particle, time, convergence)]
   
-  #### Record 
-  # Record datasets
+  #### (optional) Record datasets
   today <- as.Date(Sys.time())
   now   <- as.numeric(Sys.time())
   debug <- here_output_analysis("debug", paste0(today, "-", now))
-  dir.create(debug, recursive = TRUE)
-  # qs::qsave(iteration, file.path(debug, "iteration.qs"))
-  qs::qsave(callstats, file.path(debug, "callstats.qs"))
-  qs::qsave(failures, file.path(debug, "failures.qs"))
-  # Record log 
+  # dir.create(debug, recursive = TRUE)
+  # qs::qsave(callstats, file.path(debug, "callstats.qs"))
+  # qs::qsave(failures, file.path(debug, "failures.qs"))
+  
+  #### Record log 
+  # Check movement model 
   iter <- iteration[1, ]
   glue(
     '
-    
-    
-    # {today}, {now} -------------------------------------------------------------
-    
-    # Changelog 
-    # 
-    
     # Movement model formulation:
     ModelMoveCXY(env, 
                 {iter$mobility}, 
@@ -134,19 +127,21 @@ if (FALSE) {
     
     # Observation model formulation:
     truncated(logistic({iter$receiver_alpha} + {iter$receiver_beta} * distance), {iter$receiver_gamma})
+    '
+  )
+  # Record settings & outcome
+  glue(
+    '
     
-    # Inference settings:
-    n_move = 10000L
-    n_particle = {iter$n_particle_filter}
+    # {today}, {now}
     
-    # Outcome
-    Nrow iterations: {nrow(iteration)}
-    Proportion failures: {nrow(failures) / nrow(iteration)}
-    Proportion best failures: {length(which(failures$sensitivity == "best")) / length(which(iteration$sensitivity == "best"))}
-    Run time: {sum(callstats$time) / 60} mins 
+    * n_particle = XXX
+    * n_move = XXX
+    * Proportion best failures: {length(which(failures$sensitivity == "best")) / length(which(iteration$sensitivity == "best"))}
+    * Run time: {sum(callstats$time) / 60} mins 
     '
     ) |> 
-    cat(file = here_output_analysis("debug", "log.txt"), append = TRUE)
+    cat(file = here_output_analysis("debug", "debug-batch.txt"), append = TRUE)
   
   # Cleanup
   # unlink(iteration$file_callstats_filter)
