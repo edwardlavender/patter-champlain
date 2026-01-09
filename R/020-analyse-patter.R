@@ -124,7 +124,7 @@ if (FALSE) {
     # {today}, {now} -------------------------------------------------------------
     
     # Changelog 
-    # - Tried n_particle = 150,000: no meaningful improvement
+    # 
     
     # Movement model formulation:
     ModelMoveCXY(env, 
@@ -136,7 +136,7 @@ if (FALSE) {
     truncated(logistic({iter$receiver_alpha} + {iter$receiver_beta} * distance), {iter$receiver_gamma})
     
     # Inference settings:
-    n_move = 1L
+    n_move = 10000L
     n_particle = {iter$n_particle_filter}
     
     # Outcome
