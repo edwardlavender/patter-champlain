@@ -30,6 +30,7 @@ set.seed(123L)
 library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
+library(JuliaCall)
 library(patter)
 library(proj.verse)
 library(tictoc)
@@ -64,6 +65,7 @@ if (analysis == "real") {
 
 #### Connect to Julia
 julia_connect()
+julia_source(file.path("Julia", "src", "observation-model.jl"))
 set_seed()
 set_map(map)
 
@@ -100,7 +102,7 @@ model_move
 
 #### Define observation(s) & observation model
 # (Containers are added below)
-yobs <- list(ModelObsAcousticLogisTrunc = copy(acoustics), 
+yobs <- list(ModelObsAcousticLogisTruncLos = copy(acoustics), 
              ModelObsContainer = NULL)
 
 #### Run filter 
@@ -144,7 +146,7 @@ pout <- do.call(pf_filter, pargs, quote = TRUE)
 # * NB: Running this for a few steps with .cl = 1L seems to suppress a segmentation
 #   fault when it then run in parallel for a larger time series below.
 #   If you jump to the parallel version, it can throw a segmentation fault
-steps <- 1:11054
+steps <- 1:5017
 tnow <- as.numeric(Sys.time())
 animate_ac(.iter   = it,
            .map    = map,

@@ -35,6 +35,7 @@ using Distributions
 using Patter
 
 #### Load source files
+include("./src/observation-models.jl")
 include("./src/utils.jl")
 
 #### Load datasets (map, iteration)
@@ -133,7 +134,7 @@ containers_fwd.radius     = Float64.(containers_fwd.radius);
 #### Assemble datasets 
 # Collate datasets & associated `ModelObs` instances into a typed dictionary 
 datasets_fwd    = [acoustics, containers_fwd];
-model_obs_types = [ModelObsAcousticLogisTrunc, ModelObsContainer];
+model_obs_types = [ModelObsAcousticLogisTruncLos, ModelObsContainer];
 yobs_fwd        = assemble_yobs(datasets = datasets_fwd,
                                 model_obs_types = model_obs_types);
 
