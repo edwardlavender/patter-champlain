@@ -113,44 +113,43 @@ model_move = ModelMoveCXY(env,
 
 #### Load timeline 
 # Define timeline 
-timeline = DataFrame(Arrow.Table(iter.file_timeline))
+timeline           = DataFrame(Arrow.Table(iter.file_timeline))
 timeline.timestamp = DateTime.(timeline.timestamp)
-timeline = timeline.timestamp
+timeline           = timeline.timestamp
 # Define time steps & timesteps_by_batch
 timesteps          = collect(1:length(timeline))
 timesteps_by_batch = Patter.split_indices(timesteps, Int(iter.n_batch))
 
 #### Load acoustic observations & containers
-acoustics = DataFrame(Arrow.Table(iter.file_acoustics))
+acoustics      = DataFrame(Arrow.Table(iter.file_acoustics))
 containers_fwd = DataFrame(Arrow.Table(iter.file_containers_fwd))
 containers_bwd = DataFrame(Arrow.Table(iter.file_containers_bwd))
 
 #### Process columns
 # Timestamps
-acoustics.timestamp = DateTime.(acoustics.timestamp);
+acoustics.timestamp      = DateTime.(acoustics.timestamp);
 containers_fwd.timestamp = DateTime.(containers_fwd.timestamp);
 containers_bwd.timestamp = DateTime.(containers_bwd.timestamp);
 # Acoustic columns
-acoustics.sensor_id = Int.(acoustics.sensor_id);
-acoustics.obs = Int.(acoustics.obs);
-acoustics.receiver_x = Float64.(acoustics.receiver_x);
-acoustics.receiver_y = Float64.(acoustics.receiver_y);
+acoustics.sensor_id      = Int.(acoustics.sensor_id);
+acoustics.obs            = Int.(acoustics.obs);
+acoustics.receiver_x     = Float64.(acoustics.receiver_x);
+acoustics.receiver_y     = Float64.(acoustics.receiver_y);
 acoustics.receiver_alpha = Float64.(acoustics.receiver_alpha);
-acoustics.receiver_beta = Float64.(acoustics.receiver_beta);
+acoustics.receiver_beta  = Float64.(acoustics.receiver_beta);
 acoustics.receiver_gamma = Float64.(acoustics.receiver_gamma);
 # containers_fwd
-containers_fwd
-containers_fwd.obs = Int.(containers_fwd.obs);
-containers_fwd.sensor_id = Int.(containers_fwd.sensor_id);
+containers_fwd.obs        = Int.(containers_fwd.obs);
+containers_fwd.sensor_id  = Int.(containers_fwd.sensor_id);
 containers_fwd.centroid_x = Float64.(containers_fwd.centroid_x);
 containers_fwd.centroid_y = Float64.(containers_fwd.centroid_y);
-containers_fwd.radius = Float64.(containers_fwd.radius);
+containers_fwd.radius     = Float64.(containers_fwd.radius);
 # containers_bwd
-containers_bwd.obs = Int.(containers_bwd.obs);
-containers_bwd.sensor_id = Int.(containers_bwd.sensor_id);
+containers_bwd.obs        = Int.(containers_bwd.obs);
+containers_bwd.sensor_id  = Int.(containers_bwd.sensor_id);
 containers_bwd.centroid_x = Float64.(containers_bwd.centroid_x);
 containers_bwd.centroid_y = Float64.(containers_bwd.centroid_y);
-containers_bwd.radius = Float64.(containers_bwd.radius);
+containers_bwd.radius     = Float64.(containers_bwd.radius);
 # # > This is necessary to avoid issues with data imported via Arrow
 # > This is not necessary for data imported from CSV
 
