@@ -2,7 +2,7 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
   
   # Compute area spanned by 95 % of particles via 2D histogram
   # (Computation via ks::kde() and ks::contourSizes() is too slow)
-  particle_hr <- function(.map, .coord, .percentage = 0.75, .summarise = TRUE) {
+  particle_hr <- function(.map, .coord, .proportion = 0.75, .summarise = TRUE) {
     
     # Compute area of grid cell (assuming UTM grid)
     A <- prod(terra::res(.map))
@@ -32,7 +32,7 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
       group_by(.data$timestep) |> 
       arrange(desc(mark), .by_group = TRUE) |> 
       mutate(cmark = cumsum(mark)) |>
-      summarise(area = which(cmark >= .percentage)[1] * A) |>
+      summarise(area = which(cmark >= .proportion)[1] * A) |>
       ungroup() 
     
     # Optionally summarise areas
