@@ -35,7 +35,8 @@ using Distributions
 using Patter
 
 #### Load source files
-include("./src/observation-models.jl")
+include("./src/observation-model.jl")
+include("./src/initialise-filters.jl")
 include("./src/utils.jl")
 
 #### Load datasets (map, iteration)
@@ -144,16 +145,9 @@ yobs_fwd        = assemble_yobs(datasets = datasets_fwd,
 #### Run filter 
 
 #### Simulate initial states for the forward filter
-xinit = simulate_states_init(map             = env_init, 
-                             timeline        = timeline, 
-                             state_type      = state,
-                             xinit           = nothing, 
-                             model_move      = model_move, 
-                             datasets        = datasets_fwd,
-                             model_obs_types = model_obs_types,
-                             n_particle      = iter.n_particle_filter, 
-                             direction       = "forward", 
-                             output          = "Vector");
+xinit = initialise_forward_filter(iter, env_init, timeline, state, model_move, datasets_fwd, model_obs_types, acoustics)
+# Plots.plot(env)
+# scatter!([xinit[i].x for i in 1:iter.n_particle_filter], [xinit[i].y for i in 1:iter.n_particle_filter], markersize = 0.01)
 
 #### Run the forward filter
 # We are only interested in convergence success/failure, 

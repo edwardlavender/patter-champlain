@@ -29,14 +29,17 @@ using Dates
 using Distributions
 using JLD2
 using Patter
+# using Plots
 
 #### Load source files
 include("./src/utils.jl")
+include("./src/initialise-filters.jl")
+include("./src/observation-model.jl")
 
 #### Load datasets (map, iteration)
 # Load map & iteration 
-analysis  = "sim"
-# analysis  = "real"
+# analysis  = "sim"
+analysis  = "real"
 subanalysis = "main"
 env       = GeoArrays.read(joinpath("data", "input", "map.tif"));
 env_init  = Patter.rast(joinpath("data", "input", "map.tif"));
@@ -157,7 +160,7 @@ containers_bwd.radius     = Float64.(containers_bwd.radius);
 # Collate datasets & associated `ModelObs` instances into a typed dictionary 
 datasets_fwd    = [acoustics, containers_fwd];
 datasets_bwd    = [acoustics, containers_bwd];
-model_obs_types = [ModelObsAcousticLogisTrunc, ModelObsContainer];
+model_obs_types = [ModelObsAcousticLogisTruncLos, ModelObsContainer];
 yobs_fwd        = assemble_yobs(datasets = datasets_fwd,
                                 model_obs_types = model_obs_types);
 yobs_bwd        = assemble_yobs(datasets = datasets_bwd,
@@ -189,16 +192,9 @@ td_fwd = td_bwd = td_smo = NaN
 #### Forward filter 
 
 #### Simulate initial states for the forward filter
-xinit = simulate_states_init(map             = env_init, 
-                             timeline        = timeline, 
-                             state_type      = state,
-                             xinit           = nothing, 
-                             model_move      = model_move, 
-                             datasets        = datasets_fwd,
-                             model_obs_types = model_obs_types,
-                             n_particle      = iter.n_particle_filter, 
-                             direction       = "forward", 
-                             output          = "Vector");
+xinit = initialise_forward_filter(iter, env_init, timeline, state, model_move, datasets_fwd, model_obs_types, acoustics)
+# Plots.plot(env)
+# scatter!([xinit[i].x for i in 1:iter.n_particle_filter], [xinit[i].y for i in 1:iter.n_particle_filter], markersize = 0.01)
 
 #### Run the forward filter
 t1_fwd = now()
@@ -228,20 +224,14 @@ diagnostics.ncell_home .= NaN
 ###########################
 #### (2) Backward filter 
 
-convergence = fwd.callstats.convergence[1] 
-if convergence
+convergence = fwd.callstats.convergence[1]
+ if convergence
 
   #### Simulate initial states for the backward filter
-  xinit = simulate_states_init(map           = env_init, 
-                             timeline        = timeline, 
-                             state_type      = state,
-                             xinit           = nothing, 
-                             model_move      = model_move, 
-                             datasets        = datasets_bwd,
-                             model_obs_types = model_obs_types,
-                             n_particle      = iter.n_particle_filter, 
-                             direction       = "backward", 
-                             output          = "Vector");
+  # Use states from forward filter
+  xinit = initialise_backward_filter(iter, fwd_batches)
+  # Plots.plot(env)
+  # scatter!([xinit[i].x for i in 1:iter.n_particle_filter], [xinit[i].y for i in 1:iter.n_particle_filter], markersize = 0.1)
 
   #### Run the backward filter
   t1_bwd = now()
