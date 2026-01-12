@@ -51,8 +51,9 @@ iteration = iteration[iteration.sensitivity .== "best", :];
 
 #### Select iteration 
 # Set column types as needed
-iteration.n_resample        = Float64.(iteration.n_particle_filter);
-iteration.n_particle_filter = Int.(iteration.n_particle_filter);
+iteration.n_move              = Int.(iteration.n_move);
+iteration.n_resample          = Float64.(iteration.n_resample);
+iteration.n_particle_filter   = Int.(iteration.n_particle_filter);
 # Select row 
 if isinteractive()
     row = 1
@@ -159,7 +160,7 @@ fwd = particle_filter(timeline   = timeline,
                       xinit      = xinit,
                       yobs       = yobs_fwd,
                       model_move = model_move,
-                      n_move     = 1,
+                      n_move     = iter.n_move,
                       n_resample = iter.n_resample,
                       n_record   = 1,
                       direction  = "forward", 

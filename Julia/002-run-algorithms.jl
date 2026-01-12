@@ -46,24 +46,13 @@ env_init  = Patter.rast(joinpath("data", "input", "map.tif"));
 iteration = DataFrame(Arrow.Table(joinpath("data", "input", analysis, subanalysis, "iteration.feather")))
 # iteration = iteration[iteration.index .∈ Ref([7, 13, 14, 119, 133, 140, 147, 161, 166, 168, 176, 178, 179, 182, 195, 196]), :];
 
-#### (optional) Use test settings
-if false
-  # Reduce particle numbers
-  iteration.receiver_gamma .= 100000.0
-  iteration.n_particle_filter   .= 10000
-  iteration.n_particle_smoother .= 500
-  # Clean up old files for iteration[1, ]
-  files = filter(f -> endswith(f, ".jld2"), readdir(iteration.folder_output[1]; join = true))
-  if length(files) > 0
-    rm.(files; force = true)
-  end
-end
-
 #### Select iteration 
 # Set column types as needed
-iteration.n_resample          = Float64.(iteration.n_particle_filter);
+iteration.n_move              = Int.(iteration.n_move);
+iteration.n_resample          = Float64.(iteration.n_resample);
 iteration.n_particle_filter   = Int.(iteration.n_particle_filter);
 iteration.n_particle_smoother = Int.(iteration.n_particle_smoother);
+
 # Select row 
 if isinteractive()
     row = 1
@@ -202,7 +191,7 @@ fwd = particle_filter(timeline   = timeline,
                       xinit      = xinit,
                       yobs       = yobs_fwd,
                       model_move = model_move,
-                      n_move     = 1,
+                      n_move     = iter.n_move,
                       n_resample = iter.n_resample,
                       n_record   = iter.n_particle_smoother,
                       direction  = "forward", 
@@ -239,7 +228,7 @@ if convergence
                         xinit      = xinit,
                         yobs       = yobs_bwd,
                         model_move = model_move,
-                        n_move     = 1,
+                        n_move     = iter.n_move,
                         n_resample = iter.n_resample,
                         n_record   = iter.n_particle_smoother,
                         direction  = "backward", 
@@ -265,17 +254,28 @@ end
 
 if convergence
 
-  #### Run smoother
+  #### Define Monte Carlo settings 
   # Set n_sim = 0 and cache = nothing for unrestricted models (n_move = 1)
+  vmap = nothing
+  cache = false 
+  n_sim = 0
+  if iter.n_move > 1
+    # vmap = GeoArrays.read(joinpath("data", "input", "vmap", string(Int(iter.mobility[1])), "vmap.tif"))
+    vmap = GeoArrays.read(iter.file_vmap)
+    cache = true 
+    n_sim = 30
+  end 
+
+  #### Run smoother
   t1_smo = now()
   smo = particle_smoother_two_filter(timeline   = timeline,
                                      xfwd       = fwd_batches,
                                      xbwd       = bwd_batches,
                                      model_move = model_move,
-                                     vmap       = nothing,
+                                     vmap       = vmap,
                                      n_particle = iter.n_particle_smoother,
-                                     n_sim      = 0, 
-                                     cache      = false, 
+                                     n_sim      = n_sim, 
+                                     cache      = cache, 
                                      batch      = smo_batches, 
                                      progress   = Patter.progress_control(enabled = isinteractive()), 
                                      verbose    = isinteractive());

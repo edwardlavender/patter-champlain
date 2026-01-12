@@ -272,6 +272,7 @@ iteration <-
     file_acoustics        = file.path(folder_input, "acoustics.feather"),
     file_containers_fwd   = file.path(folder_input, "containers-fwd.feather"),
     file_containers_bwd   = file.path(folder_input, "containers-bwd.feather"),
+    file_vmap             = file.path("data", "input", "vmap", as.integer(mobility), "vmap.tif"),
     # Define  output files (unit-specific & sensitivity specific)
     # * We use .feather to record outputs
     # * We can write these from Julia & read them into R correctly
@@ -295,15 +296,19 @@ iteration <-
                                     NA_character_), 
     # Add modelling columns
     # NB: n_batch must be <= 9L due to a bug in Patter.jl
-    n_batch             = 9L,
-    n_particle_filter   = ifelse(analysis == "sim", 50000L, 75000L), 
-    n_particle_smoother = ifelse(analysis == "sim", 1500L, 2000L), 
+    n_move              = 1000L,
+    n_particle_filter   = ifelse(analysis == "sim", 25000L, 50000L), 
+    n_particle_smoother = ifelse(analysis == "sim", 1500L, 2000L),
+    n_resample          = as.numeric(5000),
+    n_batch             = 9L
   ) |> 
   as.data.table()
 
-#### Check nrow
-# This must be feasible! 
+#### Checks
+# Check nrow is feasible! 
 nrow(iteration)
+# Check vmap files exist
+stopifnot(all(file.exists(iteration$file_vmap)))
 
 #### Build directories 
 if (FALSE) {
