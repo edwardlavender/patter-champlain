@@ -21,14 +21,17 @@ library(tictoc)
 # Ensure Julia dependencies installed on server 
 
 # (2) Run scripts 
+# > ~3.6 min on SIA-LAVENDED, ~6.1 min on siam-linux20
 # > This code can be run on Windows/MacOS/Linux
 # > Run scripts 1:13 sequentially, in isolation
 # > These scripts can be run independently locally/on a server to set up files etc.
+tic()
 scripts <- list.files(here_r(), full.names = TRUE)
 cl_lapply(scripts[1:13L], function(script) {
   print(script)
   callr::rscript(script)
 })
+toc()
 
 # (3) Simulate data
 # > Data simulation is implemented from R via patter
