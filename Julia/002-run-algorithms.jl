@@ -225,7 +225,7 @@ diagnostics.ncell_home .= NaN
 #### (2) Backward filter 
 
 convergence = fwd.callstats.convergence[1]
- if convergence
+if convergence
 
   #### Simulate initial states for the backward filter
   # Use states from forward filter
