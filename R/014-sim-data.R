@@ -78,7 +78,7 @@ total              <- 1L
 paths_by_path      <- list()
 acoustics_by_path  <- list()
 detections_by_path <- list()
-while (count <= n_sim & total < 100) {
+while (count <= n_sim & total < 100L) {
   
   cli::cat_rule()
   print(paste(count, ", ", total))
@@ -141,7 +141,7 @@ while (count <= n_sim & total < 100) {
     as.data.table()
   
   #### Filter detections
-  n <- nrow(filter_detections(detections[1, ]))
+  n <- nrow(filter_detections(detections))
   
   #### Record outputs, if successful
   if (n > 0L) {
