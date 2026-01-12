@@ -141,7 +141,7 @@ if (FALSE) {
     * Run time: {sum(callstats$time) / 60} mins 
     '
     ) |> 
-    cat(file = here_output_analysis("debug", "debug-batch.txt"), append = TRUE)
+    cat(file = here_doc("debug-batch.txt"), append = TRUE)
   
   # Cleanup
   # unlink(iteration$file_callstats_filter)
