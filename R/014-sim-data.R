@@ -69,7 +69,7 @@ moorings[, receiver_end := max(timeline) + 24 * 60 * 60]
 model_obs <- model_obs_champlain(moorings, pars_model_obs)
 plot(model_obs)
 
-#### Simulate trajectories and observations
+#### Simulate trajectories and observations (~170 s)
 # This is implemented iteratively to generate exactly n_sim time series for modelling
 # I.e., that pass filter_detections() criteria 
 tic()
