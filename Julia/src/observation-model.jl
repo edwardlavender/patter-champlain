@@ -63,6 +63,9 @@ end
 
 # Simulate method 
 function Patter.simulate_obs(state::State, model_obs::ModelObsAcousticLogisTruncLos, t::Int64, env = los_map)
-    prob = exp(logpdf_obs(state::State, model_obs::ModelObsAcousticLogisTruncLos, t::Int64, obs::Int64, env))
+    # Compute probability of a detection from location (state.x, state.y)
+    obs = 1
+    prob = exp(Patter.logpdf_obs(state, model_obs, t, obs, env))
+    # Simulate detection/non-detection
     rand(Bernoulli(prob)) + 0
 end
