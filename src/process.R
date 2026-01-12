@@ -30,7 +30,6 @@ filter_detections <- function(.detections) {
   # * Compute maximum gap along start/end of time series between sequential detections
   maxgaps <-
     detections |>
-    lazy_dt(immutable = TRUE) |>
     group_by(unit_id_tmp) |>
     # Define timeline start + end and times of detections 
     mutate(timeline = list(sort(unique(
