@@ -153,7 +153,7 @@ if (FALSE) {
 # (optional) TO DO Move this code to appropriate synthesis script
 # Plot raw time series (light grey)
 # Add modelled time series, coloured by region as in map
-overwrite <- FALSE
+overwrite <- TRUE
 if (analysis == "real" & overwrite) {
 
   # Add to moorings
@@ -354,7 +354,7 @@ dirs.create(iteration$folder_output)
 #   compared to the speed cost of writing files (important for real-world)
 
 #### Write files 
-overwrite <- FALSE
+overwrite <- TRUE
 if (!file.exists(iteration$file_timeline[1]) | overwrite) {
   
   pbo <- pbapply::pboptions(nout = 2L)
@@ -364,8 +364,12 @@ if (!file.exists(iteration$file_timeline[1]) | overwrite) {
     .chunk = TRUE,
     .fun = function(d) {
       
+      # Read maps (required to enable parallelisation, above)
+      # d      <- iteration[1, ]
+      .map     <- terra::rast(here_input("map.tif"))
+      .regions <- terra::rast(here_input("regions.tif"))
+      
       ## Define file_timeline
-      # d     <- iteration[1, ]
       dets     <- detections[unit_id == d$unit_id, ]
       timeline <- seq(dets$time_id[1], 
                       lubridate::ceiling_date(max(dets$timestamp), "months") - 60 * 2, 
@@ -391,7 +395,7 @@ if (!file.exists(iteration$file_timeline[1]) | overwrite) {
       containers <- assemble_acoustics_containers(.timeline = timeline$timestamp, 
                                                   .acoustics = accs,
                                                   .mobility = d$mobility, 
-                                                  .map = map)
+                                                  .map = .map)
       containers_fwd <- containers$forward
       containers_bwd <- containers$backward
       write_feather_compressed(containers_fwd, d$file_containers_fwd)
@@ -399,10 +403,6 @@ if (!file.exists(iteration$file_timeline[1]) | overwrite) {
       
       ## Define file_occupancy_sim and file_residency_sim
       if (analysis == "sim") {
-        
-        # Read maps (required to enable parallelisation, above)
-        .map     <- terra::rast(here_input("map.tif"))
-        .regions <- terra::rast(here_input("regions.tif"))
         
         # Define file_path_sim
         path <- paths[path_id == d$individual_id, ]
@@ -441,7 +441,7 @@ if (!file.exists(iteration$file_timeline[1]) | overwrite) {
   
 }
 
-# Spot checks
+#### Spot checks
 if (analysis == "sim") {
   stopifnot(all(file.exists(iteration$file_path_sim)))
   stopifnot(all(file.exists(iteration$file_occupancy_sim)))
@@ -471,13 +471,13 @@ if (analysis == "real") {
   size <- 100L
   sample.int(n, size)
   pos <- c(
-    6, 10, 19, 21, 23, 24, 33, 37, 38, 47, 48, 49, 54, 55, 57, 59, 61, 64, 72, 78,
-    81, 84, 87, 88, 95, 103, 108, 112, 115, 119, 120, 128, 130, 131, 132, 134, 139,
-    148, 153, 156, 158, 159, 161, 162, 165, 167, 168, 174, 178, 181, 184, 186, 188,
-    189, 190, 191, 193, 197, 199, 200, 202, 203, 207, 221, 227, 229, 239, 241, 242,
-    244, 246, 251, 276, 288, 292, 299, 303, 305, 311, 312, 314, 315, 319, 321, 325,
-    326, 327, 331, 334, 352, 367, 372, 373, 377, 380, 382, 383, 384, 387, 389
+    5, 7, 10, 11, 16, 20, 22, 25, 26, 27, 33, 39, 40, 41, 42, 48, 52, 54, 55, 57,
+    61, 77, 83, 84, 85, 94, 105, 106, 107, 115, 121, 125, 129, 134, 137, 145, 152, 154, 155, 159,
+    160, 164, 168, 177, 184, 185, 186, 194, 195, 196, 198, 200, 205, 212, 215, 218, 222, 226, 235, 238,
+    245, 249, 250, 252, 253, 255, 257, 263, 265, 267, 270, 272, 277, 279, 280, 282, 285, 286, 288, 289,
+    292, 300, 301, 302, 305, 310, 315, 316, 317, 326, 331, 332, 336, 339, 346, 350, 351, 353, 360, 364
   )
+  stopifnot(length(pos) == 100L)
   
   # Define an initial validation dataset
   iteration_1 <- lapply(split(iteration, iteration$sensitivity), function(d) {
