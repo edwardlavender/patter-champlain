@@ -46,8 +46,8 @@ pars       <- qs::qread(here_input("pars-patter.qs"))
 #### Select analysis
 
 #### Define analysis 
-# analysis <- "sim"
-analysis <- "real"
+analysis <- "sim"
+# analysis <- "real"
 subanalysis <- "main"
 
 #### Define analysis-specific data
@@ -153,7 +153,7 @@ if (FALSE) {
 # (optional) TO DO Move this code to appropriate synthesis script
 # Plot raw time series (light grey)
 # Add modelled time series, coloured by region as in map
-overwrite <- TRUE
+overwrite <- FALSE
 if (analysis == "real" & overwrite) {
 
   # Add to moorings
@@ -354,7 +354,7 @@ dirs.create(iteration$folder_output)
 #   compared to the speed cost of writing files (important for real-world)
 
 #### Write files 
-overwrite <- TRUE
+overwrite <- FALSE
 if (!file.exists(iteration$file_timeline[1]) | overwrite) {
   
   pbo <- pbapply::pboptions(nout = 2L)
