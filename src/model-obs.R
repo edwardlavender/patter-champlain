@@ -9,6 +9,6 @@ model_obs_champlain <- function(.moorings, .pars, .as_ModelObs = TRUE) {
     return(moorings)
   } else {
     # Return ModelObs object (includes sensor_id column)
-    return(model_obs_acoustic_logis_trunc(moorings))
+    return(model_obs_acoustic_logis_trunc_los(moorings))
   }
 }

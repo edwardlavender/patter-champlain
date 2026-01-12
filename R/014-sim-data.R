@@ -16,9 +16,6 @@
 #### Wipe workspace 
 rm(list = ls())
 
-#### Set global options
-patter::julia_connect()
-
 #### Load essential packages
 library(data.table)
 library(dtplyr)
@@ -28,7 +25,6 @@ library(patter)
 library(proj.verse)
 library(tictoc)
 files_source_r(here_src())
-expect_no_geospatial()
 
 #### Load data
 fish            <- qs::qread(here_input("fish.qs"))
@@ -42,7 +38,9 @@ pars_model_obs  <- qs::qread(here_input("pars-model-obs-best.qs"))
 #### Simulate data 
 
 #### Setup Julia
+julia_connect()
 set_seed()
+julia_source(file.path("Julia", "src", "observation-model.jl"))
 set_map(here_input("map.tif"))
 
 #### Define n_sim
@@ -102,9 +100,6 @@ while (count <= n_sim & total < 100L) {
                         .n_path     = 1L)
   path[, path_id := count]
   toc()
-  # (optional) Visualise moorings on plot, if .map specified
-  # points(model_obs$ModelObsAcousticLogisTrunc$receiver_x, 
-  #        model_obs$ModelObsAcousticLogisTrunc$receiver_y)
   # Validate that each path starts with the simulated xinit
   stopifnot(dplyr::all_equal(
     xinit[, .(x, y, heading)],
@@ -128,7 +123,7 @@ while (count <= n_sim & total < 100L) {
   tic()
   acoustics <- sim_observations(.timeline = timeline, 
                                 .model_obs = model_obs)
-  acoustics <- acoustics$ModelObsAcousticLogisTrunc[[1]]
+  acoustics <- acoustics$ModelObsAcousticLogisTruncLos[[1]]
   toc()
   
   #### Collate detections data.table (to match real-world data structure)

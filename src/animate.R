@@ -51,7 +51,7 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
     
     # Define datasets
     timeline   <- .input$.timeline
-    acoustics  <- copy(.input$.yobs$ModelObsAcousticLogisTrunc)
+    acoustics  <- copy(.input$.yobs$ModelObsAcousticLogisTruncLos)
     acoustics[, timestep := (1:length(timeline))[match(timestamp, timeline)]]
     detections <- acoustics[obs == 1L, ]
     moorings <- 
