@@ -79,6 +79,13 @@ length(unique(detections$individual_id))
 
 #### Focus on individual/time (month) units with sufficient data
 # NB: filter_detections assumes monthly blocks
+# > With proportion of days with detections >= 0.5: 
+#   389 / 1352 individual/time block(s) ('unit_id(s)') retained.
+# > With max_gap <= 7 days: 
+#   365 / 1352 individual/time block(s) ('unit_id(s)') retained.
+# > With both criteria, 
+#   294 / 1352 individual/time block(s) ('unit_id(s)') retained.
+# > We use the second criterion
 detections <- filter_detections(detections)
 
 #### Checks
@@ -93,7 +100,7 @@ ck <-
   summarise(ck = length(unique(lubridate::yday(timestamp)))) |> 
   pull(ck) |> 
   sort()
-stopifnot(all(ck >= 14))
+stopifnot(all(ck >= 7))
 # Check the number of detections
 # * We want to catch time series with 'too few' observations
 # * What is 'too few' here is somewhat arbitrary
@@ -105,7 +112,7 @@ ck <-
   summarise(ck = n()) |> 
   pull(ck) |> 
   sort()
-stopifnot(all(ck >= 50))
+stopifnot(all(ck >= 40))
 
 #### Summarise (real) detection dataset used for modelling 
 # cf. raw data summary statistics (setup-data-detection.R)
