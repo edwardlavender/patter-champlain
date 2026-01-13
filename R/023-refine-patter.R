@@ -83,7 +83,8 @@ terra::sbar(2000)
 # it <- iteration[individual_id == 26 & sensitivity == "best", ] # simulation 
 
 #### Select individuals (real)
-it <- iteration[individual_id == 24325 & time_id == as.POSIXct("2016-03-01 00:00:00") & sensitivity == "best", ]; it$index
+it <- iteration[individual_id == 24371 & time_id == as.POSIXct("2016-03-01 00:00:00") & sensitivity == "best", ]; it$index
+it$n_particle_filter <- 20000L
 
 #### Read individual-specific data
 timeline       <- arrow::read_feather(it$file_timeline)
@@ -100,11 +101,19 @@ model_move
 
 #### Define observation(s) & observation model
 # (Containers are added below)
+if (TRUE) {
+  dist <- 1:7000
+  plot(dist, plogis(1.205216 - 0.001672085 * dist), type = "l") # coef(models[["F151"]][["GLM"]])
+  lines(dist, plogis(0.635159329 - 0.002724118 * dist))         # coef(models[["F146"]][["GLM"]])
+  lines(dist, plogis(0.9039122 - 0.002090107 * dist))           # formerly 'restrictive' model between F146 & F151
+  acoustics[, receiver_alpha := 0.9039122]
+  acoustics[, receiver_beta := -0.002090107]
+}
 yobs <- list(ModelObsAcousticLogisTruncLos = copy(acoustics), 
              ModelObsContainer = NULL)
 
 #### Define starting locations for forward filter)
-# ~03:33 mins, 24325, 2016-03-01, best
+# ~03:21, 24325, 2016-03-01, best
 pinit <- pf_filter_fwd_xinit(iter       = it, 
                              map        = map, 
                              timeline   = timeline, 
@@ -137,7 +146,8 @@ pargs <- list(.timeline   = timeline,
               .yobs       = yobs,
               .n_move     = it$n_move,
               .n_particle = it$n_particle_filter,
-              .n_resample = it$n_resample,
+              .n_resample = it$n_resample, # 1000L, 
+              .t_resample = NULL, # sort(unique(which(timeline %in% yobs$ModelObsContainer$timestamp))),
               .n_record   = it$n_particle_smoother,
               .direction  = direction)
 # Run filter
@@ -145,8 +155,8 @@ pout <- do.call(pf_filter, pargs, quote = TRUE)
 
 #### Timings
 # 24325, 2016-03-01, best:
-# 0:16:45, default initialisation
-# 0:21:32, new initialisation & optimisation (!)
+# 0:16:45, default initialisation & LoS
+# 0:21:32, new initialisation & LoS @ moment of detection only 
 
 #### Record
 # see debug-by-individual.txt
@@ -156,13 +166,29 @@ pout <- do.call(pf_filter, pargs, quote = TRUE)
 ###########################
 #### Animation
 
-# Create animation
-# * For 12,000 steps: This takes 6 min (12 cl) plus >2 min for 12,000 steps
-# * NB: Running this for a few steps with .cl = 1L seems to suppress a segmentation
+#### Segmentation
+
+# NB: Running this for a few steps with .cl = 1L seems to suppress a segmentation
 #   fault when it then run in parallel for a larger time series below.
 #   If you jump to the parallel version, it can throw a segmentation fault
-steps <- 1:5000
+
+#### Define steps
+# Define focal region
+start <- 9000L
+focal <- 10000:13000 # 11920 
+# Define steps, using low resolution before focal region for speed
+# (while including all relevant detection container time steps)
+steps <- sort(unique(c(seq(start, min(focal) - 1, by = 10), 
+                       focal, 
+                       # which(timeline %in% yobs$ModelObsContainer$timestamp),
+                       which(timeline %in% detections$timestamp)
+                     )))
+steps <- steps[steps > 0 & steps <= max(focal)]
+length(steps)
 tnow <- as.numeric(Sys.time())
+
+#### Make animation
+# For 12,000 steps: This takes 6 min (12 cl) plus >2 min for 12,000 steps
 animate_ac(.iter   = it,
            .map    = map,
            .steps  = steps[1:10L],
