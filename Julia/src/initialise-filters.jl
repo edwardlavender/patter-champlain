@@ -50,7 +50,7 @@ function initialise_forward_filter(iter, env_init, timeline, state, model_move, 
 
         # Define initial states, accounting for line of sight 
         coord0 = Patter.spatSample(x = env0, size = iter.n_particle_filter, drop_missing = true)
-        los    = [in_line_of_sight(env, detection0.receiver_x, detection0.receiver_y, coord0.x[i], coord0.y[i] for i in eachindex(coord0))]
+        los    = [in_line_of_sight(env, detections0.receiver_x, detections0.receiver_y, coord0.x[i], coord0.y[i]) for i in 1:nrow(coord0)]
         coord0 = coord0[los .== true, :]
         if nrow(coord0) != iter.n_particle_filter
             coord0 = coord0[sample(1:nrow(coord0), iter.n_particle_filter, replace = true), :]
@@ -66,30 +66,38 @@ function initialise_forward_filter(iter, env_init, timeline, state, model_move, 
                                             model_obs_types = [ModelObsAcousticLogisTruncLos])
 
         # Define batches
-        # TO DO IMPROVE as we record iter.n_particle_filter not iter.n_particle_smoother!
+        # We use b batches to store values v for N particles * T/b time steps (where n = n_particle_smoother)
+        # I.e., v = N * T/b 
+        # To maintain this memory usage, we need b = N * T / v batches here
+        v = iter.n_particle_smoother * ceil(Int, (length(timeline) / iter.n_batch))
+        b = iter.n_particle_smoother * length(timeline) / v
+        b = ceil(Int, min(b, 9, length(timeline0)))
         n_batch0     = ceil(Int, length(timeline0) / ceil(Int, length(timeline) / iter.n_batch))
         bwd_batches0 = [joinpath(iter.folder_output, "bwd0-$i.jld2") for i in 1:n_batch0]
 
         # Run filter backwards from first detection to start of timeline, assuming only non-detections
+        # * We only record iter.n_particle_smoother particles to maintain memory use 
         bwd0 = particle_filter(timeline   = timeline0,
                                xinit      = xinit0,
                                yobs       = yobs0,
                                model_move = model_move,
                                n_move     = 1000,
                                n_resample = iter.n_resample,
-                               n_record   = iter.n_particle_filter,
+                               n_record   = iter.n_particle_smoother, # iter.n_particle_filter,
                                direction  = "backward",
                                batch      = bwd_batches0,
                                progress   = Patter.progress_control(enabled = isinteractive()),
                                verbose    = isinteractive())
 
-        # Take the states at timestep[1] as xinit
+        # Take the states at timestep[1] & resample for xinit
         # (rows = particles, columns = timesteps)
         # xinit = bwd0.states[:, 1]
         @load bwd_batches0[1] xbwd
         xinit = xbwd[:, 1]
         xbwd = nothing 
         foreach(f -> rm(f; force = true), bwd_batches0)
+        xinit = xinit[sample(1:length(xinit), iter.n_particle_filter, replace = true)]
+        xinit = [StateCXY(1.0, xinit[i].x, xinit[i].y, rand(Uniform(0.0, 2π))) for i in 1:iter.n_particle_filter]
 
     end
 
