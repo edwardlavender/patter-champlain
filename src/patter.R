@@ -93,10 +93,15 @@ pf_filter_fwd_xinit <- function(iter, map, timeline, acoustics, model_move) {
                       .n_move     = iter$n_move,
                       .n_particle = iter$n_particle_filter,
                       .n_resample = iter$n_resample,
-                      .n_record   = iter$n_particle_filter,
+                      .n_record   = iter$n_particle_smoother, # iter$n_particle_filter,
                       .direction  = "backward")
     out$pf_particles <- bwd0
     out$xinit        <- bwd0$states[timestep == 1L, .(map_value, x, y, heading)]
+    if (nrow(out$xinit) != iter$n_particle_filter) {
+      out$xinit        <- out$xinit[sample.int(.N, size = iter$n_particle_filter, replace = TRUE), ]
+      heading <- NULL
+      out$xinit[, heading := runif(.N, 0, 2 * pi)]
+    }
     
   }
   
