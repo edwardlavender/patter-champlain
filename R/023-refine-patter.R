@@ -37,7 +37,9 @@ library(tictoc)
 files_source_r(here_src())
 
 #### Load data
-map <- terra::rast(here_input("map.tif"))
+map      <- terra::rast(here_input("map.tif"))
+regions  <- terra::rast(here_input("regions.tif"))
+moorings <- qs::qread(here_input_real("main", "moorings.qs"))
 
 
 ###########################
@@ -69,23 +71,19 @@ julia_source(file.path("Julia", "src", "observation-model.jl"))
 set_seed()
 set_map(map)
 
+#### Examine map
+terra::plot(regions)
+points(moorings$receiver_x, moorings$receiver_y)
+terra::sbar(2000)
+# flapper::dist_btw_clicks(lonlat = FALSE)
+
 #### Select individuals (sim)
 # For convergence failures, see analysis-patter.R
 # (That code must be run on machine where output files live)
 # it <- iteration[individual_id == 26 & sensitivity == "best", ] # simulation 
 
 #### Select individuals (real)
-# it <- iteration[individual_id == 24352 & time_id == as.POSIXct("2017-05-01 00:00:00") & sensitivity == "best", ]
-# it <- iteration[individual_id == 24329 & time_id == as.POSIXct("2017-03-01 00:00:00") & sensitivity == "best", ]
-# it <- iteration[individual_id == 24331 & time_id == as.POSIXct("2016-03-01 00:00:00") & sensitivity == "best", ] 
-# it <- iteration[individual_id == 24333 & time_id == as.POSIXct("2016-02-01 00:00:00") & sensitivity == "best", ] 
-# it <- iteration[individual_id == 24352 & time_id == as.POSIXct("2015-03-01 00:00:00") & sensitivity == "best", ] 
-it <- iteration[individual_id == 24321 & time_id == as.POSIXct("2016-10-01 00:00:00") & sensitivity == "best", ]; it$index
-# it <- iteration[individual_id == 24352 & time_id == as.POSIXct("2016-05-01 00:00:00") & sensitivity == "best", ]; it$index
-# it <- iteration[individual_id == 24352 & time_id == as.POSIXct("2016-06-01 00:00:00") & sensitivity == "best", ]; it$index
-# it <- iteration[individual_id == 24370 & time_id == as.POSIXct("2015-05-01 00:00:00") & sensitivity == "best", ]; it$index 
-# it <- iteration[individual_id == 24387 & time_id == as.POSIXct("2015-04-01 00:00:00") & sensitivity == "best", ]; it$index
-# it <- iteration[individual_id == 26805 & time_id == as.POSIXct("2016-04-01 00:00:00") & sensitivity == "best", ]; it$index
+it <- iteration[individual_id == 24325 & time_id == as.POSIXct("2016-03-01 00:00:00") & sensitivity == "best", ]; it$index
 
 #### Read individual-specific data
 timeline       <- arrow::read_feather(it$file_timeline)
@@ -105,6 +103,17 @@ model_move
 yobs <- list(ModelObsAcousticLogisTruncLos = copy(acoustics), 
              ModelObsContainer = NULL)
 
+#### Define starting locations for forward filter)
+# ~03:33 mins, 24325, 2016-03-01, best
+pinit <- pf_filter_fwd_xinit(iter       = it, 
+                             map        = map, 
+                             timeline   = timeline, 
+                             acoustics  = acoustics, 
+                             model_move = model_move)
+xinit <- pinit$xinit
+terra::plot(map)
+points(xinit$x, xinit$y, pch = ".")
+
 #### Run filter 
 # Define direction & update yobs 
 direction <- "forward"
@@ -122,16 +131,22 @@ if (direction == "forward") {
 }
 # Define arguments
 pargs <- list(.timeline   = timeline,
+              .xinit      = xinit,
               .state      = state,
               .model_move = model_move,
               .yobs       = yobs,
-              .n_move     = 1000L,
-              .n_particle = 50000L,
-              .n_resample = 10000,
+              .n_move     = it$n_move,
+              .n_particle = it$n_particle_filter,
+              .n_resample = it$n_resample,
               .n_record   = it$n_particle_smoother,
               .direction  = direction)
 # Run filter
 pout <- do.call(pf_filter, pargs, quote = TRUE)
+
+#### Timings
+# 24325, 2016-03-01, best:
+# 0:16:45, default initialisation
+# 0:21:32, new initialisation & optimisation (!)
 
 #### Record
 # see debug-by-individual.txt
@@ -146,7 +161,7 @@ pout <- do.call(pf_filter, pargs, quote = TRUE)
 # * NB: Running this for a few steps with .cl = 1L seems to suppress a segmentation
 #   fault when it then run in parallel for a larger time series below.
 #   If you jump to the parallel version, it can throw a segmentation fault
-steps <- 1:5017
+steps <- 1:5000
 tnow <- as.numeric(Sys.time())
 animate_ac(.iter   = it,
            .map    = map,
