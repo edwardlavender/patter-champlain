@@ -8,13 +8,13 @@ using LogExpFunctions: logistic, log1pexp
 los_map = GeoArrays.read(joinpath("data", "input", "map.tif"));
 
 # Identify whether two points are connected by a direct line of sight (true/false)
-# * Draw a linear line with n points between the two locations
-# * Lookup values on the map
-# * If any NaN values, line of sight is 0.0; otherwise 1.0
-function in_line_of_sight(env::GeoArrays.GeoArray, x0::Real, y0::Real, x1::Real, y1::Real, n::Int=5)
-    xs = range(x0, x1, length=n)
-    ys = range(y0, y1, length=n)
-    !any(isnan.([Patter.extract(env, xs[i], ys[i]) for i in eachindex(xs)])) + 0.0
+# * Draw a linear line with 3 points between the two locations
+# * Lookup middle value on the map
+# * If NaN value, line of sight is 0.0; otherwise 1.0
+function in_line_of_sight(env::GeoArrays.GeoArray, x0::Float64, y0::Float64, x1::Float64, y1::Float64)
+    xm = (x0 + x1) * 0.5
+    ym = (y0 + y1) * 0.5
+    !isnan(Patter.extract(env, xm, ym))
 end
 
 # Define ModelObsAcousticLogisTrunc accounting for line of sight (Los) 
@@ -36,21 +36,23 @@ function Patter.logpdf_obs(state::State, model_obs::ModelObsAcousticLogisTruncLo
     dist = distance(state.x, state.y, model_obs.receiver_x, model_obs.receiver_y)
 
     # Evaluate line of sight, if needed
-    los = 1.0
-    if dist < model_obs.receiver_gamma
-        los = in_line_of_sight(env, state.x, state.y, model_obs.receiver_x, model_obs.receiver_y)
-    end 
+    # For speed, we only implement this if obs == 1
+    # if dist <= model_obs.receiver_gamma
+    #     los = in_line_of_sight(env, state.x, state.y, model_obs.receiver_x, model_obs.receiver_y)
+    # end 
 
     # Compute log probability 
     η = model_obs.receiver_alpha + model_obs.receiver_beta * dist
     if obs == 1
-        if dist > model_obs.receiver_gamma || los == 0.0
+        if dist > model_obs.receiver_gamma # || los == false
             return -Inf
-        else
+        elseif in_line_of_sight(env, state.x, state.y, model_obs.receiver_x, model_obs.receiver_y)
             return -log1pexp(-η)
-        end
+        else
+            return -Inf
+        end 
     elseif obs == 0
-        if dist > model_obs.receiver_gamma || los == 0.0
+        if dist > model_obs.receiver_gamma # || los == false
             return 0.0
         else
             return -log1pexp(η)
