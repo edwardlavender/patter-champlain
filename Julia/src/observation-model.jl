@@ -11,7 +11,7 @@ los_map = GeoArrays.read(joinpath("data", "input", "map.tif"));
 # * Draw a linear line with 3 points between the two locations
 # * Lookup middle value on the map
 # * If NaN value, line of sight is 0.0; otherwise 1.0
-function in_line_of_sight(env::GeoArrays.GeoArray, x0::Float64, y0::Float64, x1::Float64, y1::Float64)
+function in_line_of_sight(env::GeoArrays.GeoArray, x0::Float64, y0::Float64, x1::Float64, y1::Float64)::Bool
     xm = (x0 + x1) * 0.5
     ym = (y0 + y1) * 0.5
     !isnan(Patter.extract(env, xm, ym))
@@ -36,30 +36,26 @@ function Patter.logpdf_obs(state::State, model_obs::ModelObsAcousticLogisTruncLo
     dist = distance(state.x, state.y, model_obs.receiver_x, model_obs.receiver_y)
 
     # Evaluate line of sight, if needed
-    # For speed, we only implement this if obs == 1
-    # if dist <= model_obs.receiver_gamma
-    #     los = in_line_of_sight(env, state.x, state.y, model_obs.receiver_x, model_obs.receiver_y)
-    # end 
+    # (Implementing this when obs == 1 does not seem to boost speed)
+    if dist <= model_obs.receiver_gamma
+        los = in_line_of_sight(env, state.x, state.y, model_obs.receiver_x, model_obs.receiver_y)
+    end 
 
     # Compute log probability 
     η = model_obs.receiver_alpha + model_obs.receiver_beta * dist
     if obs == 1
-        if dist > model_obs.receiver_gamma # || los == false
+        if dist > model_obs.receiver_gamma  || los == false
             return -Inf
-        elseif in_line_of_sight(env, state.x, state.y, model_obs.receiver_x, model_obs.receiver_y)
+        else 
             return -log1pexp(-η)
-        else
-            return -Inf
         end 
     elseif obs == 0
-        if dist > model_obs.receiver_gamma # || los == false
+        if dist > model_obs.receiver_gamma || los == false
             return 0.0
         else
             return -log1pexp(η)
         end
-    else
-        error("Acoustic observations should be coded as 0 or 1.")
-    end
+    end 
 
 end
 
