@@ -48,8 +48,13 @@ function initialise_forward_filter(iter, env_init, timeline, state, model_move, 
                                     1000)
         env0       = Rasters.mask(env_init, with = container0)
 
-        # Define initial states
+        # Define initial states, accounting for line of sight 
         coord0 = Patter.spatSample(x = env0, size = iter.n_particle_filter, drop_missing = true)
+        los    = [in_line_of_sight(env, detection0.receiver_x, detection0.receiver_y, coord0.x[i], coord0.y[i] for i in eachindex(coord0))]
+        coord0 = coord0[los .== true, :]
+        if nrow(coord0) != iter.n_particle_filter
+            coord0 = coord0[sample(1:nrow(coord0), iter.n_particle_filter, replace = true), :]
+        end
         (nrow(coord0) == iter.n_particle_filter) || error("coord0 does not contain iter.n_particle_filter rows!")
         xinit0 = Patter.states_init(StateCXY, coord0)
         xinit0 = Patter.julia_get_xinit(StateCXY, xinit0)
@@ -61,6 +66,7 @@ function initialise_forward_filter(iter, env_init, timeline, state, model_move, 
                                             model_obs_types = [ModelObsAcousticLogisTruncLos])
 
         # Define batches
+        # TO DO IMPROVE as we record iter.n_particle_filter not iter.n_particle_smoother!
         n_batch0     = ceil(Int, length(timeline0) / ceil(Int, length(timeline) / iter.n_batch))
         bwd_batches0 = [joinpath(iter.folder_output, "bwd0-$i.jld2") for i in 1:n_batch0]
 
