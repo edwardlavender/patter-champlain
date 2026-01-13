@@ -54,6 +54,7 @@ iteration = iteration[iteration.sensitivity .== "best", :];
 iteration.n_move              = Int.(iteration.n_move);
 iteration.n_resample          = Float64.(iteration.n_resample);
 iteration.n_particle_filter   = Int.(iteration.n_particle_filter);
+iteration.n_particle_smoother = Int.(iteration.n_particle_smoother);
 # Select row 
 if isinteractive()
     row = 1
