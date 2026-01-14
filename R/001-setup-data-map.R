@@ -32,6 +32,7 @@ files_source_r(here_src())
 
 #### Load data 
 champlain  <- terra::vect(here_data_raw_mf("ChamplainRegionsGrouped/ChamplainRegionsGrouped.shp"))
+moorings   <- readRDS(here_data_raw_mf("OriginalReceiverSummary_2013-2017.rds"))
 
 
 ###########################
@@ -179,6 +180,42 @@ regions_cs <- tibble::tribble(
   as.data.table()
 
 qs::qsave(regions_cs, here_input("regions-colour-scheme.qs"))
+
+
+###########################
+###########################
+#### Explore acoustic containers
+
+#### Overview
+# To perform inference with patter for trout location, we use acoustic containers
+# To optimise the use of containers, we can make them a bit smaller than the default size
+# The code below plots the size of the study area to identify a suitable container size
+
+# Define map boundary box
+bb <- patter:::map_bbox(map)
+
+# Define map centroid
+centroid <- cbind(mean(c(min(bb[, 1]), max(bb[, 1]))), 
+                  mean(c(min(bb[, 2]), max(bb[, 2]))))
+
+
+# Compute max. distance from centroid to edge of map: 118211.8 m
+(dist_from_centroid <- max(terra::distance(bb, centroid, lonlat = FALSE)))
+
+# Choose threshold for acoustic containers: 44159.98
+(threshold <- dist_from_centroid * 0.5)
+
+# Plot map with centroid & threshold container
+terra::plot(map)
+centroid |> 
+  terra::vect(crs = terra::crs(map)) |> 
+  terra::buffer(width = threshold) |> 
+  terra::plot(col = scales::alpha("red", 0.25), add = TRUE)
+cbind(moorings$deploy_long, moorings$deploy_lat) |> 
+  terra::vect(crs = "WGS84") |> 
+  terra::project(epsg_utm) |> 
+  terra::points()
+points(centroid, col = "blue", lwd = 2)
 
 
 #### End of code. 
