@@ -272,6 +272,8 @@ iteration <-
     file_acoustics        = file.path(folder_input, "acoustics.feather"),
     file_containers_fwd   = file.path(folder_input, "containers-fwd.feather"),
     file_containers_bwd   = file.path(folder_input, "containers-bwd.feather"),
+    file_t_resample_fwd   = file.path(folder_input, "t-resample-fwd.feather"),
+    file_t_resample_bwd   = file.path(folder_input, "t-resample-bwd.feather"),
     file_vmap             = file.path("data", "input", "vmap", as.integer(mobility), "vmap.tif"),
     # Define  output files (unit-specific & sensitivity specific)
     # * We use .feather to record outputs
@@ -297,9 +299,9 @@ iteration <-
     # Add modelling columns
     # NB: n_batch must be <= 9L due to a bug in Patter.jl
     n_move              = 1000L,
-    n_particle_filter   = ifelse(analysis == "sim", 25000L, 50000L), 
+    n_particle_filter   = ifelse(analysis == "sim", 10000L, 20000L), 
     n_particle_smoother = ifelse(analysis == "sim", 1500L, 2000L),
-    n_resample          = as.numeric(5000),
+    n_resample          = as.numeric(1000.0),
     n_batch             = 9L
   ) |> 
   as.data.table()
@@ -392,14 +394,30 @@ if (!file.exists(iteration$file_timeline[1]) | overwrite) {
       write_feather_compressed(accs, d$file_acoustics)
       
       ## Define acoustic containers (file_containers_fwd, file_containers_bwd)
+      # To optimise the use of acoustic containers:
+      # - We use a threshold that is slightly below the default
+      # - See setup-data-map.R
+      threshold  <- 44159.98
       containers <- assemble_acoustics_containers(.timeline = timeline$timestamp, 
                                                   .acoustics = accs,
                                                   .mobility = d$mobility, 
-                                                  .map = .map)
+                                                  .map = NULL, 
+                                                  .threshold = threshold)
       containers_fwd <- containers$forward
       containers_bwd <- containers$backward
       write_feather_compressed(containers_fwd, d$file_containers_fwd)
       write_feather_compressed(containers_bwd, d$file_containers_bwd)
+      stopifnot(max(c(containers_fwd$radius, containers_bwd$radius)) <= threshold)
+      
+      #### Define t_resample
+      t_resample_fwd <- 
+        data.table(timestep = sort(unique(which(timeline$timestamp %in% 
+                                                  containers_fwd$timestamp))))
+      t_resample_bwd <- 
+        data.table(timestep = sort(unique(which(timeline$timestamp %in% 
+                                                  containers_bwd$timestamp))))
+      write_feather_compressed(t_resample_fwd, d$file_t_resample_fwd)
+      write_feather_compressed(t_resample_bwd, d$file_t_resample_bwd)
       
       ## Define file_occupancy_sim and file_residency_sim
       if (analysis == "sim") {
