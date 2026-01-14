@@ -115,6 +115,9 @@ timeline           = timeline.timestamp
 acoustics      = DataFrame(Arrow.Table(iter.file_acoustics))
 containers_fwd = DataFrame(Arrow.Table(iter.file_containers_fwd))
 
+#### Load ancillary files
+t_resample_fwd = DataFrame(Arrow.Table(iter.file_t_resample_fwd))
+
 #### Process columns
 # Timestamps
 acoustics.timestamp      = DateTime.(acoustics.timestamp);
@@ -133,6 +136,8 @@ containers_fwd.sensor_id  = Int.(containers_fwd.sensor_id);
 containers_fwd.centroid_x = Float64.(containers_fwd.centroid_x);
 containers_fwd.centroid_y = Float64.(containers_fwd.centroid_y);
 containers_fwd.radius     = Float64.(containers_fwd.radius);
+# t_resample vectors
+t_resample_fwd            = Int.(t_resample_fwd.timestep);
 
 #### Assemble datasets 
 # Collate datasets & associated `ModelObs` instances into a typed dictionary 
@@ -163,6 +168,7 @@ fwd = particle_filter(timeline   = timeline,
                       model_move = model_move,
                       n_move     = iter.n_move,
                       n_resample = iter.n_resample,
+                      t_resample = t_resample,
                       n_record   = 1,
                       direction  = "forward", 
                       progress   = Patter.progress_control(enabled = isinteractive()),

@@ -117,6 +117,10 @@ acoustics      = DataFrame(Arrow.Table(iter.file_acoustics))
 containers_fwd = DataFrame(Arrow.Table(iter.file_containers_fwd))
 containers_bwd = DataFrame(Arrow.Table(iter.file_containers_bwd))
 
+#### Load ancillary files
+t_resample_fwd = DataFrame(Arrow.Table(iter.file_t_resample_fwd))
+t_resample_bwd = DataFrame(Arrow.Table(iter.file_t_resample_bwd))
+
 #### Process columns
 # Timestamps
 acoustics.timestamp      = DateTime.(acoustics.timestamp);
@@ -142,6 +146,9 @@ containers_bwd.sensor_id  = Int.(containers_bwd.sensor_id);
 containers_bwd.centroid_x = Float64.(containers_bwd.centroid_x);
 containers_bwd.centroid_y = Float64.(containers_bwd.centroid_y);
 containers_bwd.radius     = Float64.(containers_bwd.radius);
+# t_resample vectors
+t_resample_fwd            = Int.(t_resample_fwd.timestep);
+t_resample_bwd            = Int.(t_resample_bwd.timestep);
 # # > This is necessary to avoid issues with data imported via Arrow
 # > This is not necessary for data imported from CSV
 
@@ -193,6 +200,7 @@ fwd = particle_filter(timeline   = timeline,
                       model_move = model_move,
                       n_move     = iter.n_move,
                       n_resample = iter.n_resample,
+                      t_resample = t_resample_fwd,
                       n_record   = iter.n_particle_smoother,
                       direction  = "forward", 
                       batch      = fwd_batches,
@@ -230,6 +238,7 @@ if convergence
                         model_move = model_move,
                         n_move     = iter.n_move,
                         n_resample = iter.n_resample,
+                        t_resample = t_resample_bwd,
                         n_record   = iter.n_particle_smoother,
                         direction  = "backward", 
                         batch      = bwd_batches,
