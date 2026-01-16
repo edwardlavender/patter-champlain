@@ -77,7 +77,9 @@ if (FALSE) {
     rbindlist()
   
   #### Check computation time
-  # Estimate total time (minutes) shared across n_cpu
+  # Estimate average run time  (mins)
+  utils.add::basic_stats(callstats$time / 60)
+  # Estimate total time (mins) shared across n_cpu
   n_cpu <- 100L
   sum(callstats$time) / 60 / n_cpu 
   
