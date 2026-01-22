@@ -23,6 +23,7 @@ Sys.setenv("JULIA_SESSION" = FALSE)
 library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
+library(leaflet)
 library(proj.verse)
 library(rnaturalearth)
 library(sf)
@@ -38,6 +39,15 @@ moorings   <- readRDS(here_data_raw_mf("OriginalReceiverSummary_2013-2017.rds"))
 ###########################
 ###########################
 #### Define study area (~2 s)
+
+#### Visualise study area
+# The quality of the champlain shapefile is very high
+leaflet() |>
+  addProviderTiles(providers$Esri.WorldImagery) |>
+  addPolygons(data        = champlain,
+              color       = "red",
+              weight      = 3,
+              fillOpacity = 0)
 
 #### Define UTM SpatVector
 # NB: as.numeric(1) is needed for Patter.particle_filter()
@@ -68,6 +78,14 @@ map_zoom <- terra::crop(map,
                           terra::ext())
 terra::plot(map_zoom)
 terra::lines(champlain_utm)
+# As above, interactively
+leaflet() |>
+  addProviderTiles(providers$Esri.WorldImagery) |>
+  addPolygons(data        = champlain,
+              color       = "red",
+              weight      = 3,
+              fillOpacity = 0) |> 
+  addRasterImage(terra::project(map, "WGS84"), opacity = 0.7) 
 # Check ncell & compare to dat_gebco() for reference
 terra::ncell(map)                  # 107625
 terra::ncell(patter::dat_gebco())  # 50160
