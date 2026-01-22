@@ -44,6 +44,7 @@ subanalysis = "main"
 env       = GeoArrays.read(joinpath("data", "input", "map.tif"));
 env_init  = Patter.rast(joinpath("data", "input", "map.tif"));
 iteration = DataFrame(Arrow.Table(joinpath("data", "input", analysis, subanalysis, "iteration.feather")))
+iteration = iteration[iteration.sensitivity .== "best", :]
 # iteration = iteration[iteration.index .∈ Ref([7, 13, 14, 119, 133, 140, 147, 161, 166, 168, 176, 178, 179, 182, 195, 196]), :];
 
 #### Select iteration 
@@ -52,6 +53,7 @@ iteration.n_move              = Int.(iteration.n_move);
 iteration.n_resample          = Float64.(iteration.n_resample);
 iteration.n_particle_filter   = Int.(iteration.n_particle_filter);
 iteration.n_particle_smoother = Int.(iteration.n_particle_smoother);
+# iteration.n_move .= 30; iteration.n_particle_filter   .= 5000; iteration.n_particle_smoother .= 100;
 
 # Select row 
 if isinteractive()
