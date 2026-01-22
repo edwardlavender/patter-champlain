@@ -83,7 +83,7 @@ terra::sbar(2000)
 # it <- iteration[individual_id == 26 & sensitivity == "best", ] # simulation 
 
 #### Select individuals (real)
-it <- iteration[individual_id == 24371 & time_id == as.POSIXct("2016-03-01 00:00:00") & sensitivity == "best", ]; it$index
+it <- iteration[individual_id == 24385 & time_id == as.POSIXct("2017-05-01 00:00:00") & sensitivity == "best", ]; it$index
 it$n_particle_filter <- 20000L
 
 #### Read individual-specific data
@@ -103,11 +103,16 @@ model_move
 # (Containers are added below)
 if (TRUE) {
   dist <- 1:7000
-  plot(dist, plogis(1.205216 - 0.001672085 * dist), type = "l") # coef(models[["F151"]][["GLM"]])
-  lines(dist, plogis(0.635159329 - 0.002724118 * dist))         # coef(models[["F146"]][["GLM"]])
-  lines(dist, plogis(0.9039122 - 0.002090107 * dist))           # formerly 'restrictive' model between F146 & F151
-  acoustics[, receiver_alpha := 0.9039122]
-  acoustics[, receiver_beta := -0.002090107]
+  plot(dist, plogis(1.205216 - 0.001672085 * dist), type = "l", col = "green") # coef(models[["F151"]][["GLM"]])
+  lines(dist, plogis(0.635159329 - 0.002724118 * dist), col = "darkred")       # coef(models[["F146"]][["GLM"]])
+  lines(dist, plogis(0.9039122 - 0.002090107 * dist), col = "red")             # formerly 'restrictive' model between F146 & F151
+  lines(dist, plogis(0.9201876645 - 0.0021981015 * dist))                      # midpoint between F141 and F146
+  lines(dist, plogis(1.205216 * 0.25 +  0.635159329 * 0.75 
+                     - (0.001672085 * 0.25 + 0.002724118 * 0.75) * dist))
+  acoustics[, receiver_alpha := 1.205216 * 0.25 +  0.635159329 * 0.75]
+  acoustics[, receiver_beta := -(0.001672085 * 0.25 + 0.002724118 * 0.75)]
+  # acoustics[, receiver_alpha := 0.9039122]
+  # acoustics[, receiver_beta := -0.002090107]
 }
 yobs <- list(ModelObsAcousticLogisTruncLos = copy(acoustics), 
              ModelObsContainer = NULL)
@@ -146,8 +151,8 @@ pargs <- list(.timeline   = timeline,
               .yobs       = yobs,
               .n_move     = it$n_move,
               .n_particle = it$n_particle_filter,
-              .n_resample = it$n_resample, # 1000L, 
-              .t_resample = NULL, # sort(unique(which(timeline %in% yobs$ModelObsContainer$timestamp))),
+              .n_resample = it$n_resample, 
+              .t_resample = sort(unique(which(timeline %in% yobs$ModelObsContainer$timestamp))),
               .n_record   = it$n_particle_smoother,
               .direction  = direction)
 # Run filter
@@ -174,8 +179,8 @@ pout <- do.call(pf_filter, pargs, quote = TRUE)
 
 #### Define steps
 # Define focal region
-start <- 9000L
-focal <- 10000:13000 # 11920 
+start <- 15000
+focal <- 18000:20533 # 11920 
 # Define steps, using low resolution before focal region for speed
 # (while including all relevant detection container time steps)
 steps <- sort(unique(c(seq(start, min(focal) - 1, by = 10), 
