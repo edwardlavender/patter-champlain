@@ -80,8 +80,8 @@ terra::sbar(2000)
 # it <- iteration[individual_id == 26 & sensitivity == "best", ] # simulation 
 
 #### Select individuals (real)
-it <- iteration[individual_id == 24386 & time_id == as.POSIXct("2016-11-01 00:00:00", tz = "UTC") & sensitivity == "best", ]; it$index
-# it$n_particle_filter <- 5000L
+it <- iteration[individual_id == 26808 & time_id == as.POSIXct("2016-05-01 00:00:00", tz = "UTC") & sensitivity == "best", ]; it$index
+# it$n_particle_filter <- 2000L
 
 #### Read individual-specific data
 timeline       <- arrow::read_feather(it$file_timeline)
@@ -177,8 +177,8 @@ try(beepr::beep(10), silent = TRUE)
 
 #### Define steps
 # Define focal region
-start <- 5000
-focal <- 10000:13484 # 21246 
+start <- 1
+focal <- 1:22320 # 21246 
 length(timeline)
 # Define steps, using low resolution before focal region for speed
 # (while including all relevant detection container time steps)
