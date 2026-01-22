@@ -214,6 +214,19 @@ diagnostics |>
   summarise(prop = length(which(!is.na(ess))) / n())
 
 #### Define convergence 
+# Defile pass_filter_fwd, pass_filter_bwd
+convergence_filter <- 
+  callstats |>
+  select(index, routine, convergence) |>
+  filter(routine %in% c("filter: forward", "filter: backward")) |>
+  mutate(routine = recode(routine,
+                          "filter: forward"  = "pass_filter_fwd",
+                          "filter: backward" = "pass_filter_bwd")) |>
+  tidyr::pivot_wider(names_from  = routine,
+                     values_from = convergence) |>
+  mutate(across(starts_with("pass_filter_"), ~ tidyr::replace_na(.x, FALSE))) |>
+  as.data.table()
+# Collect pass_filter_bwd, pass_filter_bwd and pass_smoother
 convergence <- 
   diagnostics |> 
   lazy_dt() |> 
@@ -231,6 +244,8 @@ convergence <-
               pull(prop)
   ) |> 
   mutate(success = pass_filter & (pass_smoother >= 0.75)) |> 
+  left_join(convergence_filter, by = "index") |> 
+  select("index", "pass_filter_fwd", "pass_filter_bwd", "pass_filter", "pass_smoother", "success") |> 
   left_join(iteration[, .(index, individual_id, time_id, sensitivity)], by = "index") |> 
   as.data.table()
 
@@ -267,28 +282,28 @@ utils.add::basic_stats(convergence$pass_smoother[convergence$success], na.rm = T
 # 17:   196       FALSE           NaN   FALSE            28 2025-01-01       ac(+)
 
 ## real:
-# index pass_filter pass_smoother success individual_id    time_id sensitivity
-# <int>      <lgcl>         <num>  <lgcl>         <int>     <POSc>      <char>
-#   1:   421       FALSE           NaN   FALSE         24334 2015-05-01        best
-# 2:   442        TRUE     0.6628352   FALSE         24334 2016-02-01        best
-# 3:   596       FALSE           NaN   FALSE         24339 2016-11-01        best
-# 4:   603       FALSE           NaN   FALSE         24339 2017-05-01        best
-# 5:   988       FALSE           NaN   FALSE         24352 2016-05-01        best
-# 6:  1331        TRUE     0.6094982   FALSE         24370 2017-05-01        best
-# 7:  1513       FALSE           NaN   FALSE         24378 2015-05-01        best
-# 8:  1534       FALSE           NaN   FALSE         24378 2016-11-01        best
-# 9:  1541       FALSE           NaN   FALSE         24380 2015-05-01        best
-# 10:  1555       FALSE           NaN   FALSE         24380 2015-11-01        best
-# 11:  1646       FALSE           NaN   FALSE         24383 2017-02-01        best
-# 12:  1716       FALSE           NaN   FALSE         24385 2016-05-01        best
-# 13:  1779       FALSE           NaN   FALSE         24385 2017-05-01        best
-# 14:  1786       FALSE           NaN   FALSE         24386 2015-10-01        best
-# 15:  1814       FALSE           NaN   FALSE         24386 2016-11-01        best
-# 16:  1898       FALSE           NaN   FALSE         24387 2017-06-01        best
-# 17:  2087       FALSE           NaN   FALSE         24393 2015-11-01        best
-# 18:  2262       FALSE           NaN   FALSE         26792 2015-05-01        best
-# 19:  2416       FALSE           NaN   FALSE         26803 2015-06-01        best
-# 20:  2549       FALSE           NaN   FALSE         26808 2016-05-01        best
+# index pass_filter_fwd pass_filter_bwd pass_filter pass_smoother success individual_id    time_id sensitivity
+# <int>          <lgcl>          <lgcl>      <lgcl>         <num>  <lgcl>         <int>     <POSc>      <char>
+# 1:   421            TRUE           FALSE       FALSE           NaN   FALSE         24334 2015-05-01        best
+# 2:   442            TRUE            TRUE        TRUE     0.6628352   FALSE         24334 2016-02-01        best
+# 3:   596           FALSE           FALSE       FALSE           NaN   FALSE         24339 2016-11-01        best
+# 4:   603           FALSE           FALSE       FALSE           NaN   FALSE         24339 2017-05-01        best
+# 5:   988            TRUE           FALSE       FALSE           NaN   FALSE         24352 2016-05-01        best
+# 6:  1331            TRUE            TRUE        TRUE     0.6094982   FALSE         24370 2017-05-01        best
+# 7:  1513           FALSE           FALSE       FALSE           NaN   FALSE         24378 2015-05-01        best
+# 8:  1534           FALSE           FALSE       FALSE           NaN   FALSE         24378 2016-11-01        best
+# 9:  1541           FALSE           FALSE       FALSE           NaN   FALSE         24380 2015-05-01        best
+# 10:  1555            TRUE           FALSE       FALSE           NaN   FALSE         24380 2015-11-01        best
+# 11:  1646           FALSE           FALSE       FALSE           NaN   FALSE         24383 2017-02-01        best
+# 12:  1716           FALSE           FALSE       FALSE           NaN   FALSE         24385 2016-05-01        best
+# 13:  1779           FALSE           FALSE       FALSE           NaN   FALSE         24385 2017-05-01        best
+# 14:  1786            TRUE           FALSE       FALSE           NaN   FALSE         24386 2015-10-01        best
+# 15:  1814           FALSE           FALSE       FALSE           NaN   FALSE         24386 2016-11-01        best
+# 16:  1898           FALSE           FALSE       FALSE           NaN   FALSE         24387 2017-06-01        best
+# 17:  2087           FALSE           FALSE       FALSE           NaN   FALSE         24393 2015-11-01        best
+# 18:  2262           FALSE           FALSE       FALSE           NaN   FALSE         26792 2015-05-01        best
+# 19:  2416           FALSE           FALSE       FALSE           NaN   FALSE         26803 2015-06-01        best
+# 20:  2549           FALSE           FALSE       FALSE           NaN   FALSE         26808 2016-05-01        best
 
 #### Examine convergence failures
 # We know from setup-data-detection.R that there are some unlikely transitions 
