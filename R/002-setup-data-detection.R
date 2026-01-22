@@ -498,22 +498,19 @@ leaflet() |>
   addPolygons(
     data = containers_ll,
     fillOpacity = 0.2,
-    weight = 1
-  ) |>
+    weight = 1) |>
   addCircleMarkers(
     data = moorings_real_ll,
     radius = 4,
     stroke = FALSE,
-    fillOpacity = 1
-  ) |>
+    fillOpacity = 1) |>
   addLabelOnlyMarkers(
     data = stations_ll,
     label = ~receiver_station,
-    labelOptions = labelOptions(noHide = TRUE, direction = "top", textOnly = TRUE)
-  )
+    labelOptions = labelOptions(noHide = TRUE, direction = "top", textOnly = TRUE))
 
 #### Station structure
-# Wallon/Split Rock (northern end of southern area of Lake)
+# Whallon/Split Rock (northern end of southern area of Lake)
 # Arnold West/Arnold Central/Arnold East receiver gate (further south)
 # Crown Point (southernmost receiver)
 
@@ -615,6 +612,12 @@ detections_transitions |>
 # 4:         24339 2016-12-02 08:53:33 2016-12-01      Arnold East                Saxton
 # 5:         24385 2017-05-23 17:36:23 2017-05-01   Arnold Central            Burlington
 # 6:         24321 2017-06-07 11:11:40 2017-06-01   Arnold Central              Schuyler
+
+# There are some movements from Whallon -> Arnold without detection on Split Rock which may be problematic
+detections_transitions |> 
+  filter((receiver_station %in% c("Whallon") & 
+            (receiver_station_next %in% c("Arnold West", "Arnold Central", "Arnold East")))) |> 
+  arrange(individual_id, time_id)
 
 #### Drop receiver_station
 detections[, receiver_station := NULL]
