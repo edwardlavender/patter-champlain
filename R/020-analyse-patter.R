@@ -244,6 +244,7 @@ utils.add::basic_stats(convergence$pass_smoother, na.rm = TRUE)
 utils.add::basic_stats(convergence$pass_smoother[convergence$success], na.rm = TRUE)
 
 #### Review convergence failures
+
 ## sim:
 # index pass_filter pass_smoother success individual_id    time_id sensitivity
 # <int>      <lgcl>         <num>  <lgcl>         <int>     <POSc>      <char>
@@ -264,6 +265,42 @@ utils.add::basic_stats(convergence$pass_smoother[convergence$success], na.rm = T
 # 15:   182       FALSE           NaN   FALSE            26 2025-01-01       ac(+)
 # 16:   195       FALSE           NaN   FALSE            28 2025-01-01       ac(-)
 # 17:   196       FALSE           NaN   FALSE            28 2025-01-01       ac(+)
+
+## real:
+# index pass_filter pass_smoother success individual_id    time_id sensitivity
+# <int>      <lgcl>         <num>  <lgcl>         <int>     <POSc>      <char>
+#   1:   421       FALSE           NaN   FALSE         24334 2015-05-01        best
+# 2:   442        TRUE     0.6628352   FALSE         24334 2016-02-01        best
+# 3:   596       FALSE           NaN   FALSE         24339 2016-11-01        best
+# 4:   603       FALSE           NaN   FALSE         24339 2017-05-01        best
+# 5:   988       FALSE           NaN   FALSE         24352 2016-05-01        best
+# 6:  1331        TRUE     0.6094982   FALSE         24370 2017-05-01        best
+# 7:  1513       FALSE           NaN   FALSE         24378 2015-05-01        best
+# 8:  1534       FALSE           NaN   FALSE         24378 2016-11-01        best
+# 9:  1541       FALSE           NaN   FALSE         24380 2015-05-01        best
+# 10:  1555       FALSE           NaN   FALSE         24380 2015-11-01        best
+# 11:  1646       FALSE           NaN   FALSE         24383 2017-02-01        best
+# 12:  1716       FALSE           NaN   FALSE         24385 2016-05-01        best
+# 13:  1779       FALSE           NaN   FALSE         24385 2017-05-01        best
+# 14:  1786       FALSE           NaN   FALSE         24386 2015-10-01        best
+# 15:  1814       FALSE           NaN   FALSE         24386 2016-11-01        best
+# 16:  1898       FALSE           NaN   FALSE         24387 2017-06-01        best
+# 17:  2087       FALSE           NaN   FALSE         24393 2015-11-01        best
+# 18:  2262       FALSE           NaN   FALSE         26792 2015-05-01        best
+# 19:  2416       FALSE           NaN   FALSE         26803 2015-06-01        best
+# 20:  2549       FALSE           NaN   FALSE         26808 2016-05-01        best
+
+#### Examine convergence failures
+# We know from setup-data-detection.R that there are some unlikely transitions 
+# between receiver stations without detection. Do any of these account for the 
+# real convergence failures above? Only one!
+# For further examination, see refine-patter.R 
+iteration[individual_id == 24321 & time_id == as.POSIXct("2017-06-01 00:00:00", tz = "UTC"), ]
+iteration[individual_id == 24327 & time_id == as.POSIXct("2015-12-01 00:00:00", tz = "UTC"), ]
+iteration[individual_id == 24391 & time_id == as.POSIXct("2015-05-01 00:00:00", tz = "UTC"), ]
+iteration[individual_id == 24385 & time_id == as.POSIXct("2016-07-01 00:00:00", tz = "UTC"), ]
+iteration[individual_id == 24385 & time_id == as.POSIXct("2017-05-01 00:00:00", tz = "UTC"), ] # included
+iteration[individual_id == 24339 & time_id == as.POSIXct("2016-12-01 00:00:00", tz = "UTC"), ]
 
 #### Filter by convergence (for subsequent steps)
 # Get successful indices
