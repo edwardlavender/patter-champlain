@@ -55,10 +55,7 @@ subanalysis <- "main"
 here_input_analysis <- switch_here_input_analysis_subanalysis(analysis, subanalysis)
 here_fig_analysis   <- switch_here_fig_analysis_subanalysis(analysis, subanalysis)
 iteration           <- qs::qread(here_input_analysis("iteration.qs"))
-if (analysis == "real") {
-  message("Using iteration-1.qs")
-  iteration <- qs::qread(here_input_analysis("iteration-1.qs"))
-}
+iteration           <- iteration[sensitivity == "best", ]
 
 
 ###########################
@@ -83,8 +80,8 @@ terra::sbar(2000)
 # it <- iteration[individual_id == 26 & sensitivity == "best", ] # simulation 
 
 #### Select individuals (real)
-it <- iteration[individual_id == 24385 & time_id == as.POSIXct("2017-05-01 00:00:00") & sensitivity == "best", ]; it$index
-it$n_particle_filter <- 20000L
+it <- iteration[individual_id == 24386 & time_id == as.POSIXct("2016-11-01 00:00:00", tz = "UTC") & sensitivity == "best", ]; it$index
+# it$n_particle_filter <- 5000L
 
 #### Read individual-specific data
 timeline       <- arrow::read_feather(it$file_timeline)
@@ -101,7 +98,7 @@ model_move
 
 #### Define observation(s) & observation model
 # (Containers are added below)
-if (TRUE) {
+if (FALSE) {
   dist <- 1:7000
   plot(dist, plogis(1.205216 - 0.001672085 * dist), type = "l", col = "green") # coef(models[["F151"]][["GLM"]])
   lines(dist, plogis(0.635159329 - 0.002724118 * dist), col = "darkred")       # coef(models[["F146"]][["GLM"]])
@@ -111,8 +108,8 @@ if (TRUE) {
                      - (0.001672085 * 0.25 + 0.002724118 * 0.75) * dist))
   acoustics[, receiver_alpha := 1.205216 * 0.25 +  0.635159329 * 0.75]
   acoustics[, receiver_beta := -(0.001672085 * 0.25 + 0.002724118 * 0.75)]
-  # acoustics[, receiver_alpha := 0.9039122]
-  # acoustics[, receiver_beta := -0.002090107]
+  # acoustics[, receiver_alpha := 0.635159329]
+  # acoustics[, receiver_beta := -0.002724118]
 }
 yobs <- list(ModelObsAcousticLogisTruncLos = copy(acoustics), 
              ModelObsContainer = NULL)
@@ -157,6 +154,7 @@ pargs <- list(.timeline   = timeline,
               .direction  = direction)
 # Run filter
 pout <- do.call(pf_filter, pargs, quote = TRUE)
+try(beepr::beep(10), silent = TRUE)
 
 #### Timings
 # 24325, 2016-03-01, best:
@@ -179,11 +177,16 @@ pout <- do.call(pf_filter, pargs, quote = TRUE)
 
 #### Define steps
 # Define focal region
-start <- 15000
-focal <- 18000:20533 # 11920 
+start <- 5000
+focal <- 10000:13484 # 21246 
+length(timeline)
 # Define steps, using low resolution before focal region for speed
 # (while including all relevant detection container time steps)
-steps <- sort(unique(c(seq(start, min(focal) - 1, by = 10), 
+beginning <- min(focal)
+if (start < min(focal)) {
+  beginning <- seq(start, min(focal) - 1, by = 10)
+}
+steps <- sort(unique(c(beginning,
                        focal, 
                        # which(timeline %in% yobs$ModelObsContainer$timestamp),
                        which(timeline %in% detections$timestamp)
