@@ -35,6 +35,7 @@ files_source_r(here_src())
 #### Load data
 map           <- terra::rast(here_input("map.tif"))
 champlain_utm <- qreadvect(here_input("champlain-utm.qs"))
+regions_cs    <- qs::qread(here_input("regions-colour-scheme.qs"))
 fish          <- qs::qread(here_input("fish.qs"))
 moorings      <- qs::qread(here_input_real("main", "moorings.qs"))
 iteration     <- qs::qread(here_input_real("main", "iteration.qs"))
@@ -79,7 +80,7 @@ map_dt <-
 #### Aggregate maps for each sensitivity/tagging location/season 
 # (~7 s for all 'best' maps)
 probs <- seq(0.05, 1, by = 0.05)
-pbapply::pblapply(split(map_dt, seq_len(nrow(map_dt))), function(dt) {
+cl_lapply(split(map_dt, seq_len(nrow(map_dt))), function(dt) {
   
   # dt <- map_dt[1, ]
   its <- iteration[sensitivity == dt$sensitivity & 
@@ -121,7 +122,7 @@ pbapply::pblapply(split(map_dt, seq_len(nrow(map_dt))), function(dt) {
   terra::writeRaster(occupancy_contours, dt$file_ud, overwrite = TRUE)
   nothing()
   
-}) |> invisible()
+})
 
 #### Visualise map for example individual (includes legend)
 # lapply_qplot_ud(map_dt, .n_plot = nrow(map_dt))
@@ -160,6 +161,61 @@ p <- ggmaps(.mapdt = map_dt,
             .moorings = moorings, .geom_moorings = list(size = 0.5, stroke = 0.5))
 print(p)
 dev.off()
+
+
+###########################
+###########################
+#### Residency 
+
+# This code plot the overall pattern of residency by population & season
+# See also Fig. 6 in Futia et al. (2024)
+
+#### Define residency
+residency <- 
+  cl_lapply(iteration$file_residency, qs::qread) |> 
+  rbindlist() |> 
+  mutate(site = fish$site[match(individual_id, fish$individual_id)], 
+         site = case_match(site, "Grand Isle" ~ "N", "Split Rock" ~ "S"), 
+         season = season(time_id)) |>
+  mutate(region = factor(region, levels = levels(regions_cs$region)), 
+         col = regions_cs$col[match(region, regions_cs$region)]) |> 
+  as.data.table()
+
+#### Plot the distribution of residencies in each region for the best analysis
+png(here_fig_real("main", "residency-best.png"), 
+    height = 8, width = 8, units = "in", res = 800)
+p <- 
+  residency |>
+  filter(sensitivity == "best") |> 
+  as_tibble() |> 
+  ggplot(aes(region, estimate, fill = I(col))) +
+  geom_boxplot(varwidth = TRUE) +
+  geom_jitter(size = 0.25, colour = "dimgrey", width = 0.1, height = 0) +
+  stat_summary(
+    fun.data = \(y) data.frame(
+      y = max(y, na.rm = TRUE),
+      label = sum(!is.na(y))
+    ),
+    geom = "text", vjust = -1, size = 3) +
+  scale_y_continuous(limits = c(0, 1),
+                     breaks = seq(0, 1, 0.2),
+                     expand = expansion(mult = c(0, 0))) +
+  coord_cartesian(ylim = c(0, 1.2), clip = "off") +
+  xlab("Region") +
+  ylab(expression("Residency")) +
+  facet_grid(season ~ site) +
+  theme_bw() +
+  theme(panel.grid.minor.y = element_blank(),
+        panel.grid.major.y = element_blank(),
+        axis.title.x = element_text(margin = margin(t = 10)),
+        axis.title.y = element_text(margin = margin(r = 10)),
+        axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+print(p)
+dev.off()
+
+#### As above for the sensitivity analysis
+# TO DO. 
 
 
 #### End of code. 
