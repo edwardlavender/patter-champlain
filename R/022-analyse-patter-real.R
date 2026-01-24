@@ -132,9 +132,11 @@ map_dt[1, ]
 occupancy_eg <- terra::rast(map_dt$file_ud[1])
 zlim <- c(0, length(probs))
 terra::plot(occupancy_eg, range = zlim, 
+            col = grDevices::terrain.colors(length(probs), rev = TRUE),
             plg = list(at = pretty(zlim),
                        labels = add_lagging_point_zero(pretty(zlim) / max(zlim))))
 terra::lines(champlain_utm)
+dev.off()
 
 #### Plot 'best' maps
 png(here_fig_real("main", "maps-best.png"), 
@@ -183,7 +185,7 @@ residency <-
 
 #### Plot the distribution of residencies in each region for the best analysis
 png(here_fig_real("main", "residency-best.png"), 
-    height = 8, width = 8, units = "in", res = 800)
+    height = 8, width = 6, units = "in", res = 800)
 p <- 
   residency |>
   filter(sensitivity == "best") |> 
