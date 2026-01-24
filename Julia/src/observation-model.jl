@@ -1,7 +1,8 @@
 import GeoArrays
+import Patter.distance
+
 using Distributions
 using Patter
-import Patter.distance
 using LogExpFunctions: logistic, log1pexp
 
 # Define line of sight map
@@ -41,8 +42,20 @@ function Patter.logpdf_obs(state::State, model_obs::ModelObsAcousticLogisTruncLo
         los = in_line_of_sight(env, state.x, state.y, model_obs.receiver_x, model_obs.receiver_y)
     end 
 
+    # Compute probability of detection
+    # - Allow the model to 'flicker' between the standard model and steeper model with low probability 
+    # - This model recognises that there are moments in time when detection probability is much lower
+    # - The properties of the steeper model are currently hard-coded (F146)
+    # - TO DO Review this in due course & align with sensitivity analysis, if needed
+    flicker = ifelse(rand() < 0.99, false, true)
+    if (flicker)
+         η = 0.635159329 + -0.002724118 * dist
+    else 
+        η = model_obs.receiver_alpha + model_obs.receiver_beta * dist
+    end 
+
     # Compute log probability 
-    η = model_obs.receiver_alpha + model_obs.receiver_beta * dist
+    # η = model_obs.receiver_alpha + model_obs.receiver_beta * dist
     if obs == 1
         if dist > model_obs.receiver_gamma  || los == false
             return -Inf
