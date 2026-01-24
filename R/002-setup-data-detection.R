@@ -120,6 +120,7 @@ fish <-
   group_by(animal_id) |> 
   summarise(individual_id = animal_id[1], 
             len = length[1] / 1000, 
+            site = cap_site[1],
             lat = deploy_lat[1], 
             lon = deploy_long[1],
             # Checks 
@@ -142,6 +143,12 @@ fish[, y := xy[, 2]]
 stopifnot(all(!is.na(terra::extract(map, xy)[, 1])))
 terra::plot(map)
 points(xy)
+# Check tagging sites
+table(fish$site)
+terra::plot(map)
+points(xy[fish$site == "Grand Isle", ])
+terra::plot(map)
+points(xy[fish$site == "Split Rock", ])
 # Check tagging dates
 # * Note that fish were tagged at different times
 # * If we analyse the data in blocks e.g., months, we need to account for this
@@ -160,7 +167,7 @@ stopifnot(all(fish$nlon == 1L))
 #### Clean up
 fish <- 
   fish |> 
-  select(individual_id, len, x, y, lon, lat) |> 
+  select(individual_id, len, site, x, y, lon, lat) |> 
   as.data.table()
 
 #### Comments
