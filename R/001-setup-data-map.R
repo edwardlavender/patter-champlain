@@ -51,9 +51,11 @@ leaflet() |>
 
 #### Define UTM SpatVector
 # NB: as.numeric(1) is needed for Patter.particle_filter()
-epsg_utm         <- "EPSG:3175"
-champlain$land   <- as.numeric(1)
-champlain_utm    <- champlain |> terra::project(epsg_utm)
+# Add col = NA for ggmaps()
+epsg_utm          <- "EPSG:3175"
+champlain$land    <- as.numeric(1)
+champlain_utm     <- champlain |> terra::project(epsg_utm)
+champlain_utm$col <- NA
 
 #### Build map 
 # Use a coarse map for speed sampling initial locations 
