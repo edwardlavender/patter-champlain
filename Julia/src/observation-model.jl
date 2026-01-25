@@ -47,7 +47,7 @@ function Patter.logpdf_obs(state::State, model_obs::ModelObsAcousticLogisTruncLo
     # - This model recognises that there are moments in time when detection probability is much lower
     # - The properties of the steeper model are currently hard-coded (F146)
     # - TO DO Review this in due course & align with sensitivity analysis, if needed
-    flicker = ifelse(rand() < 0.99, false, true)
+    flicker = ifelse(rand() < 0.95, false, true)
     if (flicker)
          η = 0.635159329 + -0.002724118 * dist
     else 
