@@ -254,6 +254,7 @@ convergence
 table(convergence$success)
 table(convergence$success, convergence$sensitivity == "best")
 table(convergence$sensitivity[convergence$success == FALSE])
+convergence[pass_filter_fwd == FALSE, ]
 convergence[success == FALSE, ]
 utils.add::basic_stats(convergence$pass_smoother, na.rm = TRUE)
 utils.add::basic_stats(convergence$pass_smoother[convergence$success], na.rm = TRUE)
