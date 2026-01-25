@@ -494,6 +494,9 @@ containers_ll <-
 #### Map receiver stations (static)
 terra::plot(map)
 points(moorings_real$receiver_x, moorings_real$receiver_y)
+# basicPlotteR::addTextLabels(moorings_real$receiver_x, 
+#                             moorings_real$receiver_y, 
+#                             moorings_real$receiver_id)
 basicPlotteR::addTextLabels(moorings_stations$receiver_x, 
                             moorings_stations$receiver_y, 
                             moorings_stations$receiver_station)
@@ -511,6 +514,10 @@ leaflet() |>
     radius = 4,
     stroke = FALSE,
     fillOpacity = 1) |>
+  # addLabelOnlyMarkers(
+  #   data = moorings_real_ll,
+  #   label = ~receiver_id,
+  #   labelOptions = labelOptions(noHide = TRUE, direction = "top", textOnly = TRUE)) |> 
   addLabelOnlyMarkers(
     data = stations_ll,
     label = ~receiver_station,
@@ -520,6 +527,18 @@ leaflet() |>
 # Whallon/Split Rock (northern end of southern area of Lake)
 # Arnold West/Arnold Central/Arnold East receiver gate (further south)
 # Crown Point (southernmost receiver)
+
+# Split Rock receivers: 
+moorings_raw |> 
+  filter(receiver_station == "Split Rock") |> 
+  select("receiver_station", "receiver_id", "receiver_x", "receiver_y") |> 
+  as.data.table()
+
+# receiver_station receiver_id receiver_x receiver_y
+# <fctr>       <int>      <num>      <num>
+# 1:       Split Rock          41    1790579   903528.9
+# 2:       Split Rock          67    1790552   903490.0
+# 3:       Split Rock         105    1790552   903490.0
 
 
 ###########################
