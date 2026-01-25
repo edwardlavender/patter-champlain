@@ -46,26 +46,28 @@ function Patter.logpdf_obs(state::State, model_obs::ModelObsAcousticLogisTruncLo
     # - Allow the model to 'flicker' between the standard model and steeper model with low probability 
     # - This model recognises that there are moments in time when detection probability is much lower
     # - The properties of the steeper model are currently hard-coded (F146)
-    # - TO DO Review this in due course & align with sensitivity analysis, if needed
-    flicker = ifelse(rand() < 0.95, false, true)
-    if (flicker)
-         η = 0.635159329 + -0.002724118 * dist
-    else 
-        η = model_obs.receiver_alpha + model_obs.receiver_beta * dist
-    end 
+    # - This model seems to facilitate convergence a limited amount
+    # - It is currently commented out & we define η at the appropriate points inside the loop below 
+    # flicker = ifelse(rand() < 0.95, false, true)
+    # if (flicker)
+    #      η = 0.635159329 + -0.002724118 * dist
+    # else 
+    #     η = model_obs.receiver_alpha + model_obs.receiver_beta * dist
+    # end 
 
     # Compute log probability 
-    # η = model_obs.receiver_alpha + model_obs.receiver_beta * dist
     if obs == 1
         if dist > model_obs.receiver_gamma  || los == false
             return -Inf
         else 
+            η = model_obs.receiver_alpha + model_obs.receiver_beta * dist
             return -log1pexp(-η)
         end 
     elseif obs == 0
         if dist > model_obs.receiver_gamma || los == false
             return 0.0
         else
+            η = model_obs.receiver_alpha + model_obs.receiver_beta * dist
             return -log1pexp(η)
         end
     end 
