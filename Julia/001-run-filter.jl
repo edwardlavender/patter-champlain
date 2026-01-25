@@ -139,6 +139,23 @@ containers_fwd.radius     = Float64.(containers_fwd.radius);
 # t_resample vectors
 t_resample_fwd            = Int.(t_resample_fwd.timestep);
 
+#### (optional) Update acoustics F146 parameters for Split Rock 
+# TO DO Trial this code & if successful build into R processing 
+# acoustics[sensor_id %in% c(41, 67, 105), receiver_alpha := 0.635159329]
+# acoustics[sensor_id %in% c(41, 67, 105), receiver_beta := -0.002724118]
+# Isolate Split Rock rows 
+split_rock = acoustics.sensor_id .∈ Ref([41, 67, 105])
+# Check receiver IDs/receiver coordinates
+# acoustics[acoustics.sensor_id .== 41, :]
+# acoustics[acoustics.sensor_id .== 67, :]
+# acoustics[acoustics.sensor_id .== 105, :]
+# Update detection probability model parameters using F146
+acoustics[split_rock, :receiver_alpha] .= 0.635159329
+acoustics[split_rock, :receiver_beta]  .= -0.002724118
+# Check acoustics
+# acoustics
+# acoustics[split_rock, :]
+
 #### Assemble datasets 
 # Collate datasets & associated `ModelObs` instances into a typed dictionary 
 datasets_fwd    = [acoustics, containers_fwd];
