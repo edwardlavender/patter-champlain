@@ -50,6 +50,8 @@ iteration = DataFrame(Arrow.Table(joinpath("data", "input", analysis, subanalysi
 iteration = iteration[iteration.sensitivity .== "best", :];
 
 #### Select iteration 
+# (optional) Customise settings 
+iteration.n_particle_filter .= 50000
 # Set column types as needed
 iteration.n_move              = Int.(iteration.n_move);
 iteration.n_resample          = Float64.(iteration.n_resample);
@@ -144,14 +146,14 @@ t_resample_fwd            = Int.(t_resample_fwd.timestep);
 # acoustics[sensor_id %in% c(41, 67, 105), receiver_alpha := 0.635159329]
 # acoustics[sensor_id %in% c(41, 67, 105), receiver_beta := -0.002724118]
 # Isolate Split Rock rows 
-split_rock = acoustics.sensor_id .∈ Ref([41, 67, 105])
+# split_rock = acoustics.sensor_id .∈ Ref([41, 67, 105])
 # Check receiver IDs/receiver coordinates
 # acoustics[acoustics.sensor_id .== 41, :]
 # acoustics[acoustics.sensor_id .== 67, :]
 # acoustics[acoustics.sensor_id .== 105, :]
 # Update detection probability model parameters using F146
-acoustics[split_rock, :receiver_alpha] .= 0.635159329
-acoustics[split_rock, :receiver_beta]  .= -0.002724118
+# acoustics[split_rock, :receiver_alpha] .= 0.635159329
+# acoustics[split_rock, :receiver_beta]  .= -0.002724118
 # Check acoustics
 # acoustics
 # acoustics[split_rock, :]
