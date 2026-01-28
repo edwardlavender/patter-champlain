@@ -39,6 +39,7 @@ map        <- terra::rast(here_input("map.tif"))
 regions    <- terra::rast(here_input("regions.tif"))
 regions_cs <- qs::qread(here_input("regions-colour-scheme.qs"))
 pars       <- qs::qread(here_input("pars-patter.qs"))
+fish       <- qs::qread(here_input("fish.qs"))
 
 
 ###########################
@@ -46,13 +47,13 @@ pars       <- qs::qread(here_input("pars-patter.qs"))
 #### Select analysis
 
 #### Define analysis 
-analysis <- "sim"
-# analysis <- "real"
+# analysis <- "sim"
+analysis <- "real"
 subanalysis <- "main"
 
 #### Define analysis-specific data
 here_input_analysis <- switch_here_input_analysis_subanalysis(analysis, subanalysis)
-detections          <- qs::qread(here_input_analysis("detections.qs"))
+detections_full     <- qs::qread(here_input_analysis("detections.qs"))
 moorings            <- qs::qread(here_input_analysis("moorings.qs"))
 if (analysis == "sim") {
   paths     <- qs::qread(here_input_sim("main", "paths.qs"))
@@ -68,14 +69,14 @@ if (analysis == "real") {
 
 #### Update detections with individual/time_id blocks
 # Define individual_id, time_id blocks
-detections <- 
-  detections |> 
+detections_full <- 
+  detections_full |> 
   group_by(individual_id) |> 
   mutate(time_id = lubridate::floor_date(timestamp, "months")) |>
   select(individual_id, time_id, timestamp, receiver_id) |>
   as.data.table()
 # Check number of individuals in full dataset
-length(unique(detections$individual_id))
+length(unique(detections_full$individual_id))
 
 #### Focus on individual/time (month) units with sufficient data
 # NB: filter_detections assumes monthly blocks
@@ -85,8 +86,68 @@ length(unique(detections$individual_id))
 #   365 / 1352 individual/time block(s) ('unit_id(s)') retained.
 # > With both criteria, 
 #   294 / 1352 individual/time block(s) ('unit_id(s)') retained.
-# > We use the second criterion
-detections <- filter_detections(detections)
+# > With >= 1 detection per week
+#   658 / 1352 individual/time block(s) ('unit_id(s)') retained.
+detections <- filter_detections(detections_full)
+
+#### Review data availability by spawning site/season
+# Check the mean number of days with observations per individual for each site/season
+detections_full |> 
+  mutate(time_id = lubridate::floor_date(timestamp, "months"), 
+         site = fish$site[match(individual_id, fish$individual_id)], 
+         season = season(time_id)) |> 
+  group_by(individual_id, time_id, site, season) |> 
+  summarise(n = length(unique(lubridate::floor_date(timestamp, "days")))) |> 
+  ungroup() |> 
+  group_by(site, season) |> 
+  summarise(utils.add::basic_stats(n)) |> 
+  as.data.table()
+# Count the number of individual/month time series per site/season
+# (There may be times of year e.g., summer when data are poorer)
+categories <- 
+  rbind(
+    # Number of time series in full dataset
+    detections_full |> 
+      mutate(site = fish$site[match(individual_id, fish$individual_id)], 
+             season = season(time_id)) |> 
+      group_by(site, season) |> 
+      summarise(n = n_distinct(paste(individual_id, time_id))) |> 
+      mutate(dataset = "full") |> 
+      as.data.table(),
+    # Number of time series in modelled dataset
+    detections |> 
+      mutate(site = fish$site[match(individual_id, fish$individual_id)], 
+             season = season(time_id)) |> 
+      group_by(site, season) |> 
+      summarise(n = n_distinct(paste(individual_id, time_id))) |> 
+      mutate(dataset = "model") |> 
+      as.data.table()
+  )
+# Visualise number of time series available versus modelled
+p <- 
+  ggplot(categories, aes(x = dataset, y = n)) +
+  geom_bar(stat = "identity") +
+  ylab("Number of time series") + 
+  facet_grid(~site ~ season)
+plotly::ggplotly(p)
+# Visualise % of time series modelled 
+p <- 
+  categories |>
+  tidyr::pivot_wider(names_from = dataset,
+                     values_from = n) |>
+  mutate(percent = 100 * model / full) |> 
+  as_tibble() |> 
+  ggplot(aes(x = season, y = percent)) +
+  geom_col() +
+  ylab("Percentage of time series modelled") + 
+  facet_wrap(~site)
+plotly::ggplotly(p)
+# Results
+# > With max_gap <= 7 days: 
+#   We retain few time series from summer (n = 14-17; 10 %)
+#   Otherwise, we retain n > 42 or 30-50 % time series
+# > With one detection per week: 
+#   We retain 20 % of time series from summer (n = 30-45)
 
 #### Checks
 # Validate time_id assignment in detections
