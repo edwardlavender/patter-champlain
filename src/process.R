@@ -54,12 +54,32 @@ filter_detections <- function(.detections) {
       pdays = ndays / duration
     ) |>
     as.data.table()
-
+  
+  # Approach (3): Filter by the number of weeks with detections
+  # * Require one detection per week
+  # * This is a slightly weaker criterion than the one above
+  # View(detections[unit_id_tmp == "24320 2014-12-01", ])
+  # View(detections[unit_id_tmp == "26808 2016-06-01", ])
+  nweeks <-
+    detections |>
+    mutate(
+      week_in_month = floor(as.numeric(difftime(timestamp, time_id, units = "days")) / 7)) |>
+    group_by(unit_id_tmp) |>
+    summarise(
+      # Number of 7-day periods with detections 
+      # length(unique(lubridate::floor_date(timestamp, "7 days"))), 
+      nweeks_with_detections = n_distinct(week_in_month), 
+      # Number of weeks in the month 
+      nweeks_in_month = floor(lubridate::days_in_month(time_id[1]) / 7)) |> 
+    as.data.table()
+  
   # Select individual/month combinations 
   unit_ids_maxgap <- maxgaps$unit_id_tmp[maxgaps$max_gap <= 7]
   unit_ids_pdays  <- pdays$unit_id_tmp[pdays$pdays >= 0.5]
-  unit_ids        <- intersect(unit_ids_maxgap, unit_ids_pdays)
+  unit_ids_nweeks <- nweeks$unit_id_tmp[nweeks$nweeks_with_detections >= nweeks$nweeks_in_month]
+  # unit_ids        <- intersect(unit_ids_maxgap, unit_ids_pdays)
   unit_ids        <- unit_ids_maxgap
+  # unit_ids        <- unit_ids_nweeks
   n0              <- length(unique(detections$unit_id_tmp))
   n1              <- length(unique(unit_ids))
   detections      <- detections[unit_id_tmp %in% unit_ids, ]
