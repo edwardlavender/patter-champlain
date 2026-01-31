@@ -80,8 +80,12 @@ terra::sbar(2000)
 # it <- iteration[individual_id == 26 & sensitivity == "best", ] # simulation 
 
 #### Select individuals (real)
+# out <- cl_lapply(c(1716, 1779, 1898, 2087, 2416), function(ind) {
 it <- iteration[individual_id == 26808 & time_id == as.POSIXct("2016-05-01 00:00:00", tz = "UTC") & sensitivity == "best", ]; it$index
-# it$n_particle_filter <- 2000L
+it$n_particle_filter <- 2000L
+# it <- iteration[index == ind, ]
+# it$n_particle_filter <- 1e5L
+print(it[, .(index, individual_id, time_id, sensitivity, n_particle_filter)])
 
 #### Read individual-specific data
 timeline       <- arrow::read_feather(it$file_timeline)
@@ -155,6 +159,8 @@ pargs <- list(.timeline   = timeline,
 # Run filter
 pout <- do.call(pf_filter, pargs, quote = TRUE)
 try(beepr::beep(10), silent = TRUE)
+pout$callstats
+# })
 
 #### Timings
 # 24325, 2016-03-01, best:
