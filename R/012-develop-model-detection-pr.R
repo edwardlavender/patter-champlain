@@ -284,9 +284,14 @@ gg <-
                        )) +
   # geom_point(shape = ".") + 
   # Add best, restrictive and flexible models
-  geom_line(data = pred_patter, aes(x = dist, y = fit, 
-                                      colour = sensitivity_label, group = sensitivity_label),
+  geom_line(data = pred_patter[sensitivity_label == "Best", ], 
+            aes(x = dist, y = fit, 
+                colour = sensitivity_label, group = sensitivity_label),
             lwd = 1.75,  inherit.aes = FALSE) +
+  geom_line(data = pred_patter[sensitivity_label != "Best", ],  
+            aes(x = dist, y = fit, 
+                colour = sensitivity_label, group = sensitivity_label),
+            lwd = 1.25,  inherit.aes = FALSE) +
   # Add GLMs
   geom_line(data = pred_empirical[model == "GLM", ], 
             aes(x = dist, y = fit, colour = study, group = study), 
