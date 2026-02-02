@@ -38,6 +38,11 @@ blanchfield <- fread(here_data_raw("model-move", "blanchfield-et-al-2023",
 # Examine raw data
 head(blanchfield)
 
+# Examine the first row of data for each transmitter 
+blanchfield |> 
+  group_by(Transmitter) |>
+  slice(1L) # |> write.csv("individuals.csv", row.names = FALSE)
+
 # Clean data.table
 blanchfield <- 
   blanchfield |> 
