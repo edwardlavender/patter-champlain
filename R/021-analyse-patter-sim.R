@@ -38,6 +38,7 @@ regions_cs    <- qs::qread(here_input("regions-colour-scheme.qs"))
 iteration     <- qs::qread(here_input_sim("main", "iteration.qs"))
 paths         <- qs::qread(here_input_sim("main", "paths.qs"))
 champlain_utm <- qreadvect(here_input("champlain-utm.qs"))
+moorings      <- qs::qread(here_input_sim("main", "moorings.qs"))
 
 
 ###########################
@@ -67,7 +68,6 @@ if (FALSE) {
 }
 
 
-
 ###########################
 ###########################
 #### Compute skill metrics 
@@ -86,6 +86,8 @@ file_occupancy_skill <- here_output_sim_main("synthesis", "occupancy-skill.qs")
 if (!file.exists(file_occupancy_skill) | overwrite) {
   
   occupancy_skill <- iteration[file.exists(file_occupancy), ]
+  stopifnot(nrow(occupancy_skill) > 0L)
+  
   skills <- 
     split(occupancy_skill, seq_len(nrow(occupancy_skill))) |> 
     cl_lapply(function(d) {
@@ -147,8 +149,10 @@ if (!file.exists(file_occupancy_skill) | overwrite) {
       
     }) |> 
     unlist()
+  
   occupancy_skill[, skill := skills]
   qs::qsave(occupancy_skill, file_occupancy_skill)
+  occupancy_skill
   
 } else {
   occupancy_skill <- qs::qread(file_occupancy_skill)
@@ -161,6 +165,8 @@ file_residency_skill <- here_output_sim_main("synthesis", "residency-skill.qs")
 if (!file.exists(file_residency_skill) | overwrite) {
   
   residency_skill <- iteration[file.exists(file_residency), ]
+  stopifnot(nrow(residency_skill) > 0L)
+  
   residency_skill <- 
     split(residency_skill, seq_len(nrow(residency_skill))) |> 
     cl_lapply(function(d) {
@@ -190,6 +196,7 @@ if (!file.exists(file_residency_skill) | overwrite) {
     as.data.table()
   
   qs::qsave(residency_skill, file_residency_skill)
+  residency_skill
   
 } else {
   residency_skill <- qs::qread(file_residency_skill)
@@ -218,11 +225,13 @@ terra::plot(map,
             legend = TRUE, 
             pax = list(labels = FALSE, lwd.ticks = 0))
 # Cover base map colouration
-terra::plot(map, col = "lightgrey", legend = FALSE, add = TRUE)
+terra::plot(map, col = "white", legend = FALSE, add = TRUE)
 # Add path & coastline
 patter:::add_sp_path(path$x, path$y, lwd = 0.25, length = 0.01, 
                      col = viridis::inferno(nrow(path))) |> 
   suppressWarnings()
+# Add receivers
+points(moorings$receiver_x, moorings$receiver_y, pch = 4, cex = 0.5)
 terra::lines(champlain_utm)
 dev.off()
 
@@ -230,6 +239,26 @@ dev.off()
 png(here_fig_sim("main", "example-occupancy.png"), 
     height = 5, width = 5, units = "in", res = 800)
 terra::plot(occupancy, pax = list(labels = FALSE, lwd.ticks = 0))
+points(moorings$receiver_x, moorings$receiver_y, pch = 4, cex = 0.5)
+terra::lines(champlain_utm)
+dev.off()
+
+#### Map occupancy quantiles for example individual
+# Compute occupancy quantiles (as in analyse-patter-real.R)
+probs              <- seq(0.05, 1, by = 0.05)
+occupancy_contours <- terra::setValues(occupancy, 0)
+for (p in probs) {
+  occupancy_contours <- sum(occupancy_contours, 
+                            map_hr_prop(occupancy, .prop = p), 
+                            na.rm = TRUE)
+}
+occupancy_contours <- terra::classify(occupancy_contours, cbind(0, NA))
+# Make map
+# TO DO, do we need to update terra legend settings e.g., breaks here? (review fig)
+png(here_fig_sim("main", "example-occupancy-quantiles.png"), 
+    height = 5, width = 5, units = "in", res = 800)
+terra::plot(occupancy_contours, pax = list(labels = FALSE, lwd.ticks = 0))
+points(moorings$receiver_x, moorings$receiver_y, pch = 4, cex = 0.5)
 terra::lines(champlain_utm)
 dev.off()
 
