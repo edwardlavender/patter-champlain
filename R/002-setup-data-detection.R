@@ -36,13 +36,14 @@ files_source_r(here_src())
 # lkt_detections_2013-2017.rds: raw detections (93 fish)
 # lkt_detections_2013-2017_filtered.qs: filtered detections (as in Futia et al., 2024)
 map                 <- terra::rast(here_input("map.tif"))
-epsg_utm            <- qs::qread(here_input("epsg-utm.qs"))
 map_bbox            <- qs::qread(here_input("map-bbox.qs"))
-detections          <- readRDS(here_data_raw_mf("lkt_detections_2013-2017.rds"))
-detections_filtered <- qs::qread(here_data_raw_mf("lkt_detections_2013-2017_filtered.qs"))
+champlain_utm       <- qs::qread(here_input("champlain-utm.qs"))
+epsg_utm            <- qs::qread(here_input("epsg-utm.qs"))
 moorings            <- readRDS(here_data_raw_mf("OriginalReceiverSummary_2013-2017.rds"))
 surgery             <- fread(here_data_raw("mfutia", "model_comparison", "surgery_log.csv"))
-champlain_utm       <- qs::qread(here_input("champlain-utm.qs"))
+detections          <- readRDS(here_data_raw_mf("lkt_detections_2013-2017.rds"))
+detections_filtered <- qs::qread(here_data_raw_mf("lkt_detections_2013-2017_filtered.qs"))
+survivors           <- fread(here_data_raw_mf("transmitter_end_dates.csv"))
 
 
 ###########################
@@ -120,6 +121,7 @@ fish <-
   group_by(animal_id) |> 
   summarise(individual_id = animal_id[1], 
             len = length[1] / 1000, 
+            date = as.Date(cap_date[1]),
             site = cap_site[1],
             lat = deploy_lat[1], 
             lon = deploy_long[1],
@@ -167,7 +169,7 @@ stopifnot(all(fish$nlon == 1L))
 #### Clean up
 fish <- 
   fish |> 
-  select(individual_id, len, site, x, y, lon, lat) |> 
+  select(individual_id, len, date, site, x, y, lon, lat) |> 
   as.data.table()
 
 #### Comments
@@ -543,21 +545,20 @@ moorings_raw |>
 
 ###########################
 ###########################
-#### Apply filters 
+#### Apply detection filters 
 
 #### Raw data summary statistics
 # 1,735,137 detections
 # from 93 individuals
 # derived from 153 receiver deployments 
 # over a four year period
-
 nrow(detections)
 length(unique(detections$individual_id))
 range(detections$timestamp)
 difftime(max(detections$timestamp), min(detections$timestamp), units = "days")
 nrow(moorings_real)
 
-#### False detections 
+#### Implement Futia et al. (2024) filters e.g., for false detections
 # Check study duration
 c(study_start, study_end)
 range(detections_filtered$detection_timestamp_utc)
@@ -573,6 +574,29 @@ detections <- detections[
   nomatch = 0
 ]
 detections <- detections[, .(individual_id, timestamp, receiver_id, receiver_station)]
+
+#### Exclude all data before the 2014 tagging season 
+table(fish$date)
+nrow(detections)
+detections <- detections[timestamp >= as.POSIXct("2014-11-04 23:59:59", tz = "UTC"), ]
+nrow(detections)
+
+#### Exclude individuals that were only detected in the tagging season
+# Identify individuals that were only detected in tagging season
+# (These individuals may have died & we drop them)
+individuals_detected_in_one_season <- 
+  detections |> 
+  mutate(season = paste0(season(timestamp), "-", lubridate::year(timestamp)),
+         cap_date = fish$date[match(individual_id, fish$individual_id)], 
+         cap_season = paste0(season(cap_date), "-", lubridate::year(cap_date))) |> 
+  group_by(individual_id) |> 
+  summarise(one = all(season == cap_season)) |> 
+  filter(one == TRUE) |>
+  ungroup() |> 
+  as.data.table()
+# All individuals were also detected in a season after tagging
+table(individuals_detected_in_one_season$one)
+detections <- detections[!(individual_id %in% individuals_detected_in_one_season$individual_id), ]
 
 #### Summarise filtered detection dataset
 nrow(detections_pre_filter)
@@ -647,6 +671,34 @@ detections_transitions |>
 
 #### Drop receiver_station
 detections[, receiver_station := NULL]
+
+
+###########################
+###########################
+#### Process survivors 
+
+#### Process survivors 
+# Here, we identify survivors at the end of the study period 
+# Survivors were identified from detections out width the presence study period
+# (using MF's extended datasets)
+survivors <- 
+  survivors |> 
+  select(individual_id = "transmitter_id",  end_battery = "est_dead_bat", end_detection = "last_det") |> 
+  mutate(survivor = end_detection > max(detections$timestamp)) |>
+  as.data.table()
+
+#### Examine battery life
+# All individuals had the capacity to be detected beyond the end of the study
+# (200+ day buffer in terms of battery life)
+table(survivors$end_battery > max(detections$timestamp))
+table(difftime(survivors$end_battery, max(detections$timestamp), units = "days"))
+
+#### Examine survivors
+# Of the 69 individuals in the detection dataset, 
+# 32 individuals were definitely alive at the end of the time series 
+# 37 individuals were probably, but not definitely, alive (no future detections)
+length(unique(detections$individual_id))
+table(survivors$survivor[survivors$individual_id %in% detections$individual_id])
 
 
 ###########################
