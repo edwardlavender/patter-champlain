@@ -202,6 +202,18 @@ if (!file.exists(file_residency_skill) | overwrite) {
   residency_skill <- qs::qread(file_residency_skill)
 }
 
+#### Average residency skill over regions using MOE (Futia et al., 2024)
+# MOE = mean(abs(truth_r - estimate_r) * truth_r), averaged over all regions r
+# MOE varies between 0 (no error) and 100 % (completely wrong)
+residency_skill_moe <- 
+  residency_skill |> 
+  group_by(individual_id, sensitivity) |> 
+  # mutate(moe = mean(abs(simulation - estimate) * simulation) * 100) |> 
+  mutate(moe = sum(abs(simulation - estimate) * simulation) / sum(simulation)) * 100) |> 
+  slice(1L) |> 
+  ungroup() |> 
+  as.data.table()
+
 
 ###########################
 ###########################
@@ -419,7 +431,7 @@ p <-
 print(p)
 dev.off()
 
-#### Visualise residency skill (error by region, for 'best' analyses)
+#### Visualise residency skill by region, for 'best' analyses
 png(here_fig_sim("main", "residency-skill-best.png"), 
     height = 5, width = 8, units = "in", res = 800)
 p <- 
@@ -443,7 +455,7 @@ p <-
 print(p)
 dev.off()
 
-#### Visualise residency skill (full)
+#### Visualise residency skill, by region, including sensitivity
 # This plot is by region & sensitivity
 png(here_fig_sim("main", "residency-skill-sensitivity.png"), 
     height = 6, width = 12, units = "in", res = 800)
@@ -466,7 +478,7 @@ p <-
 print(p)
 dev.off()
 
-#### Summarise residency skill (%)
+#### Summarise residency skill overs region simply (%)
 # Overall residency skill for 'best' analyses
 residency_skill |> 
   filter(sensitivity == "best") |> 
@@ -478,6 +490,34 @@ residency_skill |>
   group_by(region) |> 
   # filter(!(estimate == 0 & simulation == 0)) |> 
   reframe(utils.add::basic_stats(skill * 100))
+
+#### Visualise residency skill averaged over tracks using MOE, including sensitivity
+# Plot distribution of MOE % across all tracks by sensitivity, as in Futia et al. 2024
+# * Each point is the MOE for a single track
+# * We expect similar median MOE compared to best model (4 %)
+# * We expect reduced maximum MOE (from 40.4% -> 10 %)
+# * I.e., we expect reduced variation (increased precision)
+# * We show the variation with a boxplot over all tracks
+png(here_fig_sim("main", "residency-skill-moe.png"), 
+    height = 6, width = 12, units = "in", res = 800)
+p <- 
+  residency_skill_moe |>
+  ggplot() + 
+  geom_boxplot(aes(sensitivity_label, moe, fill = sensitivity_label), 
+               linewidth = 0.25, size = 0.5, varwidth = TRUE) + 
+  geom_jitter(size = 0.25, colour = "dimgrey", width = 0.1, height = 0) +
+  # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
+  xlab("Sensitivity") + 
+  ylab(expression("MOE (" * italic(RE) * ")")) + 
+  labs(fill = "Analysis") +
+  theme_bw() +
+  theme(panel.grid.minor.y = element_blank(), 
+        panel.grid.major.y = element_blank(), 
+        axis.title.x = element_text(margin = margin(t = 10)),
+        axis.title.y = element_text(margin = margin(r = 10)), 
+        axis.text.x = element_text(angle = 45, hjust = 1)) 
+print(p)
+dev.off()
 
 
 #### End of code. 
