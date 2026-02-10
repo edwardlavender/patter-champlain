@@ -5292,9 +5292,9 @@
     },
     "lattice": {
       "Package": "lattice",
-      "Version": "0.22-7",
+      "Version": "0.22-9",
       "Source": "Repository",
-      "Date": "2025-03-31",
+      "Date": "2026-02-03",
       "Priority": "recommended",
       "Title": "Trellis Graphics for R",
       "Authors@R": "c(person(\"Deepayan\", \"Sarkar\", role = c(\"aut\", \"cre\"), email = \"deepayan.sarkar@r-project.org\", comment = c(ORCID = \"0000-0003-4107-1553\")), person(\"Felix\", \"Andrews\", role = \"ctb\"), person(\"Kevin\", \"Wright\", role = \"ctb\", comment = \"documentation\"), person(\"Neil\", \"Klepeis\", role = \"ctb\"), person(\"Johan\", \"Larsson\", role = \"ctb\", comment = \"miscellaneous improvements\"), person(\"Zhijian (Jason)\", \"Wen\", role = \"cph\", comment = \"filled contour code\"), person(\"Paul\", \"Murrell\", role = \"ctb\", email = \"paul@stat.auckland.ac.nz\"), person(\"Stefan\", \"Eng\", role = \"ctb\", comment = \"violin plot improvements\"), person(\"Achim\", \"Zeileis\", role = \"ctb\", comment = \"modern colors\"), person(\"Alexandre\", \"Courtiol\", role = \"ctb\", comment = \"generics for larrows, lpolygon, lrect and lsegments\") )",
@@ -5325,7 +5325,7 @@
       "URL": "https://lattice.r-forge.r-project.org/",
       "BugReports": "https://github.com/deepayan/lattice/issues",
       "NeedsCompilation": "yes",
-      "Author": "Deepayan Sarkar [aut, cre] (<https://orcid.org/0000-0003-4107-1553>), Felix Andrews [ctb], Kevin Wright [ctb] (documentation), Neil Klepeis [ctb], Johan Larsson [ctb] (miscellaneous improvements), Zhijian (Jason) Wen [cph] (filled contour code), Paul Murrell [ctb], Stefan Eng [ctb] (violin plot improvements), Achim Zeileis [ctb] (modern colors), Alexandre Courtiol [ctb] (generics for larrows, lpolygon, lrect and lsegments)",
+      "Author": "Deepayan Sarkar [aut, cre] (ORCID: <https://orcid.org/0000-0003-4107-1553>), Felix Andrews [ctb], Kevin Wright [ctb] (documentation), Neil Klepeis [ctb], Johan Larsson [ctb] (miscellaneous improvements), Zhijian (Jason) Wen [cph] (filled contour code), Paul Murrell [ctb], Stefan Eng [ctb] (violin plot improvements), Achim Zeileis [ctb] (modern colors), Alexandre Courtiol [ctb] (generics for larrows, lpolygon, lrect and lsegments)",
       "Maintainer": "Deepayan Sarkar <deepayan.sarkar@r-project.org>",
       "Repository": "CRAN"
     },
@@ -6196,63 +6196,6 @@
       "NeedsCompilation": "no",
       "Author": "Hadley Wickham [aut, cre], Posit Software, PBC [cph, fnd]",
       "Maintainer": "Hadley Wickham <hadley@posit.co>",
-      "Repository": "CRAN"
-    },
-    "move": {
-      "Package": "move",
-      "Version": "4.2.6",
-      "Source": "Repository",
-      "Type": "Package",
-      "Title": "Visualizing and Analyzing Animal Track Data",
-      "Authors@R": "c(person(\"Bart\", \"Kranstauber\", role = c(\"aut\", \"cre\"), email = \"b.kranstauber@uva.nl\"), person(\"Marco\", \"Smolla\", role = \"aut\"), person(family= \"Scharf\",given='Anne K', role = \"aut\") )",
-      "Description": "Contains functions to access movement data stored in 'movebank.org' as well as tools to visualize and statistically analyze animal movement data, among others functions to calculate dynamic Brownian Bridge Movement Models. Move helps addressing movement ecology questions.",
-      "License": "GPL (>= 3)",
-      "URL": "https://bartk.gitlab.io/move/",
-      "BugReports": "https://gitlab.com/bartk/move/-/issues",
-      "LazyLoad": "yes",
-      "LazyData": "yes",
-      "LazyDataCompression": "xz",
-      "Depends": [
-        "geosphere (>= 1.4-3)",
-        "methods",
-        "sp",
-        "raster (>= 3.6-14)",
-        "R (>= 3.5.0)"
-      ],
-      "Suggests": [
-        "adehabitatHR",
-        "adehabitatLT",
-        "markdown",
-        "rmarkdown",
-        "circular",
-        "ggmap",
-        "mapproj",
-        "testthat",
-        "knitr",
-        "ggplot2",
-        "leaflet",
-        "lubridate",
-        "ctmm",
-        "amt",
-        "bcpa",
-        "EMbC",
-        "solartime"
-      ],
-      "Imports": [
-        "httr",
-        "memoise",
-        "terra",
-        "xml2",
-        "Rcpp"
-      ],
-      "LinkingTo": [
-        "Rcpp"
-      ],
-      "RoxygenNote": "7.2.3",
-      "VignetteBuilder": "knitr",
-      "NeedsCompilation": "yes",
-      "Author": "Bart Kranstauber [aut, cre], Marco Smolla [aut], Anne K Scharf [aut]",
-      "Maintainer": "Bart Kranstauber <b.kranstauber@uva.nl>",
       "Repository": "CRAN"
     },
     "nlme": {
