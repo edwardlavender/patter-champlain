@@ -208,10 +208,12 @@ if (!file.exists(file_residency_skill) | overwrite) {
 residency_skill_moe <- 
   residency_skill |> 
   group_by(individual_id, sensitivity) |> 
+  mutate(algorithm = "patter") |> 
   # mutate(moe = mean(abs(simulation - estimate) * simulation) * 100) |> 
-  mutate(moe = sum(abs(simulation - estimate) * simulation) / sum(simulation)) * 100) |> 
+  mutate(moe = sum(abs(simulation - estimate) * simulation) / sum(simulation) * 100) |> 
   slice(1L) |> 
-  ungroup() |> 
+  ungroup() |>
+  select("individual_id", "algorithm", "sensitivity", "sensitivity_label", "moe") |> 
   as.data.table()
 
 
@@ -518,6 +520,58 @@ p <-
         axis.text.x = element_text(angle = 45, hjust = 1)) 
 print(p)
 dev.off()
+
+#### (optional) Compare MOE to heuristic methods (Futia et al., 2024)
+
+## Read MOE scores for best model in Futia et al. (2024)
+# * AInt_model_performance.qs includes error by region for each track 
+# * Int_model_moe.qs has the mean weighted error (sum across regions by individuals) that was used for Fig 3.
+residency_skill_moe_int <- 
+  here_data_raw_mf("Int_model_moe.qs") |> 
+  qs::qread() |> 
+  mutate(
+    individual_id = animal_id, 
+    algorithm = as.character(model), 
+    sensitivity = "best",
+    sensitivity_label = factor("Best", levels = levels(residency_skill_moe$sensitivity_label)), 
+    moe = mean_wt_abs_err
+  ) |> 
+  select("individual_id", "algorithm", "sensitivity", "sensitivity_label", "moe") |> 
+  as.data.table()
+
+## Compute summary statistics
+# For patter:
+# * TO DO
+# For Int algorithm: 
+# * Average MOE ± SD = 5.1 ± 8.1 %
+# * Max MOE =40.4 % 
+residency_skill_moe_full <- rbind(residency_skill_moe, residency_skill_moe_int)
+residency_skill_moe_full |> 
+  group_by(algorithm, sensitivity) |> 
+  reframe(utils.add::basic_stats(moe))
+
+#### (optional) Update ggplot of MOE including Int model from Futia et al. (2024)
+# TO DO Update this code to include bars by algorithm (patter versus Int)
+# png(here_fig_sim("main", "residency-skill-moe-full.png"), 
+#     height = 6, width = 12, units = "in", res = 800)
+# p <- 
+#   residency_skill_moe_full |>
+#   ggplot() + 
+#   geom_boxplot(aes(sensitivity_label, moe, fill = sensitivity_label), 
+#                linewidth = 0.25, size = 0.5, varwidth = TRUE) + 
+#   geom_jitter(size = 0.25, colour = "dimgrey", width = 0.1, height = 0) +
+#   # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
+#   xlab("Sensitivity") + 
+#   ylab(expression("MOE (" * italic(RE) * ")")) + 
+#   labs(fill = "Analysis") +
+#   theme_bw() +
+#   theme(panel.grid.minor.y = element_blank(), 
+#         panel.grid.major.y = element_blank(), 
+#         axis.title.x = element_text(margin = margin(t = 10)),
+#         axis.title.y = element_text(margin = margin(r = 10)), 
+#         axis.text.x = element_text(angle = 45, hjust = 1)) 
+# print(p)
+# dev.off()
 
 
 #### End of code. 
