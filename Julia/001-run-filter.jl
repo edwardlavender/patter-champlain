@@ -51,7 +51,7 @@ iteration = iteration[iteration.sensitivity .== "best", :];
 
 #### Select iteration 
 # (optional) Customise settings 
-iteration.n_particle_filter .= 50000
+iteration.n_particle_filter .= 20000
 # Set column types as needed
 iteration.n_move              = Int.(iteration.n_move);
 iteration.n_resample          = Float64.(iteration.n_resample);
@@ -181,6 +181,7 @@ xinit = initialise_forward_filter(iter, env_init, timeline, state, model_move, d
 # For the subset of convergence failures, we will dig into the particle dynamics
 # in a separate script (we can't do this for all runs as it requires
 # too much disk space). 
+t1 = now()
 fwd = particle_filter(timeline   = timeline,
                       xinit      = xinit,
                       yobs       = yobs_fwd,
@@ -192,6 +193,14 @@ fwd = particle_filter(timeline   = timeline,
                       direction  = "forward", 
                       progress   = Patter.progress_control(enabled = isinteractive()),
                       verbose    = isinteractive());
+t2 = now()
+diffsecs(t2, t1)
+
+#### Benchmarks (SIA-LAVENDED, 10 threads, 20,000 particles)
+# 151.525 ModelObsAcousticLogisTrunc
+# 352.721 ModelObsAcousticLogisTruncLos with los_map
+# 165.19  ModelObsAcousticLogisTruncLos with const los_map
+# 159.908 ModelObsAcousticLogisTruncLos with const los_map and improved los::Bool definition
 
 #### Write to file 
 Arrow.write(iter.file_callstats_filter, fwd.callstats; compress = Arrow.ZstdCompressor(level = 9))

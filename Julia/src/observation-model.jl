@@ -6,7 +6,7 @@ using Patter
 using LogExpFunctions: logistic, log1pexp
 
 # Define line of sight map
-los_map = GeoArrays.read(joinpath("data", "input", "map.tif"));
+const los_map = GeoArrays.read(joinpath("data", "input", "map.tif"));
 
 # Identify whether two points are connected by a direct line of sight (true/false)
 # * Draw a linear line with 3 points between the two locations
@@ -38,9 +38,8 @@ function Patter.logpdf_obs(state::State, model_obs::ModelObsAcousticLogisTruncLo
 
     # Evaluate line of sight, if needed
     # (Implementing this when obs == 1 does not seem to boost speed)
-    if dist <= model_obs.receiver_gamma
-        los = in_line_of_sight(env, state.x, state.y, model_obs.receiver_x, model_obs.receiver_y)
-    end 
+    los = dist <= model_obs.receiver_gamma && 
+        in_line_of_sight(env, state.x, state.y, model_obs.receiver_x, model_obs.receiver_y)
 
     # Compute probability of detection
     # - Allow the model to 'flicker' between the standard model and steeper model with low probability 
@@ -75,7 +74,7 @@ function Patter.logpdf_obs(state::State, model_obs::ModelObsAcousticLogisTruncLo
 end
 
 # Simulate method 
-function Patter.simulate_obs(state::State, model_obs::ModelObsAcousticLogisTruncLos, t::Int64, env = los_map)
+function Patter.simulate_obs(state::State, model_obs::ModelObsAcousticLogisTruncLos, t::Int64, env::GeoArrays.GeoArray = los_map)
     # Compute probability of a detection from location (state.x, state.y)
     obs = 1
     prob = exp(Patter.logpdf_obs(state, model_obs, t, obs, env))
