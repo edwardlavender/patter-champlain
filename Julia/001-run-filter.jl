@@ -201,6 +201,7 @@ diffsecs(t2, t1)
 # 352.721 ModelObsAcousticLogisTruncLos with los_map
 # 165.19  ModelObsAcousticLogisTruncLos with const los_map
 # 159.908 ModelObsAcousticLogisTruncLos with const los_map and improved los::Bool definition
+# 159.869 As above with improved if handling 
 
 #### Write to file 
 Arrow.write(iter.file_callstats_filter, fwd.callstats; compress = Arrow.ZstdCompressor(level = 9))

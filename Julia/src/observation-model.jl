@@ -15,7 +15,7 @@ const los_map = GeoArrays.read(joinpath("data", "input", "map.tif"));
 function in_line_of_sight(env::GeoArrays.GeoArray, x0::Float64, y0::Float64, x1::Float64, y1::Float64)::Bool
     xm = (x0 + x1) * 0.5
     ym = (y0 + y1) * 0.5
-    !isnan(Patter.extract(env, xm, ym))
+    return !isnan(Patter.extract(env, xm, ym))
 end
 
 # Define ModelObsAcousticLogisTrunc accounting for line of sight (Los) 
@@ -32,45 +32,15 @@ end
 
 # Log probability method
 function Patter.logpdf_obs(state::State, model_obs::ModelObsAcousticLogisTruncLos, t::Int64, obs::Int64, env::GeoArrays.GeoArray = los_map)
-
-    # Compute distance between the particle and receiver
     dist = distance(state.x, state.y, model_obs.receiver_x, model_obs.receiver_y)
-
-    # Evaluate line of sight, if needed
-    # (Implementing this when obs == 1 does not seem to boost speed)
-    los = dist <= model_obs.receiver_gamma && 
-        in_line_of_sight(env, state.x, state.y, model_obs.receiver_x, model_obs.receiver_y)
-
-    # Compute probability of detection
-    # - Allow the model to 'flicker' between the standard model and steeper model with low probability 
-    # - This model recognises that there are moments in time when detection probability is much lower
-    # - The properties of the steeper model are currently hard-coded (F146)
-    # - This model seems to facilitate convergence a limited amount
-    # - It is currently commented out & we define η at the appropriate points inside the loop below 
-    # flicker = ifelse(rand() < 0.95, false, true)
-    # if (flicker)
-    #      η = 0.635159329 + -0.002724118 * dist
-    # else 
-    #     η = model_obs.receiver_alpha + model_obs.receiver_beta * dist
-    # end 
-
-    # Compute log probability 
-    if obs == 1
-        if dist > model_obs.receiver_gamma  || los == false
-            return -Inf
-        else 
-            η = model_obs.receiver_alpha + model_obs.receiver_beta * dist
-            return -log1pexp(-η)
-        end 
-    elseif obs == 0
-        if dist > model_obs.receiver_gamma || los == false
-            return 0.0
-        else
-            η = model_obs.receiver_alpha + model_obs.receiver_beta * dist
-            return -log1pexp(η)
-        end
+    if dist > model_obs.receiver_gamma
+        return obs == 1 ? -Inf : 0.0
+    end
+    if !in_line_of_sight(env, state.x, state.y, model_obs.receiver_x, model_obs.receiver_y)
+        return obs == 1 ? -Inf : 0.0
     end 
-
+    η = model_obs.receiver_alpha + model_obs.receiver_beta * dist
+    return obs == 1 ? -log1pexp(-η) : -log1pexp(η)
 end
 
 # Simulate method 
@@ -79,5 +49,5 @@ function Patter.simulate_obs(state::State, model_obs::ModelObsAcousticLogisTrunc
     obs = 1
     prob = exp(Patter.logpdf_obs(state, model_obs, t, obs, env))
     # Simulate detection/non-detection
-    rand(Bernoulli(prob)) + 0
+    return rand(Bernoulli(prob)) + 0
 end
