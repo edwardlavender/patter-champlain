@@ -107,8 +107,7 @@ model_move = ModelMoveCXY(env,
 ###########################
 #### Define observation model 
 
-#### Load timeline 
-# Define timeline 
+#### Load timeline
 timeline           = DataFrame(Arrow.Table(iter.file_timeline))
 timeline.timestamp = DateTime.(timeline.timestamp)
 timeline           = timeline.timestamp
@@ -170,11 +169,6 @@ yobs_fwd        = assemble_yobs(datasets = datasets_fwd,
 ###########################
 #### Run filter 
 
-#### Simulate initial states for the forward filter
-xinit = initialise_forward_filter(iter, env_init, timeline, state, model_move, datasets_fwd, model_obs_types, acoustics)
-# Plots.plot(env)
-# scatter!([xinit[i].x for i in 1:iter.n_particle_filter], [xinit[i].y for i in 1:iter.n_particle_filter], markersize = 0.01)
-
 #### Run the forward filter
 # We are only interested in convergence success/failure, 
 # so we only record 1 particle in memory at each time step (no batches)
@@ -183,7 +177,7 @@ xinit = initialise_forward_filter(iter, env_init, timeline, state, model_move, d
 # too much disk space). 
 t1 = now()
 fwd = particle_filter(timeline   = timeline,
-                      xinit      = xinit,
+                      xinit      = nothing,
                       yobs       = yobs_fwd,
                       model_move = model_move,
                       n_move     = iter.n_move,
