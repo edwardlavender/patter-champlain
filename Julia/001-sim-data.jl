@@ -31,7 +31,7 @@ using Patter
 include("./src/observation-model.jl")
 
 #### Load datasets
-env = GeoArrays.read(joinpath("data", "input", "map.tif"));
+env  = GeoArrays.read(joinpath("data", "input", "map.tif"));
 iter = DataFrame(Arrow.Table(joinpath("data", "input", "sim", "main", "iter.feather")));
 
 #### Define local settings
