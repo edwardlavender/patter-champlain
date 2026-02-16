@@ -169,15 +169,27 @@ yobs_fwd        = assemble_yobs(datasets = datasets_fwd,
 ###########################
 #### Run filter 
 
-#### Run the forward filter
 # We are only interested in convergence success/failure, 
 # so we only record 1 particle in memory at each time step (no batches)
 # For the subset of convergence failures, we will dig into the particle dynamics
 # in a separate script (we can't do this for all runs as it requires
 # too much disk space). 
-t1 = now()
+
+#### Initialise forward filter
+xinit = simulate_states_init(map             = env_init,
+                             timeline        = timeline,
+                             state_type      = state,
+                             xinit           = nothing,
+                             model_move      = model_move,
+                             datasets        = datasets_fwd,
+                             model_obs_types = model_obs_types,
+                             n_particle      = iter.n_particle_filter,
+                             direction       = "forward",
+                             output          = "Vector")
+
+#### Run forward filter 
 fwd = particle_filter(timeline   = timeline,
-                      xinit      = nothing,
+                      xinit      = xinit,
                       yobs       = yobs_fwd,
                       model_move = model_move,
                       n_move     = iter.n_move,
@@ -187,8 +199,6 @@ fwd = particle_filter(timeline   = timeline,
                       direction  = "forward", 
                       progress   = Patter.progress_control(enabled = isinteractive()),
                       verbose    = isinteractive());
-t2 = now()
-diffsecs(t2, t1)
 
 #### Benchmarks (SIA-LAVENDED, 10 threads, 20,000 particles)
 # 151.525 ModelObsAcousticLogisTrunc
