@@ -36,7 +36,6 @@ using Patter
 
 #### Load source files
 include("./src/observation-model.jl")
-include("./src/initialise-filters.jl")
 include("./src/utils.jl")
 
 #### Load datasets (map, iteration)
@@ -83,7 +82,6 @@ error("JULIA_NUM_THREADS must be 1 for parallelisation!")
 end 
 # Set seed
 Random.seed!(123);
-start = now();
 
 
 ###########################
