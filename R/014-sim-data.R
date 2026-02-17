@@ -136,6 +136,7 @@ acoustics <- arrow::read_feather(iter$file_acoustics_raw)
 #### Process datasets
 # Process paths
 head(paths)
+setDT(paths)
 # Process acoustics
 acoustics <- 
   acoustics |> 
