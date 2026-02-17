@@ -40,13 +40,13 @@ include("./src/inference.jl")
 
 #### Load datasets (map, iteration)
 # Load map & iteration 
-# analysis  = "sim"
-analysis    = "real"
+analysis  = "sim"
+# analysis    = "real"
 subanalysis = "main"
 env         = GeoArrays.read(joinpath("data", "input", "map.tif"));
 env_init    = Patter.rast(joinpath("data", "input", "map.tif"));
 iteration   = DataFrame(Arrow.Table(joinpath("data", "input", analysis, subanalysis, "iteration.feather")))
-iteration   = iteration[iteration.sensitivity .== "best", :];
+# iteration   = iteration[iteration.sensitivity .== "best", :];
 
 #### Select iteration 
 # Set column types as needed
@@ -105,23 +105,14 @@ model_move = ModelMoveCXY(env,
 ###########################
 #### Define observation model 
 
-#### Load timeline
+#### Define timeline
 timeline           = DataFrame(Arrow.Table(iter.file_timeline))
 timeline.timestamp = DateTime.(timeline.timestamp)
 timeline           = timeline.timestamp
 
-#### Load acoustic observations & containers
-acoustics      = DataFrame(Arrow.Table(iter.file_acoustics))
-containers_fwd = DataFrame(Arrow.Table(iter.file_containers_fwd))
-
-#### Load ancillary files
-t_resample_fwd = DataFrame(Arrow.Table(iter.file_t_resample_fwd))
-
-#### Process columns
-# Timestamps
+#### Define acoustic observations
+acoustics                = DataFrame(Arrow.Table(iter.file_acoustics));
 acoustics.timestamp      = DateTime.(acoustics.timestamp);
-containers_fwd.timestamp = DateTime.(containers_fwd.timestamp);
-# Acoustic columns
 acoustics.sensor_id      = Int.(acoustics.sensor_id);
 acoustics.obs            = Int.(acoustics.obs);
 acoustics.receiver_x     = Float64.(acoustics.receiver_x);
@@ -129,38 +120,38 @@ acoustics.receiver_y     = Float64.(acoustics.receiver_y);
 acoustics.receiver_alpha = Float64.(acoustics.receiver_alpha);
 acoustics.receiver_beta  = Float64.(acoustics.receiver_beta);
 acoustics.receiver_gamma = Float64.(acoustics.receiver_gamma);
-# containers_fwd
-containers_fwd.obs        = Int.(containers_fwd.obs);
-containers_fwd.sensor_id  = Int.(containers_fwd.sensor_id);
-containers_fwd.centroid_x = Float64.(containers_fwd.centroid_x);
-containers_fwd.centroid_y = Float64.(containers_fwd.centroid_y);
-containers_fwd.radius     = Float64.(containers_fwd.radius);
-# t_resample vectors
-t_resample_fwd            = Int.(t_resample_fwd.timestep);
+any_detections           = any(acoustics.obs == 1)
 
-#### (optional) Update acoustics F146 parameters for Split Rock 
-# TO DO Trial this code & if successful build into R processing 
-# acoustics[sensor_id %in% c(41, 67, 105), receiver_alpha := 0.635159329]
-# acoustics[sensor_id %in% c(41, 67, 105), receiver_beta := -0.002724118]
-# Isolate Split Rock rows 
-# split_rock = acoustics.sensor_id .∈ Ref([41, 67, 105])
-# Check receiver IDs/receiver coordinates
-# acoustics[acoustics.sensor_id .== 41, :]
-# acoustics[acoustics.sensor_id .== 67, :]
-# acoustics[acoustics.sensor_id .== 105, :]
-# Update detection probability model parameters using F146
-# acoustics[split_rock, :receiver_alpha] .= 0.635159329
-# acoustics[split_rock, :receiver_beta]  .= -0.002724118
-# Check acoustics
-# acoustics
-# acoustics[split_rock, :]
+#### Define containers 
+if any_detections
+  containers_fwd            = DataFrame(Arrow.Table(iter.file_containers_fwd));
+  containers_fwd.timestamp  = DateTime.(containers_fwd.timestamp);
+  containers_fwd.obs        = Int.(containers_fwd.obs);
+  containers_fwd.sensor_id  = Int.(containers_fwd.sensor_id);
+  containers_fwd.centroid_x = Float64.(containers_fwd.centroid_x);
+  containers_fwd.centroid_y = Float64.(containers_fwd.centroid_y);
+  containers_fwd.radius     = Float64.(containers_fwd.radius);
+end 
+
+#### Define t_resample
+if any_detections
+  t_resample_fwd = DataFrame(Arrow.Table(iter.file_t_resample_fwd));
+  t_resample_fwd = Int.(t_resample_fwd.timestep);
+else 
+  t_resample_fwd = nothing;
+end
 
 #### Assemble datasets 
 # Collate datasets & associated `ModelObs` instances into a typed dictionary 
-datasets_fwd    = [acoustics, containers_fwd];
-model_obs_types = [ModelObsAcousticLogisTruncLos, ModelObsContainer];
-yobs_fwd        = assemble_yobs(datasets = datasets_fwd,
-                                model_obs_types = model_obs_types);
+if any_detections
+  datasets_fwd    = [acoustics, containers_fwd];
+  model_obs_types = [ModelObsAcousticLogisTruncLos, ModelObsContainer];
+else
+  datasets_fwd    = [acoustics];
+  model_obs_types = [ModelObsAcousticLogisTruncLos];
+end
+yobs_fwd = assemble_yobs(datasets = datasets_fwd,
+                         model_obs_types = model_obs_types);
 
 
 ###########################
@@ -188,8 +179,8 @@ for m in multipliers
                             n_particle      = iter.n_particle_filter * m,
                             n_record        = 1,
                             t_resample      = t_resample_fwd,
-                            direction       = "forward",
-                            batch           = fwd_batches)
+                            direction       = "forward", 
+                            batch           = nothing)
   convergence = fwd.callstats.convergence[1]
   convergence && break
 end
