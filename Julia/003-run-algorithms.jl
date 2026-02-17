@@ -20,7 +20,6 @@ import Pkg
 
 #### Load local packages
 Pkg.activate(".")
-using BenchmarkTools
 import Arrow
 import GeoArrays
 import Random
@@ -33,18 +32,18 @@ using Patter
 
 #### Load source files
 include("./src/utils.jl")
-include("./src/initialise-filters.jl")
 include("./src/observation-model.jl")
+include("./src/inference.jl")
 
 #### Load datasets (map, iteration)
 # Load map & iteration 
 # analysis  = "sim"
-analysis  = "real"
+analysis    = "real"
 subanalysis = "main"
-env       = GeoArrays.read(joinpath("data", "input", "map.tif"));
-env_init  = Patter.rast(joinpath("data", "input", "map.tif"));
-iteration = DataFrame(Arrow.Table(joinpath("data", "input", analysis, subanalysis, "iteration.feather")))
-iteration = iteration[iteration.sensitivity .== "best", :]
+env         = GeoArrays.read(joinpath("data", "input", "map.tif"));
+env_init    = Patter.rast(joinpath("data", "input", "map.tif"));
+iteration   = DataFrame(Arrow.Table(joinpath("data", "input", analysis, subanalysis, "iteration.feather")))
+iteration   = iteration[iteration.sensitivity .== "best", :]
 # iteration = iteration[iteration.index .∈ Ref([7, 13, 14, 119, 133, 140, 147, 161, 166, 168, 176, 178, 179, 182, 195, 196]), :];
 
 #### Select iteration 
@@ -53,8 +52,10 @@ iteration.n_move              = Int.(iteration.n_move);
 iteration.n_resample          = Float64.(iteration.n_resample);
 iteration.n_particle_filter   = Int.(iteration.n_particle_filter);
 iteration.n_particle_smoother = Int.(iteration.n_particle_smoother);
-# iteration.n_move .= 30; iteration.n_particle_filter   .= 5000; iteration.n_particle_smoother .= 100;
-
+# (optional) Customise settings 
+# iteration.n_move .= 30; 
+# iteration.n_particle_filter   .= 5000; 
+# iteration.n_particle_smoother .= 100;
 # Select row 
 if isinteractive()
     row = 1
@@ -81,7 +82,6 @@ if (Threads.nthreads() != 1) && !isinteractive()
 end 
 # Set seed
 Random.seed!(123);
-start = now();
 
 
 ###########################
@@ -105,8 +105,7 @@ model_move = ModelMoveCXY(env,
 ###########################
 #### Define observation model 
 
-#### Load timeline 
-# Define timeline 
+#### Load timeline
 timeline           = DataFrame(Arrow.Table(iter.file_timeline))
 timeline.timestamp = DateTime.(timeline.timestamp)
 timeline           = timeline.timestamp
@@ -173,43 +172,41 @@ yobs_bwd        = assemble_yobs(datasets = datasets_bwd,
 ###########################
 #### Set up algorithms 
 
-# Define batches 
+#### Define n_particle multipliers
+multipliers = (1) # (1, 3)
+
+#### Define batches 
 fwd_batches = [joinpath(iter.folder_output, "fwd-$i.jld2") for i in 1:iter.n_batch]
 bwd_batches = [joinpath(iter.folder_output, "bwd-$i.jld2") for i in 1:iter.n_batch]
 smo_batches = [joinpath(iter.folder_output, "smo-$i.jld2") for i in 1:iter.n_batch]
 pou_batches = [joinpath(iter.folder_output, "pou-$i.feather") for i in 1:iter.n_batch]
 
-# Define output objects
+#### Define output objects
 fwd = bwd = smo = nothing 
-
-# Define duration placeholders
-td_fwd = td_bwd = td_smo = NaN
 
 
 ###########################
 #### Forward filter 
 
-#### Simulate initial states for the forward filter
-xinit = initialise_forward_filter(iter, env_init, timeline, state, model_move, datasets_fwd, model_obs_types, acoustics)
-# Plots.plot(env)
-# scatter!([xinit[i].x for i in 1:iter.n_particle_filter], [xinit[i].y for i in 1:iter.n_particle_filter], markersize = 0.01)
-
-#### Run the forward filter
-t1_fwd = now()
-fwd = particle_filter(timeline   = timeline,
-                      xinit      = xinit,
-                      yobs       = yobs_fwd,
-                      model_move = model_move,
-                      n_move     = iter.n_move,
-                      n_resample = iter.n_resample,
-                      t_resample = t_resample_fwd,
-                      n_record   = iter.n_particle_smoother,
-                      direction  = "forward", 
-                      batch      = fwd_batches,
-                      progress   = Patter.progress_control(enabled = isinteractive()),
-                      verbose    = isinteractive());
-t2_fwd = now()
-td_fwd = diffsecs(t2_fwd, t1_fwd)
+#### Run filter
+convergence = false
+for m in multipliers
+  fwd = run_particle_filter(iter            = iter,
+                            env_init        = env_init,
+                            timeline        = timeline,
+                            state           = state,
+                            model_move      = model_move,
+                            datasets        = datasets_fwd,
+                            model_obs_types = model_obs_types,
+                            yobs            = yobs_fwd,
+                            n_particle      = iter.n_particle_filter * m,
+                            n_record        = iter.n_particle_smoother,
+                            t_resample      = t_resample_fwd,
+                            direction       = "forward",
+                            batch           = fwd_batches)
+  convergence = fwd.callstats.convergence[1]
+  convergence && break
+end
 
 #### Collect outputs
 # (To conserve disk space, we do not record states)
@@ -221,41 +218,36 @@ diagnostics.ncell_home .= NaN
 
 
 ###########################
-#### (2) Backward filter 
+#### Backward filter 
 
-convergence = fwd.callstats.convergence[1]
 if convergence
 
-  #### Simulate initial states for the backward filter
-  # Use states from forward filter
-  xinit = initialise_backward_filter(iter, fwd_batches)
-  # Plots.plot(env)
-  # scatter!([xinit[i].x for i in 1:iter.n_particle_filter], [xinit[i].y for i in 1:iter.n_particle_filter], markersize = 0.1)
+  #### Run filter
+  convergence = false 
+  for m in multiplers 
+    bwd = run_particle_filter(iter            = iter,
+                              env_init        = env_init,
+                              timeline        = timeline,
+                              state           = state,
+                              model_move      = model_move,
+                              datasets        = datasets_bwd,
+                              model_obs_types = model_obs_types,
+                              yobs            = yobs_bwd,
+                              n_particle      = iter.n_particle_filter * m,
+                              n_record        = iter.n_particle_smoother,
+                              t_resample      = t_resample_bwd,
+                              direction       = "backward",
+                              batch           = bwd_batches)
+    convergence = bwd.callstats.convergence[1]
+    convergence && break
+  end
 
-  #### Run the backward filter
-  t1_bwd = now()
-  bwd = particle_filter(timeline   = timeline,
-                        xinit      = xinit,
-                        yobs       = yobs_bwd,
-                        model_move = model_move,
-                        n_move     = iter.n_move,
-                        n_resample = iter.n_resample,
-                        t_resample = t_resample_bwd,
-                        n_record   = iter.n_particle_smoother,
-                        direction  = "backward", 
-                        batch      = bwd_batches,
-                        progress   = Patter.progress_control(enabled = isinteractive()),
-                        verbose    = isinteractive());
-  t2_bwd = now()
-  td_bwd = diffsecs(t2_bwd, t1_bwd)
-  
   #### Collect outputs
   append!(callstats, bwd.callstats)
   bwd.diagnostics.routine    .= bwd.callstats.routine
   bwd.diagnostics.ncell_core .= NaN
   bwd.diagnostics.ncell_home .= NaN
   append!(diagnostics, bwd.diagnostics)
-  convergence = bwd.callstats.convergence[1]
 
 end 
 
@@ -272,13 +264,12 @@ if convergence
   n_sim = 0
   if iter.n_move > 1
     # vmap = GeoArrays.read(joinpath("data", "input", "vmap", string(Int(iter.mobility[1])), "vmap.tif"))
-    vmap = GeoArrays.read(iter.file_vmap)
+    vmap  = GeoArrays.read(iter.file_vmap)
     cache = true 
     n_sim = 30
   end 
 
   #### Run smoother
-  t1_smo = now()
   smo = particle_smoother_two_filter(timeline   = timeline,
                                      xfwd       = fwd_batches,
                                      xbwd       = bwd_batches,
@@ -290,8 +281,6 @@ if convergence
                                      batch      = smo_batches, 
                                      progress   = Patter.progress_control(enabled = isinteractive()), 
                                      verbose    = isinteractive());
-  t2_smo = now()
-  td_smo = diffsecs(t2_smo, t1_smo)
 
   #### Collate smoother/summary outputs
   # This is implemented below 
@@ -326,6 +315,9 @@ if convergence
     
     # (A) Compute grid cell weights, for mapping 
     # * This is a summarised DataFrame, with one row for each timestep & grid cell with the weight 
+    # * Since the maximum number of grid cells is the number of particles 
+    #   (and in fact most grid cells are w/o particles)
+    #   this helps minimise disk space requirements 
     # * We write this straight to file to keep memory usage low (over all batches)
     # * We collate DataFrames in R (summing weights over all time steps) for mapping 
     coord = map_marks(env, smo_states)
