@@ -576,10 +576,13 @@ detections <- detections[
 detections <- detections[, .(individual_id, timestamp, receiver_id, receiver_station)]
 
 #### Exclude all data before the 2014 tagging season 
-table(fish$date)
-nrow(detections)
-detections <- detections[timestamp >= as.POSIXct("2014-11-04 23:59:59", tz = "UTC"), ]
-nrow(detections)
+# This is no longer implemented
+# In prepare-analysis.R, we define the time period of the analysis from 2014-2017
+# We keep detections prior to this date b/c they may inform the starting locations
+# table(fish$date)
+# nrow(detections)
+# detections <- detections[timestamp >= as.POSIXct("2014-11-04 23:59:59", tz = "UTC"), ]
+# nrow(detections)
 
 #### Exclude individuals that were only detected in the tagging season
 # Identify individuals that were only detected in tagging season
