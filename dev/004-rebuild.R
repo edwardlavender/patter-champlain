@@ -32,6 +32,7 @@ cl_lapply(scripts[1:13L], function(script) {
   callr::rscript(script)
 })
 toc()
+beepr::beep(10)
 
 # (3) Simulate data
 # > Data simulation is implemented from R via patter
@@ -39,10 +40,10 @@ toc()
 # > Then copy data/input/sim onto linux server 
 # > NB: we only need to copy files produced by sim-data.R
 # > We do not need to copy the full contents of the sim/main/ folder!
-# callr::rscript(script[14])
+callr::rscript(scripts[14])
+beepr::beep(10)
 list.files(file.path("data", "input", "sim", "main"), full.names = TRUE)
-files <- c("data/input/sim/main/acoustics-by-path.qs", 
-           "data/input/sim/main/detections.qs",       
+files <- c("data/input/sim/main/detections.qs",       
            "data/input/sim/main/moorings.qs", 
            "data/input/sim/main/paths.qs", 
            "data/input/sim/main/timeline.qs")
