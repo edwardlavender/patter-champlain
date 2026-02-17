@@ -7,10 +7,10 @@ using Dates
 
 # Compute time difference (s) between t2 and t1 
 # * `t2` and `t1` may be DateTime or Vector{DateTime}
-function diffsecs(t2::Union{Dates.DateTime,Vector{Dates.DateTime}},
-    t1::Union{Dates.DateTime,Vector{Dates.DateTime}})
-    Dates.value.(t2 .- t1) ./ 1000
-end
+# function diffsecs(t2::Union{Dates.DateTime,Vector{Dates.DateTime}},
+#     t1::Union{Dates.DateTime,Vector{Dates.DateTime}})
+#     Dates.value.(t2 .- t1) ./ 1000
+# end
 
 # Compute the 'map_marks' DataFrame
 # > Given the Map (env) GeoArray and a DataFrame of sampled particles
