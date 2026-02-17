@@ -132,6 +132,15 @@ if (!file.exists(iter$file_acoustics_raw)) {
 #### Collate outputs
 paths     <- arrow::read_feather(iter$file_paths_raw)
 acoustics <- arrow::read_feather(iter$file_acoustics_raw)
+moorings  <- 
+  moorings |>
+  mutate(receiver_start = lubridate::floor_date(min(timeline$timestamp)),
+         receiver_end = lubridate::floor_date(max(timeline$timestamp))) |> 
+  select("receiver_id" = "sensor_id", 
+         "receiver_x", "receiver_y", 
+         "receiver_start", "receiver_end",
+         "receiver_alpha", "receiver_beta", "receiver_gamma") |> 
+  as.data.table()
 
 #### Process datasets
 # Process paths
