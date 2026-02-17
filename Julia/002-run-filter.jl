@@ -36,26 +36,26 @@ using Patter
 
 #### Load source files
 include("./src/observation-model.jl")
-include("./src/utils.jl")
+include("./src/inference.jl")
 
 #### Load datasets (map, iteration)
 # Load map & iteration 
 # analysis  = "sim"
-analysis  = "real"
+analysis    = "real"
 subanalysis = "main"
-env       = GeoArrays.read(joinpath("data", "input", "map.tif"));
-env_init  = Patter.rast(joinpath("data", "input", "map.tif"));
-iteration = DataFrame(Arrow.Table(joinpath("data", "input", analysis, subanalysis, "iteration.feather")))
-iteration = iteration[iteration.sensitivity .== "best", :];
+env         = GeoArrays.read(joinpath("data", "input", "map.tif"));
+env_init    = Patter.rast(joinpath("data", "input", "map.tif"));
+iteration   = DataFrame(Arrow.Table(joinpath("data", "input", analysis, subanalysis, "iteration.feather")))
+iteration   = iteration[iteration.sensitivity .== "best", :];
 
 #### Select iteration 
-# (optional) Customise settings 
-iteration.n_particle_filter .= 20000
 # Set column types as needed
 iteration.n_move              = Int.(iteration.n_move);
 iteration.n_resample          = Float64.(iteration.n_resample);
 iteration.n_particle_filter   = Int.(iteration.n_particle_filter);
 iteration.n_particle_smoother = Int.(iteration.n_particle_smoother);
+# (optional) Customise settings 
+# iteration.n_particle_filter .= 20000
 # Select row 
 if isinteractive()
     row = 1
@@ -173,30 +173,26 @@ yobs_fwd        = assemble_yobs(datasets = datasets_fwd,
 # in a separate script (we can't do this for all runs as it requires
 # too much disk space). 
 
-#### Initialise forward filter
-xinit = simulate_states_init(map             = env_init,
-                             timeline        = timeline,
-                             state_type      = state,
-                             xinit           = nothing,
-                             model_move      = model_move,
-                             datasets        = datasets_fwd,
-                             model_obs_types = model_obs_types,
-                             n_particle      = iter.n_particle_filter,
-                             direction       = "forward",
-                             output          = "Vector")
-
-#### Run forward filter 
-fwd = particle_filter(timeline   = timeline,
-                      xinit      = xinit,
-                      yobs       = yobs_fwd,
-                      model_move = model_move,
-                      n_move     = iter.n_move,
-                      n_resample = iter.n_resample,
-                      t_resample = t_resample_fwd,
-                      n_record   = 1,
-                      direction  = "forward", 
-                      progress   = Patter.progress_control(enabled = isinteractive()),
-                      verbose    = isinteractive());
+fwd         = nothing 
+multipliers = (1)
+convergence = false
+for m in multipliers
+  fwd = run_particle_filter(iter            = iter,
+                            env_init        = env_init,
+                            timeline        = timeline,
+                            state           = state,
+                            model_move      = model_move,
+                            datasets        = datasets_fwd,
+                            model_obs_types = model_obs_types,
+                            yobs            = yobs_fwd,
+                            n_particle      = iter.n_particle_filter * m,
+                            n_record        = 1,
+                            t_resample      = t_resample_fwd,
+                            direction       = "forward",
+                            batch           = fwd_batches)
+  convergence = fwd.callstats.convergence[1]
+  convergence && break
+end
 
 #### Benchmarks (SIA-LAVENDED, 10 threads, 20,000 particles)
 # 151.525 ModelObsAcousticLogisTrunc
