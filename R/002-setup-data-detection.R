@@ -338,9 +338,9 @@ detections <- detections[!is.na(receiver_id), ]
 #### Clean up
 
 # Define study period
-study_start <- min(detections$timestamp)
-study_end   <- max(detections$timestamp)
-study_int   <- lubridate::interval(study_start, study_end)
+# study_start <- min(detections$timestamp)
+# study_end   <- max(detections$timestamp)
+# study_int   <- lubridate::interval(study_start, study_end)
 
 #### Clean up moorings 
 head(moorings)
@@ -348,8 +348,8 @@ nrow(moorings)
 moorings <- 
   moorings |> 
   as.data.frame() |>
-  mutate(int = lubridate::interval(receiver_start, receiver_end)) |> 
-  filter(int_overlaps(int, study_int)) |> 
+  # mutate(int = lubridate::interval(receiver_start, receiver_end)) |> 
+  # filter(int_overlaps(int, study_int)) |> 
   select(receiver_station, receiver_id, receiver_start, receiver_end, receiver_x, receiver_y) |> 
   as.data.table()
 nrow(moorings)
@@ -560,7 +560,7 @@ nrow(moorings_real)
 
 #### Implement Futia et al. (2024) filters e.g., for false detections
 # Check study duration
-c(study_start, study_end)
+# c(study_start, study_end)
 range(detections_filtered$detection_timestamp_utc)
 # Format detections_filtered
 detections_filtered |> setDT()
@@ -614,6 +614,7 @@ length(unique(detections_filtered$individual_id))
 #### Examine detection transitions
 
 #### Potential movements of interest 
+# (optional) TO DO Move this code to setup-data-detection-*.R script
 # Movements through detection gates can be challenging depending on the formulation of the detection probability model
 # Specific movements we should check for, based on examination of the station layout, include: 
 # * Movements north from Crown Point to any other receiver without detection at Arnold West/Arnold Central/Arnold East
