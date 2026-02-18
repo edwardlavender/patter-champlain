@@ -27,6 +27,7 @@ library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
 library(ggplot2)
+library(lubridate)
 library(patter)
 library(proj.verse)
 library(spatial.extensions)
@@ -53,270 +54,195 @@ subanalysis <- "main"
 
 #### Define analysis-specific data
 here_input_analysis <- switch_here_input_analysis_subanalysis(analysis, subanalysis)
-detections_full     <- qs::qread(here_input_analysis("detections.qs"))
+detections          <- qs::qread(here_input_analysis("detections.qs"))
 moorings            <- qs::qread(here_input_analysis("moorings.qs"))
 if (analysis == "sim") {
-  paths     <- qs::qread(here_input_sim("main", "paths.qs"))
-}
-if (analysis == "real") {
-  detections_raw <- qs::qread(here_input_analysis("detections-raw.qs"))
+  paths <- qs::qread(here_input_sim("main", "paths.qs"))
 }
 
 
 ###########################
 ###########################
-#### Define detection dataset (blocks)
+#### Process detections
 
-#### Update detections with individual/time_id blocks
-# Define individual_id, time_id blocks
-detections_full <- 
-  detections_full |> 
-  group_by(individual_id) |> 
-  mutate(time_id = lubridate::floor_date(timestamp, "months")) |>
-  select(individual_id, time_id, timestamp, receiver_id) |>
-  as.data.table()
-# Check number of individuals in full dataset
-length(unique(detections_full$individual_id))
-
-#### Focus on individual/time (month) units with sufficient data
-# NB: filter_detections assumes monthly blocks
-# > With proportion of days with detections >= 0.5: 
-#   389 / 1352 individual/time block(s) ('unit_id(s)') retained.
-# > With max_gap <= 7 days: 
-#   365 / 1352 individual/time block(s) ('unit_id(s)') retained.
-# > With both criteria, 
-#   294 / 1352 individual/time block(s) ('unit_id(s)') retained.
-# > With >= 1 detection per week
-#   658 / 1352 individual/time block(s) ('unit_id(s)') retained.
-detections <- filter_detections(detections_full)
-
-#### Review data availability by spawning site/season
-# Check the mean number of days with observations per individual for each site/season
-detections_full |> 
-  mutate(time_id = lubridate::floor_date(timestamp, "months"), 
-         site = fish$site[match(individual_id, fish$individual_id)], 
-         season = season(time_id)) |> 
-  group_by(individual_id, time_id, site, season) |> 
-  summarise(n = length(unique(lubridate::floor_date(timestamp, "days")))) |> 
-  ungroup() |> 
-  group_by(site, season) |> 
-  summarise(utils.add::basic_stats(n)) |> 
-  as.data.table()
-# Count the number of individual/month time series per site/season
-# (There may be times of year e.g., summer when data are poorer)
-categories <- 
-  rbind(
-    # Number of time series in full dataset
-    detections_full |> 
-      mutate(site = fish$site[match(individual_id, fish$individual_id)], 
-             season = season(time_id)) |> 
-      group_by(site, season) |> 
-      summarise(n = n_distinct(paste(individual_id, time_id))) |> 
-      mutate(dataset = "full") |> 
-      as.data.table(),
-    # Number of time series in modelled dataset
-    detections |> 
-      mutate(site = fish$site[match(individual_id, fish$individual_id)], 
-             season = season(time_id)) |> 
-      group_by(site, season) |> 
-      summarise(n = n_distinct(paste(individual_id, time_id))) |> 
-      mutate(dataset = "model") |> 
-      as.data.table()
-  )
-# Visualise number of time series available versus modelled
-p <- 
-  ggplot(categories, aes(x = dataset, y = n)) +
-  geom_bar(stat = "identity") +
-  ylab("Number of time series") + 
-  facet_grid(~site ~ season)
-plotly::ggplotly(p)
-# Visualise % of time series modelled 
-p <- 
-  categories |>
-  tidyr::pivot_wider(names_from = dataset,
-                     values_from = n) |>
-  mutate(percent = 100 * model / full) |> 
-  as_tibble() |> 
-  ggplot(aes(x = season, y = percent)) +
-  geom_col() +
-  ylab("Percentage of time series modelled") + 
-  facet_wrap(~site)
-plotly::ggplotly(p)
-# Results
-# > With max_gap <= 7 days: 
-#   We retain few time series from summer (n = 14-17; 10 %)
-#   Otherwise, we retain n > 42 or 30-50 % time series
-# > With one detection per week: 
-#   We retain 20 % of time series from summer (n = 30-45)
-
-#### Checks
-# Validate time_id assignment in detections
-stopifnot(all(detections$time_id == 
-                lubridate::floor_date(detections$timestamp, "months")))
-# Check the number of days with detections meets minimum criteria
-# * This is based on the threshold specified in filter_detections.R
-ck <- 
-  detections |> 
-  group_by(paste(individual_id, time_id)) |> 
-  summarise(ck = length(unique(lubridate::yday(timestamp)))) |> 
-  pull(ck) |> 
-  sort()
-stopifnot(all(ck >= 7))
-# Check the number of detections
-# * We want to catch time series with 'too few' observations
-# * What is 'too few' here is somewhat arbitrary
-# * The goal is to catch potential mistakes in data processing
-# * E.g., that would otherwise allow 1 or 2 row datasets forward for analysis
-ck <- 
-  detections |> 
-  group_by(paste(individual_id, time_id)) |> 
-  summarise(ck = n()) |> 
-  pull(ck) |> 
-  sort()
-stopifnot(all(ck >= 40))
-
-#### Summarise (real) detection dataset used for modelling 
-# cf. raw data summary statistics (setup-data-detection.R)
-if (FALSE) {
-  # Number of observations
-  nrow(detections)
-  # Number of individuals
-  length(unique(detections$individual_id))
-  # Time ranges (in months & years)
-  range(detections$timestamp)
-  int <- lubridate::interval(min(detections$timestamp),max(detections$timestamp))
-  lubridate::time_length(int, "months")
-  lubridate::time_length(int, "years")
-  # Number of receivers with detections
-  length(unique(detections$receiver_id))
-  # Number of individual/time_id blocks
-  length(unique(paste(detections$individual_id, detections$time_id)))
-  # (slow) Abacus plot
-  # plot(detections$timestamp, detections$individual_id)
-  # Time until first detection (for forward or backward filter)
-  lagtimes <- 
-    detections |>
-    group_by(individual_id, time_id) |> 
-    summarise(
-      start_obs      = min(timestamp), 
-      end_obs        = max(timestamp),
-      start_timeline = min(time_id), 
-      end_timeline   = time_id[1] + lubridate::as.period("1 month") - 60 * 2,
-      forward_time   = as.numeric(difftime(start_obs, start_timeline, units = "days")), 
-      backward_time  = as.numeric(difftime(end_timeline, end_obs, units = "days"))) |>
-    as.data.table()
-  # Check distributions
-  hist(lagtimes$forward_time)
-  hist(lagtimes$backward_time)
-}
-
-#### Visualise real detection dataset used for modelling 
-# (optional) TO DO Move this code to appropriate synthesis script
-# Plot raw time series (light grey)
-# Add modelled time series, coloured by region as in map
-overwrite <- FALSE
-if (analysis == "real" & overwrite) {
-
-  # Add to moorings
-  moorings <- 
-    moorings |> 
-    mutate(region = terra::extract(regions, cbind(receiver_x, receiver_y))$map_value, 
-           col = regions_cs$col[match(region, regions_cs$region)]) |> 
-    as.data.table()
-  stopifnot(all(!is.na(moorings$col)))
-  
-  #### Process raw detections
-  ids  <- unique(detections_raw$individual_id)
-  draw <- copy(detections_raw)
-  draw[, model := FALSE]
-  draw[detections, on = .(individual_id, timestamp), model := TRUE]
-  draw[, individual_id := factor(individual_id, levels = ids)]
-  draw[, col := moorings$col[match(receiver_id, moorings$receiver_id)]]
-  draw[, col := ifelse(model == TRUE, col, scales::alpha("dimgrey", 0.25))]
-  
-  #### Plot (~15 s)
-  tic()
-  range(draw$timestamp)
-  png(here_fig(analysis, "detections.png"), 
-      height = 9.69 * 1.75, width = 6.27 * 1.75, units = "in", res = 800)
-  # Set parameters 
-  pp <- par(oma = c(1.5, 1.5, 0, 0))
-  xshift    <-  5 * 24 * 60 * 60
-  cex.axis  <- 2
-  cex.mtext <- 2.25
-  # Blank plot
-  plot(draw$timestamp, draw$individual_id, 
-       type = "n",
-       xlim = c(min(draw$timestamp) - xshift, max(draw$timestamp) + xshift),
-       ylim = c(0, length(ids) + 1),
-       xaxs = "i", yaxs = "i",
-       xlab = "", ylab = "", 
-       xaxt = "n", cex.axis = cex.axis, las = TRUE)
-  # Add x grid (by month)
-  months <- seq(lubridate::floor_date(min(draw$timestamp), "months"), 
-                lubridate::floor_date(max(draw$timestamp), "months"),
-                by = "months")
-  sapply(months, \(month) abline(v = month, col = "lightgrey", lty = 3)) |> invisible()
-  # Add y grid (by individual)
-  sapply(unique(draw$individual_id), \(id) abline(h = id, col = "lightgrey")) |> invisible()
-  # Add points (on top of grid)
-  n <- nrow(draw)
-  # n <- 1e5
-  points(draw$timestamp[1:n], draw$individual_id[1:n],
-         pch = 3, col = draw$col, las = TRUE)
-  # Add axes
-  xat <- as.POSIXct(paste0(rep(2014:2017, each = 2), c("-01-01", "-06-01")), tz = "UTC")
-  axis(side = 1, at = xat, labels = format(xat, "%b-%y"), cex.axis = cex.axis)
-  mtext(side = 1, "Time (month-year)", line = 4, cex = cex.mtext)
-  mtext(side = 2, "Individual", line = 4, cex = cex.mtext)
-  par(pp)
-  dev.off()
-  toc()
-  
-}
-
-
-###########################
-###########################
-#### Define unitsets
-
-#### Define unitsets
-unitsets <- 
-  detections |> 
-  group_by(individual_id, time_id) |> 
-  slice(1L) |> 
-  ungroup() |> 
-  arrange(individual_id, time_id) |> 
-  mutate(unit_id = row_number()) |> 
-  select(unit_id, individual_id, time_id, timestamp) |>
-  as.data.table()
-# Update detections with unit_id
+#### Process timestamps (~5 s)
+# Round observations to the nearest two minutes & drop duplicate observations
 detections <- 
   detections |> 
-  left_join(unitsets[, .(unit_id, individual_id, time_id)], 
-            by = c("individual_id", "time_id")) |> 
-  select(unit_id, individual_id, time_id, timestamp, receiver_id) |> 
+  lazy_dt() |> 
+  mutate(timestamp = round_date(timestamp, "2 mins")) |> 
+  group_by(individual_id, timestamp, receiver_id) |>
+  slice(1L) |>
   as.data.table()
 
-#### Checks
-# Visually validate matching between unitsets & detections
-unitsets[unit_id == 14, ]
-detections[unit_id == 14, ]
-# Validate all unit_ids present in each dataset
-stopifnot(all(unitsets$unit_id %in% detections$unit_id) & 
-            all(detections$unit_id %in% unitsets$unit_id))
-# Validate matching between all unitsets and detections
-cl_lapply(split(unitsets, seq_len(nrow(unitsets))), function(sim) {
-  vdetections <- detections[unit_id == sim$unit_id, ]
-  stopifnot(all(sim$unit_id == vdetections$unit_id))
-  stopifnot(all(sim$individual_id == vdetections$individual_id))
-  stopifnot(all(sim$time_id == vdetections$time_id))
-})
+#### Filter individuals
+if (analysis == "real") {
+  # We focus on the study period of 2014 -> 2017 
+  # We focus on individuals detected in the study period 
+  # (For those individuals, we retain data for 2013
+  #  as it may support initialisation of filter)
+  # A) Identify individuals to drop: 
+  sort(unique(fish$date))
+  individuals_to_exclude <- 
+    detections |> 
+    group_by(individual_id) |> 
+    summarise(drop = all(timestamp < as.POSIXct("2014-12-01 00:00:00"))) |>
+    filter(drop) |> 
+    pull(individual_id)
+  # B) Filter detections accordingly 
+  detections <- detections[!(individual_id %in% individuals_to_exclude), ]
+}
+
+nrow(detections)
+
+
+###########################
+###########################
+#### Define unitsets
+
+#### Overview 
+# unitsets defines the individual/time blocks for analysis (defined by unit_id)
+# For simulations, we model each individual and the one-month simulated time series
+# For real-world analysis, we model each individual and every seasonal block from
+# the start to the end of the study period
+
+if (analysis == "sim") {
+  
+  #### Define individuals
+  # We model 1:100 individuals
+  individuals <- sort(unique(paths$path_id))
+  
+  #### Define time blocks
+  # We simulated data over one month
+  time_id <- floor_date(min(paths$timestamp))
+
+  #### Define unitsets
+  unitsets <- 
+    CJ(individual_id = individuals, time_id) |>
+    arrange(individual_id, time_id) |> 
+    mutate(unit_id = 1:n(), 
+           time_interval = interval(min(paths$timestamp), max(paths$timestamp)), 
+           time_label = "2015-Jan",
+           time_start = int_start(time_interval), 
+           time_end   = int_end(time_interval),
+           julia = TRUE) |> 
+    select("unit_id", "individual_id", 
+           "time_id", "time_label", "time_start", "time_end", "julia") |>
+    as.data.table()
+  
+} else if (analysis == "real") {
+
+  #### Define individuals
+  # We focus on individuals detected in at least two seasons 
+  # (as defined in the detections data.table)
+  individuals <- sort(unique(detections$individual_id))
+  
+  #### Define time blocks
+  # We use seasonal time blocks, defined as: 
+  # * Winter: December 1–March 31
+  # * Spring: April 1–May 31
+  # * Summer: June 1–September 30
+  # * Fall: October 1–November 30
+  # For the start of the study period, we use Winter 2014
+  # * This is the first full season of data for most fish (tagged during fall 2013)
+  sort(unique(fish$date[lubridate::year(fish$date) > 2013]))
+  # For the end of the study period, we use Spring 2015
+  # * When was the array dismantled? 
+  max(detections$timestamp)
+  # Define timeframe
+  timeframe <- 
+    tribble(
+      ~time_label,     ~time_interval,
+      "2014-winter", interval("2014-12-01 00:00:00", "2015-03-31 23:58:00", tzone = "UTC"),
+      "2015-spring", interval("2015-04-01 00:00:00", "2015-05-31 23:58:00", tzone = "UTC"),
+      "2015-summer", interval("2015-06-01 00:00:00", "2015-09-30 23:58:00", tzone = "UTC"),
+      "2015-fall",   interval("2015-10-01 00:00:00", "2015-11-30 23:58:00", tzone = "UTC"),
+      "2016-winter", interval("2015-12-01 00:00:00", "2016-03-31 23:58:00", tzone = "UTC"),
+      "2016-spring", interval("2016-04-01 00:00:00", "2016-05-31 23:58:00", tzone = "UTC"),
+      "2016-summer", interval("2016-06-01 00:00:00", "2016-09-30 23:58:00", tzone = "UTC"),
+      "2016-fall",   interval("2016-10-01 00:00:00", "2016-11-30 23:58:00", tzone = "UTC"),
+      "2017-winter", interval("2016-12-01 00:00:00", "2017-03-31 23:58:00", tzone = "UTC"),
+      "2017-spring", interval("2017-04-01 00:00:00", "2017-05-31 23:58:00", tzone = "UTC")
+    )
+  # Add Summer & Fall 2017 (for increments below)
+  timeframe_extended <- 
+    rbind(
+      timeframe, 
+      tribble(
+        ~time_label,   ~time_interval,
+        "2017-summer", interval("2017-06-01 00:00:00", "2017-09-30 23:58:00", tzone = "UTC"),
+        "2017-fall",   interval("2017-10-01 00:00:00", "2017-11-30 23:58:00", tzone = "UTC"),
+      )
+    )
+  # cf. the number of individual/month blocks
+  # > 2070 blocks
+  months <- seq(as.POSIXct("2014-12-01 00:00:00", tz = "UTC"), 
+                to = as.POSIXct("2017-05-31 23:58:00", tz = "UTC"), 
+                by = "months")
+  CJ(individuals, months) |> nrow()
+  # cf. the number of time steps per block
+  # > 43920 -> 87840 steps
+  timeframe |> 
+    rowwise() |> 
+    summarise(n = length(seq(int_start(time_interval), 
+                             int_end(time_interval), by = "2 mins"))) |> 
+    arrange(desc(n)) |>
+    pull() |> 
+    unique()
+  
+  #### Define unitsets
+  # Build a complete data.table of individual/time blocks 
+  # * There are 690 individual/season blocks 
+  unitsets <- 
+    expand.grid(individual_id = unique(detections$individual_id), time_label = timeframe$time_label) |> 
+    mutate(time_interval = timeframe$time_interval[match(time_label, timeframe$time_label)], 
+           time_start = int_start(time_interval), 
+           time_end = int_end(time_interval),
+           time_id = int_start(time_interval)) |> 
+    arrange(individual_id, time_id) |> 
+    mutate(unit_id = row_number()) |> 
+    as.data.frame()
+  # Identify the last detection for each individual
+  detections_end <- 
+    detections |> 
+    group_by(individual_id) |> 
+    summarise(timestamp = max(timestamp)) |> 
+    as.data.table()
+  # Identify which blocks require modelling
+  # * We model all blocks for one season after the last detection
+  # * Note that the definition of next_interval assumes that we have at least
+  #   on detection in the study period 
+  unitsets <- 
+    unitsets |> 
+    mutate(timestamp_last_detection = detections_end$timestamp[
+      match(unitsets$individual_id,detections_end$individual_id)]) |> 
+    rowwise() |> 
+    mutate(
+      next_interval = timeframe_extended$time_interval[
+        which(timestamp_last_detection %within% timeframe_extended$time_interval) + 1]) |> 
+    ungroup() |> 
+    mutate(julia = int_start(unitsets$time_interval) <= int_start(next_interval),) |>
+    select("unit_id", "individual_id", "time_id", "time_label", "time_start", "time_end", "julia") |>
+    as.data.frame()
+  # There are 690 blocks, of which 540 require modelling (78 %)
+  nrow(unitsets)
+  table(unitsets$julia)
+   
+}
 
 
 ###########################
 ###########################
 #### Prepare iterations
+
+#### Review iteration parameters
+## (1) Compute the number of batches
+# We can compute the number of batches for:
+# n_particles * n time steps * 4 state dimensions * 100 cores if 50e3 MB memory available
+# For simulations, we have 22320 time steps
+p_batch(p_mem(1500, 22320, 4, 100), 50e3)
+# For real-world analysis, we have up to 43920 -> 87840 time steps
+p_batch(p_mem(2000, 87840, 4, 100), 50e3)
 
 #### Define iteration 
 iteration <- 
@@ -329,7 +255,7 @@ iteration <-
     # * For convenience, we store all files in an {individual_id}/{unit_id}/{parameter_id} directory 
     folder_input          = file.path("data", "input", analysis, subanalysis, "runs", 
                                       individual_id, time_id, parameter_id), 
-    file_timeline         = file.path(folder_input, "timeline.feather"),
+    file_timeline         = file.path(folder_input, "timeline-algorithm.feather"),
     file_acoustics        = file.path(folder_input, "acoustics.feather"),
     file_containers_fwd   = file.path(folder_input, "containers-fwd.feather"),
     file_containers_bwd   = file.path(folder_input, "containers-bwd.feather"),
@@ -358,16 +284,21 @@ iteration <-
                                     file.path(folder_output, "residency-sim.qs"),
                                     NA_character_), 
     # Add modelling columns
-    # NB: n_batch must be <= 9L due to a bug in Patter.jl
     n_move              = 1000L,
     n_particle_filter   = ifelse(analysis == "sim", 10000L, 20000L), 
     n_particle_smoother = ifelse(analysis == "sim", 1500L, 2000L),
     n_resample          = as.numeric(1000.0),
-    n_batch             = 9L
+    n_batch             = 35L
   ) |> 
   as.data.table()
 
-#### Checks
+#### Filter iterations
+if (analysis == "real") {
+  # To keep computations manageable, we do not run a real-world sensitivity analysis
+  iteration <- iteration[sensitivity == "best", ]
+}
+
+#### Check iterations 
 # Check nrow is feasible! 
 nrow(iteration)
 # Check vmap files exist
@@ -384,7 +315,7 @@ dirs.create(iteration$folder_output)
 
 ###########################
 ###########################
-#### Create iteration input files
+#### Create Julia inputs
 
 #### Duration
 # "sim": 46 s on SIA-LAVENDED or 76 s on siam-linux20 (10 cl, 2 chunks per core) 
@@ -416,71 +347,132 @@ dirs.create(iteration$folder_output)
 # > The marginal gains of max compression are v. limited
 #   compared to the speed cost of writing files (important for real-world)
 
+#### Define iterations for Julia
+iteration_julia <- iteration[julia == TRUE, ]
+nrow(iteration_julia)
+
 #### Write files 
-overwrite <- FALSE
-if (!file.exists(iteration$file_timeline[1]) | overwrite) {
+overwrite <- TRUE
+if (!all(file.exists(iteration_julia$file_timeline)) | overwrite) {
   
   pbo <- pbapply::pboptions(nout = 2L)
   cl_lapply(
-    split(iteration, seq_len(nrow(iteration))), 
-    .cl = 10L,
-    .chunk = TRUE,
+    split(iteration_julia, seq_len(nrow(iteration_julia))), 
+    .cl = 1L,
+    .chunk = FALSE,
     .fun = function(d) {
       
-      # Read maps (required to enable parallelisation, above)
-      # d      <- iteration[1, ]
+      #### (optional) selected rows 
+      # d <- iteration_julia[index == 8, ]
+      # d <- iteration_julia[individual_id == 24325 & time_label == "2015-summer"]
+      # if (file.exists(d$file_residency_sim)) {
+      #   return(NULL)
+      # }
+      print(d$index)
+      
+      #### Read maps (required to enable parallelisation, above)
       .map     <- terra::rast(here_input("map.tif"))
       .regions <- terra::rast(here_input("regions.tif"))
       
-      ## Define file_timeline
-      dets     <- detections[unit_id == d$unit_id, ]
-      timeline <- seq(dets$time_id[1], 
-                      lubridate::ceiling_date(max(dets$timestamp), "months") - 60 * 2, 
+      #### Define detections
+      # We identify the detection time series for the block
+      # To ensure blocks are independent, we try to start/end blocks with detection
+      # (though this is not always possible e.g., at the start of the time series)
+      # This prevents loss of information when blocks are treated independently 
+      # Hence, we do not filter the real detection time series 
+      # (i.e., by excluding pre-2014 data which could inform initialisation locations)
+      # A) Isolate detections for individual (may be zero)
+      dets   <- detections[individual_id == d$individual_id, ]
+      if (nrow(dets) > 0L) {
+        # Extract detections during the relevant time block
+        during <- before <- after <- NULL
+        during <- dets[timestamp >= d$time_start & timestamp <= d$time_end, ]
+        # B) Ensure the detection time series covers the full block:
+        # i) Add detection(s) immediately before the block start, if needed
+        if (nrow(during) == 0L || min(during$timestamp) > d$time_start) {
+          before <- dets[timestamp < d$time_start, ]
+          if (nrow(before) > 0L) {
+            before <- before[timestamp == max(timestamp), ]
+          }
+        }
+        # ii) Add the detection(s) immediately after the block end, if needed
+        if (nrow(during) == 0L || max(during$timestamp) < d$time_end) {
+          after <- dets[timestamp > d$time_end]
+          if (nrow(after) > 0L) {
+            after <- after[timestamp == min(timestamp), ]
+          }
+        }
+        dets <- rbind(during, before, after)
+      }
+      
+      #### Define file_timeline(s)
+      # Define timeline for algorithm run
+      timeline <- seq(min(c(d$time_start, dets$timestamp)), 
+                      max(c(d$time_end, dets$timestamp)), 
                       by = "2 mins")
-      stopifnot(length(timeline) > 20000 & length(timeline) < 30000)
-      timeline <- data.table(timestamp = timeline)
+      # Define timeline for block
+      block <- seq(d$time_start, d$time_end, by = "2 mins") 
+      # Collect timelines
+      timeline <- data.table(timestep = 1:length(timeline), 
+                             timestamp = timeline, 
+                             block = block[match(timeline, block)])
       write_feather_compressed(timeline, d$file_timeline)
       
-      ## Define file_acoustics
-      # Define moorings, with detection probability parameters
+      #### Define moorings, with detection probability parameters
       moors <- 
         moorings |> 
         lazy_dt(immutable = TRUE) |> 
         mutate(receiver_alpha = d$receiver_alpha, 
-               receiver_beta = d$receiver_beta, 
+               receiver_beta  = d$receiver_beta, 
                receiver_gamma = d$receiver_gamma) |> 
+        filter(
+          int_overlaps(
+            interval(receiver_start, receiver_end),
+            interval(min(timeline$timestamp), max(timeline$timestamp))
+          )
+        ) |>
         as.data.table()
-      # Define acoustics 
-      accs <- assemble_acoustics(.timeline = timeline$timestamp, .detections = dets, .moorings = moors)
+      
+      #### Define file_acoustics
+      # This uses the timeline for the algorithm run
+      accs <- assemble_acoustics(.timeline   = timeline$timestamp, 
+                                 .detections = dets, 
+                                 .moorings   = moors)
       write_feather_compressed(accs, d$file_acoustics)
       
-      ## Define acoustic containers (file_containers_fwd, file_containers_bwd)
+      #### Define acoustic containers (file_containers_fwd, file_containers_bwd)
       # To optimise the use of acoustic containers:
       # - We use a threshold that is slightly below the default
       # - See setup-data-map.R
-      threshold  <- 44159.98
-      containers <- assemble_acoustics_containers(.timeline = timeline$timestamp, 
-                                                  .acoustics = accs,
-                                                  .mobility = d$mobility, 
-                                                  .map = NULL, 
-                                                  .threshold = threshold)
-      containers_fwd <- containers$forward
-      containers_bwd <- containers$backward
-      write_feather_compressed(containers_fwd, d$file_containers_fwd)
-      write_feather_compressed(containers_bwd, d$file_containers_bwd)
-      stopifnot(max(c(containers_fwd$radius, containers_bwd$radius)) <= threshold)
+      if (nrow(dets) > 0L) {
+        threshold  <- 44159.98
+        containers <- assemble_acoustics_containers(.timeline = timeline$timestamp, 
+                                                    .acoustics = accs,
+                                                    .mobility = d$mobility, 
+                                                    .map = NULL, 
+                                                    .threshold = threshold)
+        containers_fwd <- containers$forward
+        containers_bwd <- containers$backward
+        stopifnot(nrow(containers_fwd) > 0L & nrow(containers_bwd) > 0L)
+        stopifnot(max(c(containers_fwd$radius, containers_bwd$radius)) <= threshold)
+        write_feather_compressed(containers_fwd, d$file_containers_fwd)
+        write_feather_compressed(containers_bwd, d$file_containers_bwd)
+      }
       
       #### Define t_resample
-      t_resample_fwd <- 
-        data.table(timestep = sort(unique(which(timeline$timestamp %in% 
-                                                  containers_fwd$timestamp))))
-      t_resample_bwd <- 
-        data.table(timestep = sort(unique(which(timeline$timestamp %in% 
-                                                  containers_bwd$timestamp))))
-      write_feather_compressed(t_resample_fwd, d$file_t_resample_fwd)
-      write_feather_compressed(t_resample_bwd, d$file_t_resample_bwd)
-      
-      ## Define file_occupancy_sim and file_residency_sim
+      if (nrow(dets) > 0L) {
+        t_resample_fwd <- 
+          data.table(timestep = sort(unique(which(timeline$timestamp %in% 
+                                                    containers_fwd$timestamp))))
+        t_resample_bwd <- 
+          data.table(timestep = sort(unique(which(timeline$timestamp %in% 
+                                                    containers_bwd$timestamp))))
+        stopifnot(nrow(t_resample_fwd) > 0L & nrow(t_resample_bwd) > 0L)
+        write_feather_compressed(t_resample_fwd, d$file_t_resample_fwd)
+        write_feather_compressed(t_resample_bwd, d$file_t_resample_bwd)
+      }
+
+      #### Define file_occupancy_sim and file_residency_sim
       if (analysis == "sim") {
         
         # Define file_path_sim
@@ -513,20 +505,40 @@ if (!file.exists(iteration$file_timeline[1]) | overwrite) {
         qs::qsave(residency_sim, d$file_residency_sim)
         
       }
-      
+    
       nothing()
     })
   pbapply::pboptions(pbo)
   
 }
 
-#### Spot checks
+#### Review iterations without detections
+n_detections <- cl_lapply(iteration_julia$file_acoustics, function(f) {
+  d <- arrow::read_feather(f)
+  length(which(d$obs == 1L))
+}) |> unlist()
+sort(n_detections) |> head(30)
+which(n_detections == 0)
+
+#### Review the number of time steps/batches
+# For the real-world time series, each season contains up to ~87840 time steps
+# But modelled time blocks may be longer because we start with detections before/after blocks
+# Here, we review the number of time steps and check the number of batches is sufficient
+nt <- pbapply::pbsapply(iteration_julia$file_timeline, \(f) nrow(arrow::read_feather(f)))
+table(nt)
+(nb <- p_batch(p_mem(2000, max(nt), 4, 100), 50e3))
+stopifnot(nb <= iteration_julia$n_batch[1])
+
+#### Spot checks: files exist
 if (analysis == "sim") {
-  stopifnot(all(file.exists(iteration$file_path_sim)))
-  stopifnot(all(file.exists(iteration$file_occupancy_sim)))
-  stopifnot(all(file.exists(iteration$file_residency_sim)))
-  # lapply_qplot_sim(iteration, .n_plot = 4L)
+  stopifnot(all(file.exists(iteration_julia$file_path_sim)))
+  stopifnot(all(file.exists(iteration_julia$file_occupancy_sim)))
+  stopifnot(all(file.exists(iteration_julia$file_residency_sim)))
+  # lapply_qplot_sim(iteration_julia, .n_plot = 4L)
 }
+
+#### Spot checks: timelines
+# TO DO
 
 #### Check total size of input directories
 # For sim, with write_feather_compressed():
@@ -535,41 +547,36 @@ if (analysis == "sim") {
 # For real, with write_feather_compressed():
 # * 0.324784 for iteration[1, ]
 # * 782.3067 MB for all iterations
-dir_size(iteration$folder_input[1])
+dir_size(iteration_julia$folder_input[1])
 dir_size(file.path("data", "input", analysis, subanalysis), recursive = TRUE)
 
 #### Write iteration
 # Write full dataset 
 qs::qsave(iteration, here_input_analysis("iteration.qs"))
-write_feather_compressed(iteration, here_input_analysis("iteration.feather"))
+# Write subsetted dataset (julia == TRUE) for modelling 
+write_feather_compressed(iteration_julia, 
+                         here_input_analysis("iteration.feather"))
 # Write subsampled datasets
 if (analysis == "real") {
   
   # Sample 100 rows for the initial validation analysis 
-  n <- nrow(iteration[sensitivity == "best", ])
+  n    <- nrow(iteration_julia[sensitivity == "best", ])
   size <- 100L
-  sample.int(n, size)
-  pos <- c(
-    5, 7, 10, 11, 16, 20, 22, 25, 26, 27, 33, 39, 40, 41, 42, 48, 52, 54, 55, 57,
-    61, 77, 83, 84, 85, 94, 105, 106, 107, 115, 121, 125, 129, 134, 137, 145, 152, 154, 155, 159,
-    160, 164, 168, 177, 184, 185, 186, 194, 195, 196, 198, 200, 205, 212, 215, 218, 222, 226, 235, 238,
-    245, 249, 250, 252, 253, 255, 257, 263, 265, 267, 270, 272, 277, 279, 280, 282, 285, 286, 288, 289,
-    292, 300, 301, 302, 305, 310, 315, 316, 317, 326, 331, 332, 336, 339, 346, 350, 351, 353, 360, 364
-  )
+  pos  <- sample.int(n, size)
   stopifnot(length(pos) == 100L)
   
   # Define an initial validation dataset
-  iteration_1 <- lapply(split(iteration, iteration$sensitivity), function(d) {
+  iteration_1 <- lapply(split(iteration_julia, iteration_julia$sensitivity), function(d) {
     d[pos, ]
   }) |> rbindlist()
   
   # Define remaining dataset
-  iteration_2 <- lapply(split(iteration, iteration$sensitivity), function(d) {
+  iteration_2 <- lapply(split(iteration_julia, iteration_julia$sensitivity), function(d) {
     d[-pos, ]
   }) |> rbindlist()
 
   # Check nrow
-  stopifnot(sum(c(nrow(iteration_1), nrow(iteration_2))) == nrow(iteration))
+  stopifnot(sum(c(nrow(iteration_1), nrow(iteration_2))) == nrow(iteration_julia))
   
   # Write to file 
   qs::qsave(iteration_1, here_input_analysis("iteration-1.qs"))
@@ -578,7 +585,7 @@ if (analysis == "real") {
   write_feather_compressed(iteration_2, here_input_analysis("iteration-2.feather"))
   
   # Checks
-  stopifnot(isTRUE(all.equal(nrow(arrow::read_feather(here_input_analysis("iteration-1.feather"))), 700L)))
+  nrow(arrow::read_feather(here_input_analysis("iteration-1.feather")))
   nrow(arrow::read_feather(here_input_analysis("iteration-2.feather")))
 
 }
