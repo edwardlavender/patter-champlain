@@ -56,28 +56,31 @@ iteration           <- qs::qread(here_input_analysis("iteration.qs"))
 
 #### (2) Run R workflows (mapping)
 
-# For "sim" iteration[1, ]:
+## For "sim" iteration[1, ]:
 # * Memory required per iteration : 251.46 MB 
 # * Time required per iteration   : 1.012 s
 # * ETA for 210 iteration         : 3.5 mins on 1 cl (1.012 * 210 / 60)
 
-# For "real" iteration[1, ]:
+## For "real" iteration[1, ]:
 # * Memory required per iteration : TO DO
 # * Time required per iteration   : TO DO
 # * ETA for 2723 iteration        : TO DO
 # > We can safely run ≈ TO DO N CPUs
 
-# Subset iterations
-# > We will produce maps for all iterations associated with pou-{i}.feather files
-# > These were produced when both forward and backward filters were run successfully
-success <- sapply(iteration$folder_output, function(folder) {
+## Subset iterations
+# We will produce maps for all iterations with:
+# a) julia = FALSE
+# b) julia = TRUE with pou-{i}.feather files
+#    (these were produced when both forward and backward filters were run successfully)
+iteration[, julia_success := sapply(iteration$folder_output, function(folder) {
   length(list.files(folder, "pou-")) > 0L
-})
-table(success)
-iteration <- iteration[success, ]
+})]
+iteration[julia == FALSE, julia_success := as.logical(NA)]
+table(iteration$julia_success[iteration$julia])
+iteration <- iteration[!julia | (julia & julia_success), ]
 stopifnot(nrow(iteration) > 0L)
 
-# Define cluster
+## Define cluster
 tic()
 cl <- parallel::makeCluster(5L)
 parallel::clusterEvalQ(cl, {
@@ -87,7 +90,7 @@ parallel::clusterEvalQ(cl, {
 })
 toc()
 
-# Make maps
+## Make maps
 tic()
 cl_lapply(split(iteration, seq_len(nrow(iteration))), 
           .cl = cl,
@@ -98,27 +101,44 @@ cl_lapply(split(iteration, seq_len(nrow(iteration))),
   # it <- iteration[1, ]
   map         <- terra::rast("./data/input/map.tif")
   regions     <- terra::rast("./data/input/regions.tif")
-  it_timeline <- arrow::read_feather(it$file_timeline)$timestamp
+  it_block    <- seq(it$time_start, it$time_end, by = "2 mins")
+  it_timeline <- arrow::read_feather(it$file_timeline)
+  it_timeline <- it_timeline[!is.na(block), ]
   
-  # Compute a data.table of POU (x, y, mark = probability mass)
-  coord <- 
-    # List files 
-    # (convergence failures handled above)
-    list.files(it$folder_output, full.names = TRUE, pattern = "pou-") |> 
-    lapply(arrow::read_feather) |>
-    rbindlist() |> 
-    arrange(timestep, x, y) |> 
-    group_by(x, y) |> 
-    summarise(mark = sum(mark)) |> 
-    ungroup() |> 
-    mutate(mark = mark / length(it_timeline)) |> 
-    as.data.table()
+  if (it$julia) {
+    
+    # Compute a data.table of POU (x, y, mark = probability mass)
+    coord <- 
+      # List files 
+      # (convergence failures handled above)
+      list.files(it$folder_output, full.names = TRUE, pattern = "pou-") |> 
+      lapply(arrow::read_feather) |>
+      rbindlist() |> 
+      arrange(timestep, x, y) |> 
+      # Filter time series by relevant period
+      # TO DO 
+      filter(timestep %in% it_timeline$timestep)
+      group_by(x, y) |> 
+      summarise(mark = sum(mark)) |> 
+      ungroup() |> 
+      mutate(mark = mark / nrow(it_timeline)) |> 
+      as.data.table()
+    
+    # Verify that weights sum to one 
+    stopifnot(isTRUE(all.equal(1, sum(coord$mark))))
+    
+    # Map occupancy 
+    occupancy <- terra::rasterize(coord, map, values = coord$mark)
+    
+  } else {
+    
+    # For time blocks with julia = FALSE, we use a uniform map
+    occupancy <- terra::setValues(map, 1)
+    occupancy <- terra::mask(occupancy, map)
+    occupancy <- spatNormalise(occupancy)
+    
+  }
   
-  # Verify that weights sum to one 
-  stopifnot(isTRUE(all.equal(1, sum(coord$mark))))
-  
-  # Map occupancy 
-  occupancy <- terra::rasterize(coord, map, values = coord$mark)
   occupancy <- terra::classify(occupancy, cbind(NA, 0))
   occupancy <- terra::mask(occupancy, map)
   names(occupancy) <- "map_value"
