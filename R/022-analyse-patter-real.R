@@ -53,7 +53,7 @@ iteration <-
   # Define sites (recoded to N, S for brevity on plots) & season
   mutate(site = fish$site[match(individual_id, fish$individual_id)], 
          site = case_match(site, "Grand Isle" ~ "N", "Split Rock" ~ "S"), 
-         season = season(time_id)) |>
+         season = season_factor(time_id)) |>
   as.data.table()
 
 #### Aggregate maps for each sensitivity/tagging location/season (~5 s)
@@ -178,7 +178,7 @@ residency <-
   rbindlist() |> 
   mutate(site = fish$site[match(individual_id, fish$individual_id)], 
          site = case_match(site, "Grand Isle" ~ "N", "Split Rock" ~ "S"), 
-         season = season(time_id)) |>
+         season = season_factor(time_id)) |>
   mutate(region = factor(region, levels = levels(regions_cs$region)), 
          col = regions_cs$col[match(region, regions_cs$region)]) |> 
   as.data.table()

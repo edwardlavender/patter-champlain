@@ -589,9 +589,9 @@ detections <- detections[, .(individual_id, timestamp, receiver_id, receiver_sta
 # (These individuals may have died & we drop them)
 individuals_detected_in_one_season <- 
   detections |> 
-  mutate(season = paste0(season(timestamp), "-", lubridate::year(timestamp)),
+  mutate(season = paste0(season_factor(timestamp), "-", lubridate::year(timestamp)),
          cap_date = fish$date[match(individual_id, fish$individual_id)], 
-         cap_season = paste0(season(cap_date), "-", lubridate::year(cap_date))) |> 
+         cap_season = paste0(season_factor(cap_date), "-", lubridate::year(cap_date))) |> 
   group_by(individual_id) |> 
   summarise(one = all(season == cap_season)) |> 
   filter(one == TRUE) |>
