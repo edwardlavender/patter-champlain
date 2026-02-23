@@ -4,8 +4,8 @@
 # * 001-workflow.sh 
 
 # Unlink old data/output/{analysis}/main/ (if needed):
-# file.path("data", "output", "sim", "main", "runs")
-# file.path("data", "output", "real", "main", "runs")
+# file.path("data", "output", "sim", "main", "blocks")
+# file.path("data", "output", "real", "main", "blocks")
 
 # Rebuild data/output/{analysis}/main/ directories:
 # * Run 015-prepare-analysis.R
