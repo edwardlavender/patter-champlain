@@ -12,6 +12,7 @@
 ###########################
 ###########################
 #### Set up 
+
 #### Wipe workspace 
 rm(list = ls())
 
@@ -121,15 +122,16 @@ if (!file.exists(iter$file_acoustics_raw)) {
   tic()
   julia <- Sys.which("julia")
   stopifnot(nzchar(julia))
-  system2("/Users/lavended/.juliaup/bin/julia",
-          args = "./Julia/001-sim-data.jl",
-          env = c(LD_LIBRARY_PATH = ""),
+  system2(julia,
+          args   = "./Julia/001-sim-data.jl",
+          env    = c(LD_LIBRARY_PATH = ""),
           stdout = TRUE,
           stderr = TRUE)
   toc()
 }
 
 #### Collate outputs
+stopifnot(file.exists(iter$file_paths_raw) & file.exists(iter$file_acoustics_raw))
 paths     <- arrow::read_feather(iter$file_paths_raw)
 acoustics <- arrow::read_feather(iter$file_acoustics_raw)
 moorings  <- 
