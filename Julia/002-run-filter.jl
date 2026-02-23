@@ -1,6 +1,6 @@
 ###########################
 ###########################
-#### run-algorithms.jl
+#### run-filter.jl
 
 #### Aims
 # 1) Run the forward filter
@@ -120,10 +120,9 @@ acoustics.receiver_y     = Float64.(acoustics.receiver_y);
 acoustics.receiver_alpha = Float64.(acoustics.receiver_alpha);
 acoustics.receiver_beta  = Float64.(acoustics.receiver_beta);
 acoustics.receiver_gamma = Float64.(acoustics.receiver_gamma);
-any_detections           = any(acoustics.obs == 1)
 
 #### Define containers 
-if any_detections
+if isfile(iter.file_containers_fwd)
   containers_fwd            = DataFrame(Arrow.Table(iter.file_containers_fwd));
   containers_fwd.timestamp  = DateTime.(containers_fwd.timestamp);
   containers_fwd.obs        = Int.(containers_fwd.obs);
@@ -134,7 +133,7 @@ if any_detections
 end 
 
 #### Define t_resample
-if any_detections
+if isfile(iter.file_t_resample_fwd)
   t_resample_fwd = DataFrame(Arrow.Table(iter.file_t_resample_fwd));
   t_resample_fwd = Int.(t_resample_fwd.timestep);
 else 
@@ -143,7 +142,7 @@ end
 
 #### Assemble datasets 
 # Collate datasets & associated `ModelObs` instances into a typed dictionary 
-if any_detections
+if isfile(iter.file_containers_fwd)
   datasets_fwd    = [acoustics, containers_fwd];
   model_obs_types = [ModelObsAcousticLogisTruncLos, ModelObsContainer];
 else

@@ -37,13 +37,13 @@ include("./src/inference.jl")
 
 #### Load datasets (map, iteration)
 # Load map & iteration 
-# analysis  = "sim"
-analysis    = "real"
+analysis  = "sim"
+# analysis    = "real"
 subanalysis = "main"
 env         = GeoArrays.read(joinpath("data", "input", "map.tif"));
 env_init    = Patter.rast(joinpath("data", "input", "map.tif"));
 iteration   = DataFrame(Arrow.Table(joinpath("data", "input", analysis, subanalysis, "iteration.feather")))
-iteration   = iteration[iteration.sensitivity .== "best", :]
+# iteration   = iteration[iteration.sensitivity .== "best", :]
 # iteration = iteration[iteration.index .∈ Ref([7, 13, 14, 119, 133, 140, 147, 161, 166, 168, 176, 178, 179, 182, 195, 196]), :];
 
 #### Select iteration 
@@ -123,11 +123,10 @@ acoustics.receiver_y     = Float64.(acoustics.receiver_y);
 acoustics.receiver_alpha = Float64.(acoustics.receiver_alpha);
 acoustics.receiver_beta  = Float64.(acoustics.receiver_beta);
 acoustics.receiver_gamma = Float64.(acoustics.receiver_gamma);
-any_detections           = any(acoustics.obs == 1)
 
 #### Define containers 
-if any_detections
-  # Forward containers 
+# Forward containers 
+if isfile(iter.file_containers_fwd)
   containers_fwd            = DataFrame(Arrow.Table(iter.file_containers_fwd));
   containers_fwd.timestamp  = DateTime.(containers_fwd.timestamp);
   containers_fwd.obs        = Int.(containers_fwd.obs);
@@ -135,7 +134,9 @@ if any_detections
   containers_fwd.centroid_x = Float64.(containers_fwd.centroid_x);
   containers_fwd.centroid_y = Float64.(containers_fwd.centroid_y);
   containers_fwd.radius     = Float64.(containers_fwd.radius);
-  # Backward containers
+end 
+# Backward containers
+if isfile(iter.file_containers_bwd)
   containers_bwd            = DataFrame(Arrow.Table(iter.file_containers_bwd));
   containers_bwd.timestamp = DateTime.(containers_bwd.timestamp);
   containers_bwd.obs        = Int.(containers_bwd.obs);
@@ -146,33 +147,34 @@ if any_detections
 end 
 
 #### Define t_resample
-if any_detections
-  # Forward t_rsample 
+t_resample_fwd = nothing;
+t_resample_bwd = nothing;
+if isfile(iter.file_t_resample_fwd)
   t_resample_fwd = DataFrame(Arrow.Table(iter.file_t_resample_fwd))
   t_resample_fwd = Int.(t_resample_fwd.timestep);
-  # Backward t_resample
+end
+if isfile(iter.file_t_resample_bwd)
   t_resample_bwd = DataFrame(Arrow.Table(iter.file_t_resample_bwd))
   t_resample_bwd = Int.(t_resample_bwd.timestep);
-else 
-  t_resample_fwd = nothing;
-  t_resample_bwd = nothing;
 end
 
 #### Assemble datasets 
 # Collate datasets & associated `ModelObs` instances into a typed dictionary 
-if any_detections
+datasets_fwd        = [acoustics];
+datasets_bwd        = [acoustics];
+model_obs_types_fwd = model_obs_types_bwd = [ModelObsAcousticLogisTruncLos];
+if isfile(iter.file_containers_fwd)
   datasets_fwd    = [acoustics, containers_fwd];
+  model_obs_types_fwd = [ModelObsAcousticLogisTruncLos, ModelObsContainer];
+end 
+if isfile(iter.file_containers_bwd)
   datasets_bwd    = [acoustics, containers_bwd];
-  model_obs_types = [ModelObsAcousticLogisTruncLos, ModelObsContainer];
-else
-  datasets_fwd    = [acoustics];
-  datasets_bwd    = [acoustics];
-  model_obs_types = [ModelObsAcousticLogisTruncLos];
-end
+  model_obs_types_bwd = [ModelObsAcousticLogisTruncLos, ModelObsContainer];
+end 
 yobs_fwd = assemble_yobs(datasets = datasets_fwd,
-                         model_obs_types = model_obs_types);
+                         model_obs_types = model_obs_types_fwd);
 yobs_bwd = assemble_yobs(datasets = datasets_bwd,
-                         model_obs_types = model_obs_types);
+                         model_obs_types = model_obs_types_bwd);
 
 
 ###########################
@@ -208,7 +210,7 @@ for m in multipliers
                             state           = state,
                             model_move      = model_move,
                             datasets        = datasets_fwd,
-                            model_obs_types = model_obs_types,
+                            model_obs_types = model_obs_types_fwd,
                             yobs            = yobs_fwd,
                             n_particle      = iter.n_particle_filter * m,
                             n_record        = iter.n_particle_smoother,
@@ -221,11 +223,11 @@ end
 
 #### Collect outputs
 # (To conserve disk space, we do not record states)
-callstats               = fwd.callstats
-diagnostics             = fwd.diagnostics 
-diagnostics.routine    .= callstats.routine
-diagnostics.ncell_core .= NaN
-diagnostics.ncell_home .= NaN
+callstats               = fwd.callstats;
+diagnostics             = fwd.diagnostics;
+diagnostics.routine    .= callstats.routine;
+diagnostics.ncell_core .= NaN;
+diagnostics.ncell_home .= NaN;
 
 
 ###########################
@@ -235,14 +237,14 @@ if convergence
 
   #### Run filter
   convergence = false 
-  for m in multiplers 
+  for m in multipliers 
     bwd = run_particle_filter(iter            = iter,
                               env_init        = env_init,
                               timeline        = timeline,
                               state           = state,
                               model_move      = model_move,
                               datasets        = datasets_bwd,
-                              model_obs_types = model_obs_types,
+                              model_obs_types = model_obs_types_bwd,
                               yobs            = yobs_bwd,
                               n_particle      = iter.n_particle_filter * m,
                               n_record        = iter.n_particle_smoother,
@@ -254,11 +256,11 @@ if convergence
   end
 
   #### Collect outputs
-  append!(callstats, bwd.callstats)
-  bwd.diagnostics.routine    .= bwd.callstats.routine
-  bwd.diagnostics.ncell_core .= NaN
-  bwd.diagnostics.ncell_home .= NaN
-  append!(diagnostics, bwd.diagnostics)
+  append!(callstats, bwd.callstats);
+  bwd.diagnostics.routine    .= bwd.callstats.routine;
+  bwd.diagnostics.ncell_core .= NaN;
+  bwd.diagnostics.ncell_home .= NaN;
+  append!(diagnostics, bwd.diagnostics);
 
 end 
 
@@ -340,11 +342,11 @@ if convergence
   end
 
   #### Collate diagnostics over all batches, including area (ncell) spanned by 50 % and 95 % of the distribution 
-  ncells                      = vcat(areas_by_batch...)
-  smo.diagnostics.routine    .= smo.callstats.routine
-  smo.diagnostics.ncell_core .= ncells.ncell_core
-  smo.diagnostics.ncell_home .= ncells.ncell_home
-  append!(diagnostics, smo.diagnostics)
+  ncells                      = vcat(areas_by_batch...);
+  smo.diagnostics.routine    .= smo.callstats.routine;
+  smo.diagnostics.ncell_core .= ncells.ncell_core;
+  smo.diagnostics.ncell_home .= ncells.ncell_home;
+  append!(diagnostics, smo.diagnostics);
 
   #### Collate smoothed DataFrame of states
   # This is too memory intensive for parallel applications
