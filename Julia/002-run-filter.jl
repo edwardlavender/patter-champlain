@@ -46,7 +46,7 @@ subanalysis = "main"
 env         = GeoArrays.read(joinpath("data", "input", "map.tif"));
 env_init    = Patter.rast(joinpath("data", "input", "map.tif"));
 iteration   = DataFrame(Arrow.Table(joinpath("data", "input", analysis, subanalysis, "iteration.feather")))
-# iteration   = iteration[iteration.sensitivity .== "best", :];
+iteration   = iteration[iteration.sensitivity .== "best", :];
 
 #### Select iteration 
 # Set column types as needed

@@ -4,8 +4,8 @@ set -euo pipefail
 # SCRIPT="./Julia/001-run-filter.jl" 
 SCRIPT="./Julia/002-run-algorithms.jl"
 ANALYSIS="real"
-NROW=365
-NCPU=50
+NROW=100
+NCPU=100
 LOGDIR="./data/output/$ANALYSIS/main/logs"
 mkdir -p "$LOGDIR"
 
