@@ -45,8 +45,8 @@ fish       <- qs::qread(here_input("fish.qs"))
 #### Select analysis
 
 #### Define analysis 
-# analysis <- "sim"
-analysis <- "real"
+analysis <- "sim"
+# analysis <- "real"
 subanalysis <- "main"
 
 #### Define analysis-specific data
@@ -350,8 +350,8 @@ dirs.create(iteration$folder_output_chain)
 #### Create Julia inputs
 
 #### Duration
-# "sim": 02 m 05 s s on SIA-LAVENDED or 76 s on siam-linux20 (10 cl, 2 chunks per core) 
-# "real": 05 m 38 s or 16 m 19 s on siam-linux20 (10 cl, 2 chunks per core)
+# "sim": 2 m 05 s s on SIA-LAVENDED or 3 m 16 s on siam-linux20 (10 cl, 2 chunks per core) 
+# "real": 5 m 38 s or 16 m 19 s on siam-linux20 (10 cl, 2 chunks per core)
 # (There is some speed benefit of chunking)
 
 #### Write options (derived for analysis = "sim")
@@ -384,7 +384,7 @@ iteration_julia <- iteration[julia == TRUE, ]
 nrow(iteration_julia)
 
 #### Write files 
-overwrite <- TRUE
+overwrite <- FALSE
 if (!all(file.exists(iteration_julia$file_timeline)) | overwrite) {
   
   pbo <- pbapply::pboptions(nout = 2L)
@@ -595,7 +595,7 @@ if (analysis == "real") {
 # (optional) TO DO Move this code to run-patter.R 
 # where other chain files are created
 
-# ~ 1.9 mins (1 cl)
+# ~ 1.9 mins (1 cl), 03m 40s
 # ~ 0.5 mins (10 cl, chunk = TRUE)
 
 if (analysis == "sim") {
@@ -623,7 +623,6 @@ if (analysis == "sim") {
         
         # Define file_occupancy_sim
         path[, cell := terra::cellFromXY(.map, cbind(x, y))]
-        stopifnot(all(!is.na(path$cell)))
         if (any(is.na(path$cell))) {
           # Check for or filter NA cells
           # This is presumably a floating point issue on siam-linux20
@@ -645,7 +644,9 @@ if (analysis == "sim") {
           as.data.table()
         
         # Check residency
-        # (If needed, use reduced tolerance to handle floating point issue above)
+        # * If needed, use reduced tolerance to handle floating point issue
+        # * This is necessary if simulations are run on SIA-LAVENDED and copied onto server
+        # * This does not seem to be necessary if simulations & this code are run on same machine
         stopifnot(isTRUE(all.equal(sum(residency_sim$estimate), 1))) # tolerance = 0.01
         qs::qsave(residency_sim, d$file_residency_sim)
         
