@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# SCRIPT="./Julia/001-run-filter.jl" 
-SCRIPT="./Julia/002-run-algorithms.jl"
+SCRIPT="./Julia/002-run-filter.jl" 
+# SCRIPT="./Julia/003-run-algorithms.jl"
 ANALYSIS="real"
 NROW=100
 NCPU=100
