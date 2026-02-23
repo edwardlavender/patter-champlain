@@ -51,13 +51,15 @@ dirs.create(here_data("inst"))
 dirs.create(here_output_sim())
 dirs.create(here_output_sim_main())
 dirs.create(here_output_sim_main("logs"))
-dirs.create(here_output_sim_main("runs"))
+dirs.create(here_output_sim_main("blocks"))
+dirs.create(here_output_sim_main("chains"))
 dirs.create(here_output_sim_main("synthesis"))
 
 # data/output/real/main/
 dirs.create(here_output_real_main())
 dirs.create(here_output_real_main("logs"))
-dirs.create(here_output_real_main("runs"))
+dirs.create(here_output_real_main("blocks"))
+dirs.create(here_output_sim_main("chains"))
 dirs.create(here_output_real_main("synthesis"))
 
 # data/output/sim/main/
