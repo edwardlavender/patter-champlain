@@ -9,6 +9,13 @@
 # 1) Generate particle algorithm outputs via run-algorithms.jl
 # 2) This code should be run on the same machine (where the particle outputs live)
 
+# TO DO REVISE THIS CODE
+# SPLIT by chain_id & for each chain
+# - loop over blocks
+# - read in all pou files 
+# - filter by chain time series ENSURING WE ONLY KEEP ONE FILE!
+# - define output files
+
 
 ###########################
 ###########################
@@ -72,7 +79,7 @@ iteration           <- qs::qread(here_input_analysis("iteration.qs"))
 # a) julia = FALSE
 # b) julia = TRUE with pou-{i}.feather files
 #    (these were produced when both forward and backward filters were run successfully)
-iteration[, julia_success := sapply(iteration$folder_output, function(folder) {
+iteration[, julia_success := sapply(iteration$folder_output_block, function(folder) {
   length(list.files(folder, "pou-")) > 0L
 })]
 iteration[julia == FALSE, julia_success := as.logical(NA)]
@@ -111,7 +118,7 @@ cl_lapply(split(iteration, seq_len(nrow(iteration))),
     coord <- 
       # List files 
       # (convergence failures handled above)
-      list.files(it$folder_output, full.names = TRUE, pattern = "pou-") |> 
+      list.files(it$folder_output_block, full.names = TRUE, pattern = "pou-") |> 
       lapply(arrow::read_feather) |>
       rbindlist() |> 
       arrange(timestep, x, y) |> 
@@ -163,7 +170,7 @@ cl_lapply(split(iteration, seq_len(nrow(iteration))),
   terra::writeRaster(occupancy, it$file_occupancy, overwrite = TRUE)
   
   # (optional) Cleanup pou-{i}.feather files
-  # unlink(list.files(it$folder_output, full.names = TRUE, pattern = "pou-"))
+  # unlink(list.files(it$folder_output_block, full.names = TRUE, pattern = "pou-"))
   
   # lobstr::mem_used()
   # toc()
