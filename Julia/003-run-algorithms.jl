@@ -147,16 +147,18 @@ if isfile(iter.file_containers_bwd)
 end 
 
 #### Define t_resample
-t_resample_fwd = nothing;
-t_resample_bwd = nothing;
 if isfile(iter.file_t_resample_fwd)
   t_resample_fwd = DataFrame(Arrow.Table(iter.file_t_resample_fwd))
   t_resample_fwd = Int.(t_resample_fwd.timestep);
-end
+else
+  t_resample_fwd = nothing;
+end 
 if isfile(iter.file_t_resample_bwd)
   t_resample_bwd = DataFrame(Arrow.Table(iter.file_t_resample_bwd))
   t_resample_bwd = Int.(t_resample_bwd.timestep);
-end
+else 
+  t_resample_bwd = nothing;
+end 
 
 #### Assemble datasets 
 # Collate datasets & associated `ModelObs` instances into a typed dictionary 
@@ -202,8 +204,9 @@ fwd = bwd = smo = nothing
 #### Forward filter 
 
 #### Run filter
-convergence = false
+global convergence = false
 for m in multipliers
+  global fwd, convergence
   fwd = run_particle_filter(iter            = iter,
                             env_init        = env_init,
                             timeline        = timeline,
@@ -236,8 +239,9 @@ diagnostics.ncell_home .= NaN;
 if convergence
 
   #### Run filter
-  convergence = false 
+  global convergence = false 
   for m in multipliers 
+    global bwd, convergence
     bwd = run_particle_filter(iter            = iter,
                               env_init        = env_init,
                               timeline        = timeline,
@@ -283,6 +287,7 @@ if convergence
   end 
 
   #### Run smoother
+  global smo
   smo = particle_smoother_two_filter(timeline   = timeline,
                                      xfwd       = fwd_batches,
                                      xbwd       = bwd_batches,

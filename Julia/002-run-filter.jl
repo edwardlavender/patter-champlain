@@ -167,6 +167,7 @@ fwd         = nothing
 multipliers = (1)
 convergence = false
 for m in multipliers
+  global fwd, convergence
   fwd = run_particle_filter(iter            = iter,
                             env_init        = env_init,
                             timeline        = timeline,
