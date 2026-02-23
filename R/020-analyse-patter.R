@@ -179,12 +179,12 @@ sum(callstats$time) / 60 / 60 / 24
 
 #### Compute total output size (MB, GB)
 # Compute folder sizes
-iteration[, folder_output_mb := 
+iteration[, folder_output_block_mb := 
             sapply(seq_len(nrow(iteration)),
-                   \(i) dir_size(iteration$folder_output[i], recursive = TRUE))]
+                   \(i) dir_size(iteration$folder_output_block[i], recursive = TRUE))]
 # Check total size (GB)
 # > sim: 4.190048 GB
-sum(iteration$folder_output_mb) / 1e3
+sum(iteration$folder_output_block_mb) / 1e3
 
 
 ###########################

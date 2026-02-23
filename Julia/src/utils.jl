@@ -67,7 +67,7 @@ function write_file_states(iter)
 
     # Define smo-{i}.jld2 files
     # > This returns String[] if no files exist 
-    smo_batches = [joinpath(iter.folder_output, "smo-$i.jld2") for i in 1:iter.n_batch]
+    smo_batches = [joinpath(iter.folder_output_block, "smo-$i.jld2") for i in 1:iter.n_batch]
     smo_batches = smo_batches[isfile.(smo_batches)]
 
     # Collate states, if smo-$i.jld2 files have been produced 

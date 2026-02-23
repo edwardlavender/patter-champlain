@@ -196,7 +196,7 @@ end
 Arrow.write(iter.file_callstats_filter, fwd.callstats; compress = Arrow.ZstdCompressor(level = 9))
 
 
-# readdir(iter.folder_output, join = true)
+# readdir(iter.folder_output_block, join = true)
 
 
 #### End of code. 

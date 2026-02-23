@@ -59,17 +59,17 @@ iteration           <- qs::qread(here_input_analysis("iteration.qs"))
 #### Define example individual
 i  <- 1
 it <- iteration[i, ]
-list.files(it$folder_output)
+list.files(it$folder_output_block)
 
 #### Run algorithms 
 # Run 001-run-algorithms.jl for example individual
 # Check file sizes (MB)
 if (FALSE) {
-  dir_size(it$folder_output)
+  dir_size(it$folder_output_block)
   file.size(it$file_callstats) / 1e6 
   file.size(it$file_diagnostics) / 1e6
-  sum(file.size(list.files(it$folder_output, pattern = "\\.jld2$", full.names = TRUE))) / 1e6
-  sum(file.size(list.files(it$folder_output, pattern = "pou", full.names = TRUE)) / 1e6)
+  sum(file.size(list.files(it$folder_output_block, pattern = "\\.jld2$", full.names = TRUE))) / 1e6
+  sum(file.size(list.files(it$folder_output_block, pattern = "pou", full.names = TRUE)) / 1e6)
 }
 
 #### Collate states 
