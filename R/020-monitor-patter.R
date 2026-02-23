@@ -63,8 +63,8 @@ if (Sys.info()[["nodename"]] == "siam-linux20") {
 }
 
 #### Check rows with missing files
-# iteration[!file.exists(file_callstats_filter), .(index, unit_id, individual_id, time_id, sensitivity)]
-iteration[!file.exists(file_callstats), .(index, unit_id, individual_id, time_id, sensitivity)]
+# iteration[!file.exists(file_callstats_filter), .(index, unit_id, individual_id, block_id, sensitivity)]
+iteration[!file.exists(file_callstats), .(index, unit_id, individual_id, block_id, sensitivity)]
 
 #### Check for errors
 # Read logfiles 
