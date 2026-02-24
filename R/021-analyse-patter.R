@@ -197,7 +197,7 @@ diagnostics <-
     iteration$file_diagnostics[iteration$index == i] |> 
       arrow::read_feather() |> 
       mutate(index = i, .before = 1L) |> 
-      cbind(iteration[index == i, .(individual_id, time_id, sensitivity)]) |> 
+      cbind(iteration[index == i, .(individual_id, block_id, sensitivity)]) |> 
       as.data.table()
   }) |> 
   rbindlist()  |> 
@@ -246,7 +246,7 @@ convergence <-
   mutate(success = pass_filter & (pass_smoother >= 0.75)) |> 
   left_join(convergence_filter, by = "index") |> 
   select("index", "pass_filter_fwd", "pass_filter_bwd", "pass_filter", "pass_smoother", "success") |> 
-  left_join(iteration[, .(index, individual_id, time_id, sensitivity)], by = "index") |> 
+  left_join(iteration[, .(index, individual_id, block_id, sensitivity)], by = "index") |> 
   as.data.table()
 
 #### Check convergence
@@ -311,12 +311,14 @@ utils.add::basic_stats(convergence$pass_smoother[convergence$success], na.rm = T
 # between receiver stations without detection. Do any of these account for the 
 # real convergence failures above? Only one!
 # For further examination, see refine-patter.R 
-iteration[individual_id == 24321 & time_id == as.POSIXct("2017-06-01 00:00:00", tz = "UTC"), ]
-iteration[individual_id == 24327 & time_id == as.POSIXct("2015-12-01 00:00:00", tz = "UTC"), ]
-iteration[individual_id == 24391 & time_id == as.POSIXct("2015-05-01 00:00:00", tz = "UTC"), ]
-iteration[individual_id == 24385 & time_id == as.POSIXct("2016-07-01 00:00:00", tz = "UTC"), ]
-iteration[individual_id == 24385 & time_id == as.POSIXct("2017-05-01 00:00:00", tz = "UTC"), ] # included
-iteration[individual_id == 24339 & time_id == as.POSIXct("2016-12-01 00:00:00", tz = "UTC"), ]
+if (analysis == "real") {
+  iteration[individual_id == 24321 & block_start == as.POSIXct("2017-06-01 00:00:00", tz = "UTC"), ]
+  iteration[individual_id == 24327 & block_start == as.POSIXct("2015-12-01 00:00:00", tz = "UTC"), ]
+  iteration[individual_id == 24391 & block_start == as.POSIXct("2015-05-01 00:00:00", tz = "UTC"), ]
+  iteration[individual_id == 24385 & block_start == as.POSIXct("2016-07-01 00:00:00", tz = "UTC"), ]
+  iteration[individual_id == 24385 & block_start == as.POSIXct("2017-05-01 00:00:00", tz = "UTC"), ] # included
+  iteration[individual_id == 24339 & block_start == as.POSIXct("2016-12-01 00:00:00", tz = "UTC"), ]
+}
 
 #### Filter by convergence (for subsequent steps)
 # Get successful indices
