@@ -39,8 +39,8 @@ map <- terra::rast(here_input("map.tif"))
 #### Select analysis
 
 #### Define analysis 
-# analysis <- "sim"
-analysis <- "real"
+analysis <- "sim"
+# analysis <- "real"
 subanalysis <- "main"
 
 #### Define analysis-specific data
@@ -162,7 +162,7 @@ callstats <- lapply(iteration$index, function(i) {
   iteration$file_callstats[iteration$index == i] |> 
     arrow::read_feather() |> 
     mutate(index = i, .before = 1L) |> 
-    cbind(iteration[index == i, .(individual_id, time_id, sensitivity, sensitivity_label)]) |> 
+    cbind(iteration[index == i, .(individual_id, block_id, sensitivity, sensitivity_label)]) |> 
     as.data.table()
   }) |> 
   rbindlist() |> 
