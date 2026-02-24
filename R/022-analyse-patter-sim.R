@@ -43,15 +43,15 @@ moorings      <- qs::qread(here_input_sim("main", "moorings.qs"))
 
 ###########################
 ###########################
-#### Visualise simulated paths
+#### Visualise simulated datasets
 
-# This is useful to understand the causes of convergence failures (~25 s)
-# > We have a convergence failure for individual 26
+# This is useful to understand the causes of convergence failures (~2 mins)
+# (NB: setting .cl produces an empty image)
 if (FALSE) {
   tic()
   png(here_fig_sim("main", "paths.png"), 
-      height = 12, width = 12, units = "in", res = 800)
-  pp <- par(mfrow = c(3, 10))
+      height = 8, width = 12, units = "in", res = 800)
+  pp <- par(mfrow = c(5, 20), mar = c(0, 0, 0, 0))
   cl_lapply(split(paths, paths$path_id), function(path) {
     # path <- paths[path_id == 1L]
     terra::plot(map, 
@@ -67,6 +67,18 @@ if (FALSE) {
   toc()
 }
 
+# (optional) Focus on iterations with detections
+# (This facilitates comparability with Futia et al. 2024)
+# TO DO Move the definition of n_detections to prepare-analyis.R 
+# TO DO Add iteration[n_detections > 0L, ] to other simulation scripts
+nrow(iteration)
+iteration[, n_detections :=
+            cl_lapply(iteration$file_acoustics, .cl = 4L, .fun = function(f) {
+              nrow(arrow::read_feather(f)[obs == 1L])
+            }) |> unlist()]
+iteration <- iteration[n_detections > 0L, ]
+nrow(iteration)
+
 
 ###########################
 ###########################
@@ -79,9 +91,9 @@ nc <- terra::freq(map)[["count"]]
 # Compute mean absolute error between simulated & reconstructed patterns of space use
 # > This is primarily used to understand sensitivity
 # > It is useful for future comparisons against other methods
-# > Other metrics e.g., EMD are more intepretable in terms of how 'accurate' maps are
+# > Other metrics e.g., EMD are more interpretable in terms of how 'accurate' maps are
 # > But for this work we simply compare simulated tracks & associated maps
-overwrite <- FALSE
+overwrite <- TRUE
 file_occupancy_skill <- here_output_sim_main("synthesis", "occupancy-skill.qs")
 if (!file.exists(file_occupancy_skill) | overwrite) {
   
@@ -160,7 +172,7 @@ if (!file.exists(file_occupancy_skill) | overwrite) {
 
 #### Compute residency skill
 # Compute error between simulated & reconstructed residency estimates _by region_
-overwrite <- FALSE
+overwrite <- TRUE
 file_residency_skill <- here_output_sim_main("synthesis", "residency-skill.qs")
 if (!file.exists(file_residency_skill) | overwrite) {
   
@@ -209,8 +221,10 @@ residency_skill_moe <-
   residency_skill |> 
   group_by(individual_id, sensitivity) |> 
   mutate(algorithm = "patter") |> 
-  # mutate(moe = mean(abs(simulation - estimate) * simulation) * 100) |> 
-  mutate(moe = sum(abs(simulation - estimate) * simulation) / sum(simulation) * 100) |> 
+  # Compute MOE as the mean absolute error over all regions, weighted by prop. time per region
+  mutate(moe = weighted.mean(abs(simulation - estimate), simulation) * 100) |> 
+  # This code is equivalent: 
+  # mutate(moe = sum(abs(simulation - estimate) * simulation) / sum(simulation) * 100) |> 
   slice(1L) |> 
   ungroup() |>
   select("individual_id", "algorithm", "sensitivity", "sensitivity_label", "moe") |> 
@@ -268,10 +282,16 @@ for (p in probs) {
 }
 occupancy_contours <- terra::classify(occupancy_contours, cbind(0, NA))
 # Make map
-# TO DO, do we need to update terra legend settings e.g., breaks here? (review fig)
 png(here_fig_sim("main", "example-occupancy-quantiles.png"), 
     height = 5, width = 5, units = "in", res = 800)
 terra::plot(occupancy_contours, pax = list(labels = FALSE, lwd.ticks = 0))
+zlim <- c(0, length(probs))
+terra::plot(occupancy_contours, 
+            range = zlim, 
+            col = grDevices::terrain.colors(length(probs), rev = TRUE),
+            pax = list(labels = FALSE, lwd.ticks = 0),
+            plg = list(at = pretty(zlim),
+                       labels = prettyGraphics::add_lagging_point_zero(pretty(zlim) / max(zlim))))
 points(moorings$receiver_x, moorings$receiver_y, pch = 4, cex = 0.5)
 terra::lines(champlain_utm)
 dev.off()
@@ -504,9 +524,8 @@ png(here_fig_sim("main", "residency-skill-moe.png"),
     height = 6, width = 12, units = "in", res = 800)
 p <- 
   residency_skill_moe |>
-  ggplot() + 
-  geom_boxplot(aes(sensitivity_label, moe, fill = sensitivity_label), 
-               linewidth = 0.25, size = 0.5, varwidth = TRUE) + 
+  ggplot(aes(sensitivity_label, moe, fill = sensitivity_label)) + 
+  geom_boxplot(linewidth = 0.25, size = 0.5, varwidth = TRUE) + 
   geom_jitter(size = 0.25, colour = "dimgrey", width = 0.1, height = 0) +
   # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
   xlab("Sensitivity") + 
@@ -532,8 +551,8 @@ residency_skill_moe_int <-
   mutate(
     individual_id = animal_id, 
     algorithm = as.character(model), 
-    sensitivity = "best",
-    sensitivity_label = factor("Best", levels = levels(residency_skill_moe$sensitivity_label)), 
+    sensitivity = "Int",
+    sensitivity_label = factor("Int", levels = c("Int", levels(residency_skill_moe$sensitivity_label))), 
     moe = mean_wt_abs_err
   ) |> 
   select("individual_id", "algorithm", "sensitivity", "sensitivity_label", "moe") |> 
@@ -551,27 +570,25 @@ residency_skill_moe_full |>
   reframe(utils.add::basic_stats(moe))
 
 #### (optional) Update ggplot of MOE including Int model from Futia et al. (2024)
-# TO DO Update this code to include bars by algorithm (patter versus Int)
-# png(here_fig_sim("main", "residency-skill-moe-full.png"), 
-#     height = 6, width = 12, units = "in", res = 800)
-# p <- 
-#   residency_skill_moe_full |>
-#   ggplot() + 
-#   geom_boxplot(aes(sensitivity_label, moe, fill = sensitivity_label), 
-#                linewidth = 0.25, size = 0.5, varwidth = TRUE) + 
-#   geom_jitter(size = 0.25, colour = "dimgrey", width = 0.1, height = 0) +
-#   # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
-#   xlab("Sensitivity") + 
-#   ylab(expression("MOE (" * italic(RE) * ")")) + 
-#   labs(fill = "Analysis") +
-#   theme_bw() +
-#   theme(panel.grid.minor.y = element_blank(), 
-#         panel.grid.major.y = element_blank(), 
-#         axis.title.x = element_text(margin = margin(t = 10)),
-#         axis.title.y = element_text(margin = margin(r = 10)), 
-#         axis.text.x = element_text(angle = 45, hjust = 1)) 
-# print(p)
-# dev.off()
+png(here_fig_sim("main", "residency-skill-moe-full.png"),
+    height = 6, width = 12, units = "in", res = 800)
+p <-
+  residency_skill_moe_full |>
+  ggplot(aes(sensitivity_label, moe, fill = sensitivity_label)) +
+  geom_boxplot(linewidth = 0.25, size = 0.5, varwidth = TRUE) +
+  geom_jitter(size = 0.25, colour = "dimgrey", width = 0.1, height = 0) +
+  # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) +
+  xlab("Sensitivity") +
+  ylab("MOE (%)") +
+  labs(fill = "Analysis") +
+  theme_bw() +
+  theme(panel.grid.minor.y = element_blank(),
+        panel.grid.major.y = element_blank(),
+        axis.title.x = element_text(margin = margin(t = 10)),
+        axis.title.y = element_text(margin = margin(r = 10)),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+print(p)
+dev.off()
 
 
 #### End of code. 
