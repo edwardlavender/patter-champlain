@@ -87,6 +87,56 @@ stringr::str_detect(tolower(logtxt), "error")
 stringr::str_detect(tolower(logtxt), "fail")
 stringr::str_detect(tolower(logtxt), "failure")
 
+###########################
+###########################
+#### Quick checks 
+
+#### Filter iterations
+n_iteration <- nrow(iteration)
+iteration   <- iteration[file.exists(file_callstats), ]
+
+if (nrow(iteration) > 0L) {
+  
+  #### Read callstats 
+  callstats   <- lapply(iteration$index, function(i) {
+    iteration$file_callstats[iteration$index == i] |> 
+      arrow::read_feather() |> 
+      mutate(index = i, .before = 1L) |> 
+      cbind(iteration[index == i, .(individual_id, block_id, sensitivity, sensitivity_label)]) |> 
+      as.data.table()
+  }) |> 
+    rbindlist()
+  
+  #### Check convergence
+  # Overall convergence rate 
+  table(callstats$convergence, callstats$sensitivity)
+  # Convergence rate for filters (by sensitivity)
+  callstats |> 
+    filter(routine %in% c("filter: forward", "filter: backward")) |> 
+    group_by(index, sensitivity) |> 
+    summarise(convergence = all(convergence)) |>
+    ungroup() |> 
+    group_by(sensitivity) |> 
+    summarise(n = n(), success_rate = length(which(convergence)) / n)
+  
+  #### Check total computation time per iteration
+  # Compute times
+  computation_time <- 
+    callstats |> 
+    group_by(index) |> 
+    summarise(mins = sum(time) / 60) |>
+    ungroup() |> 
+    reframe(utils.add::basic_stats(mins))
+  computation_time
+  # Estimate end time for all iterations
+  start <- as.POSIXct("2026-02-24 17:00:00", tz = "UTC")
+  ncpu  <- 50L
+  start + (computation_time$median * 60) * n_iteration / ncpu
+  start + (computation_time$mean * 60) * n_iteration / ncpu
+  start + (computation_time$max * 60) * n_iteration / ncpu
+  
+}
+
 
 #### End of code. 
 ###########################
