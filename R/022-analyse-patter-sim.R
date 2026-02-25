@@ -43,6 +43,17 @@ moorings      <- qs::qread(here_input_sim("main", "moorings.qs"))
 
 ###########################
 ###########################
+#### Select iterations
+
+# For simulations, for comparison with previous work (Futia et al. 2024) and 
+# the real-world analysis, we focus on iterations that generated detections
+nrow(iteration)
+iteration <- iteration[n_detections > 0L, ]
+nrow(iteration)
+
+
+###########################
+###########################
 #### Visualise simulated datasets
 
 # This is useful to understand the causes of convergence failures (~2 mins)
@@ -66,18 +77,6 @@ if (FALSE) {
   dev.off()
   toc()
 }
-
-# (optional) Focus on iterations with detections
-# (This facilitates comparability with Futia et al. 2024)
-# TO DO Move the definition of n_detections to prepare-analyis.R 
-# TO DO Add iteration[n_detections > 0L, ] to other simulation scripts
-nrow(iteration)
-iteration[, n_detections :=
-            cl_lapply(iteration$file_acoustics, .cl = 4L, .fun = function(f) {
-              nrow(arrow::read_feather(f)[obs == 1L])
-            }) |> unlist()]
-iteration <- iteration[n_detections > 0L, ]
-nrow(iteration)
 
 
 ###########################

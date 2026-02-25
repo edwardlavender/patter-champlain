@@ -52,6 +52,19 @@ iteration            <- qs::qread(here_input_analysis("iteration.qs"))
 
 ###########################
 ###########################
+#### Select iterations
+
+# For simulations, for comparison with previous work (Futia et al. 2024) and 
+# the real-world analysis, we focus on iterations that generated detections
+if (analysis == "sim") {
+  nrow(iteration)
+  iteration <- iteration[n_detections > 0L, ]
+  nrow(iteration)
+}
+
+
+###########################
+###########################
 #### Analyse trials
 
 # Using a sample real-world time series, we check convergence via run-filter.jl.
