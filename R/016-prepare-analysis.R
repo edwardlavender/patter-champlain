@@ -322,6 +322,27 @@ iteration <-
   ) |> 
   as.data.table()
 
+#### Record the number of detections
+if (analysis == "sim") {
+  # Add iteration$n_detections column 
+  # (Note that for simulations we only need to match by individual_id, not block_start)
+  iteration <- 
+    iteration |> 
+    left_join(
+      detections |> 
+        group_by(individual_id) |> 
+        summarise(n_detections = n()) |> 
+        as.data.table(), 
+      by = "individual_id") |> 
+    mutate(n_detections = if_else(is.na(n_detections), 0, n_detections), 
+           n_detections = as.integer(n_detections)) |> 
+    as.data.table()
+  # Summarise iteration$n_detections
+  iteration |> 
+    filter(sensitivity == "best") |> 
+    summarise(utils.add::basic_stats(n_detections))
+}
+
 #### Filter iterations
 if (analysis == "real") {
   # To keep computations manageable, we do not run a real-world sensitivity analysis
@@ -514,16 +535,6 @@ if (!all(file.exists(iteration_julia$file_timeline)) | overwrite) {
     })
   pbapply::pboptions(pbo)
   
-}
-
-#### Review iterations without detections (~30 s)
-if (FALSE) {
-  n_detections <- cl_lapply(iteration_julia$file_acoustics, function(f) {
-    d <- arrow::read_feather(f)
-    length(which(d$obs == 1L))
-  }) |> unlist()
-  sort(n_detections) |> head(30)
-  which(n_detections == 0)
 }
 
 #### Review the number of time steps/batches
