@@ -337,7 +337,11 @@ if (analysis == "sim") {
     mutate(n_detections = if_else(is.na(n_detections), 0, n_detections), 
            n_detections = as.integer(n_detections)) |> 
     as.data.table()
-  # Summarise iteration$n_detections
+  # For simulations, 96/100 runs produced detections
+  iteration |> 
+    filter(sensitivity == "best") |> 
+    summarise(length(which(n_detections > 0L)))
+  # The number of detections was ~1000
   iteration |> 
     filter(sensitivity == "best") |> 
     summarise(utils.add::basic_stats(n_detections))
