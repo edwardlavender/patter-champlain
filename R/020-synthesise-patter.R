@@ -180,7 +180,7 @@ cl_lapply(
   #### Process map
   occupancy <- terra::classify(occupancy, cbind(NA, 0))
   occupancy <- terra::mask(occupancy, map)
-  occupancy <- spatNormalise(occupancy)
+  occupancy <- spatial.extensions::spatNormalise(occupancy)
   names(occupancy) <- "map_value"
   # terra::plot(occupancy)
   
