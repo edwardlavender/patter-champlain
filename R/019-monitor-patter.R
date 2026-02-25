@@ -87,6 +87,7 @@ stringr::str_detect(tolower(logtxt), "error")
 stringr::str_detect(tolower(logtxt), "fail")
 stringr::str_detect(tolower(logtxt), "failure")
 
+
 ###########################
 ###########################
 #### Quick checks 
