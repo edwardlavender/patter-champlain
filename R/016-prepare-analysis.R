@@ -315,7 +315,7 @@ iteration <-
     
     # Add modelling columns
     n_move              = 1000L,
-    n_particle_filter   = ifelse(analysis == "sim", 10000L, 20000L), 
+    n_particle_filter   = ifelse(analysis == "sim", 10000L, 25000L), 
     n_particle_smoother = ifelse(analysis == "sim", 1500L, 2000L),
     n_resample          = as.numeric(1000.0),
     n_batch             = ifelse(analysis == "sim", 9L, 25L)
