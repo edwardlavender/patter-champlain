@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT="./Julia/002-run-filter.jl" 
-# SCRIPT="./Julia/003-run-algorithms.jl"
+# SCRIPT="./Julia/002-run-filter.jl" 
+SCRIPT="./Julia/003-run-algorithms.jl"
 ANALYSIS="real"
-NROW=100
+NROW=2070
 NCPU=100
 LOGDIR="./data/output/$ANALYSIS/main/logs"
 mkdir -p "$LOGDIR"
