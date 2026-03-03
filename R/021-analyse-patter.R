@@ -39,8 +39,8 @@ map <- terra::rast(here_input("map.tif"))
 #### Select analysis
 
 #### Define analysis 
-analysis <- "sim"
-# analysis <- "real"
+# analysis <- "sim"
+analysis <- "real"
 subanalysis <- "main"
 
 #### Define analysis-specific data
@@ -185,26 +185,32 @@ callstats <- lapply(iteration$index, function(i) {
                                                           "Smoother: two-filter"))) |> 
   as.data.table()
 
-# Compute total run time (days)
-# > sim     : 22.98759 / 20              # 1.14 days on 20 cores
-# > ETA real: 22.98759 / 210 * 2723 / 20 # 14 days on 20 cores
-sum(callstats$time) / 60 / 60 / 24
+# Compute total run time (days on 100 cl)
+# > sim : 0.6895771
+# > real: 3.300165
+sum(callstats$time) / 60 / 60 / 24 / 100
 
-#### Compute total output size (MB, GB)
+#### Compute total output size by block (MB, GB)
 # Compute folder sizes
 iteration[, folder_output_block_mb := 
             sapply(seq_len(nrow(iteration)),
                    \(i) dir_size(iteration$folder_output_block[i], recursive = TRUE))]
 # Check total size (GB)
-# > sim: 4.190048 GB
+# > sim: 12.9 GB
+# > real: 56.20986 GB
 sum(iteration$folder_output_block_mb) / 1e3
+
+#### As above by chain (MB)
+# > real: 22 MB
+sum(sapply(unique(iteration$folder_output_chain), dir_size, recursive = TRUE))
 
 
 ###########################
 ###########################
 #### Identify convergence
 
-#### Collate diagnostics
+#### Collate diagnostics (~123 s for "real", 109242277 rows, 8.74 GB)
+tic()
 diagnostics <- 
   cl_lapply(iteration$index, function(i) {
     iteration$file_diagnostics[iteration$index == i] |> 
@@ -219,10 +225,14 @@ diagnostics <-
                                                           "Filter: backward", 
                                                           "Smoother: two-filter"))) |> 
   as.data.table()
+toc()
+# lobstr::obj_size(diagnostics)
+# TO DO Filter diagnostics by block_timeline 
+# TO DO
 
 #### Define convergence for an example individual
 diagnostics |> 
-  filter(index == 1L) |> 
+  filter(index == 8L) |> 
   filter(routine == "smoother: two-filter") |> 
   summarise(prop = length(which(!is.na(ess))) / n())
 
@@ -262,7 +272,7 @@ convergence <-
   left_join(iteration[, .(index, individual_id, block_id, sensitivity)], by = "index") |> 
   as.data.table()
 
-#### Check convergence
+#### Check convergence by block
 convergence
 table(convergence$success)
 table(convergence$success, convergence$sensitivity == "best")
@@ -271,6 +281,9 @@ convergence[pass_filter_fwd == FALSE, ]
 convergence[success == FALSE, ]
 utils.add::basic_stats(convergence$pass_smoother, na.rm = TRUE)
 utils.add::basic_stats(convergence$pass_smoother[convergence$success], na.rm = TRUE)
+
+#### Check convergence by chain
+# TO DO
 
 #### Review convergence failures
 
@@ -468,7 +481,7 @@ toc()
 # Summary statistics 
 diagnostics |> 
   group_by(routine) |> 
-  reframe(utils.add::basic_stats(ess, na.rm = TRUE))
+  reframe(utils.add::basic_stats(ess, na.rm = TRUE)) 
 # Visualisation (~14 s)
 tic()
 png(here_fig_analysis("diagnostics-ess.png"), 
