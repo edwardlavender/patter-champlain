@@ -43,7 +43,7 @@ map <- terra::rast("./data/input/map.tif")
 
 #### Define analysis 
 analysis <- "sim"
-# analysis <- "real"
+analysis <- "real"
 subanalysis <- "main"
 
 #### Define analysis-specific data
@@ -57,16 +57,11 @@ iteration           <- qs::qread(here_input_analysis("iteration.qs"))
 
 #### Examine timings & folder sizes
 #
-## For "sim" iteration[1, ]:
-# * Memory required per iteration : 251.46 MB 
-# * Time required per iteration   : 1.012 s
-# * ETA for 210 iteration         : 3.5 mins on 1 cl (1.012 * 210 / 60)
+## For "sim" iteration:
+# * 12 min on 1 cl
 #
 ## For "real" iteration[1, ]:
-# * Memory required per iteration : TO DO
-# * Time required per iteration   : TO DO
-# * ETA for 2723 iteration        : TO DO
-# > We can safely run ≈ TO DO N CPUs
+# * 15 min on 5 cl
 
 #### Subset iterations
 # We will produce maps for all chains where _all blocks_ have:
@@ -137,17 +132,19 @@ cl_lapply(
   for (i in seq_len(nrow(chain))) {
     
     # Define iteration 
-    it             <- chain[i, ]
+    it <- chain[i, ]
     
-    # Define timeline 
-    # * it_timeline is the modelled timeline for a block (may be longer than the block)
+    # Define block timeline 
     # * block_timeline is timeline of interest 
     # * Each chain is made up of several non-overlapping block_timeline(s) 
-    it_timeline    <- arrow::read_feather(it$file_timeline)
     block_timeline <- seq(it$block_start, it$block_end, by = "2 mins")
     
     # Update occupancy map for block 
     if (it$julia) {
+      
+      # Define modelled timeline
+      # * it_timeline is the modelled timeline for a block (may be longer than the block)
+      it_timeline <- arrow::read_feather(it$file_timeline)
       
       # Compute the total weight per cell (cell, mark) over all time steps
       marks <- 
@@ -171,7 +168,7 @@ cl_lapply(
     } else {
       
       # For un-modelled blocks, assume uniform weights & update map for all time steps
-      occupancy <- occupancy + (uniform_occupancy * length(block_timeline))
+      occupancy <- occupancy + (occupancy_uniform * length(block_timeline))
     
     }
     
