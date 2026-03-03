@@ -47,13 +47,19 @@ iteration     <- qs::qread(here_input_real("main", "iteration.qs"))
 # This code maps the overall pattern of space use by population & season
 
 #### Select iterations
+# Focus on chains 
+iteration <- 
+  iteration |> 
+  distinct(file_occupancy, .keep_all = TRUE) |> 
+  as.data.table()
+# Filter by file_occupancy
 iteration <- 
   iteration |>
   filter(file.exists(file_occupancy)) |> 
   # Define sites (recoded to N, S for brevity on plots) & season
   mutate(site = fish$site[match(individual_id, fish$individual_id)], 
          site = case_match(site, "Grand Isle" ~ "N", "Split Rock" ~ "S"), 
-         season = season_factor(time_id)) |>
+         season = season_factor(block_start)) |>
   as.data.table()
 
 #### Aggregate maps for each sensitivity/tagging location/season (~5 s)
@@ -178,7 +184,7 @@ residency <-
   rbindlist() |> 
   mutate(site = fish$site[match(individual_id, fish$individual_id)], 
          site = case_match(site, "Grand Isle" ~ "N", "Split Rock" ~ "S"), 
-         season = season_factor(time_id)) |>
+         season = season_factor.ys(chain_id)) |>
   mutate(region = factor(region, levels = levels(regions_cs$region)), 
          col = regions_cs$col[match(region, regions_cs$region)]) |> 
   as.data.table()

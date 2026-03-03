@@ -6,6 +6,7 @@
 
 # Assign seasonal labels for a vector of time stamps
 season_factor <- function(x) {
+  stopifnot(inherits(x, "POSIXct"))
   m <- lubridate::month(x)
   m <- dplyr::case_when(
     m %in% c(12, 1, 2, 3) ~ "winter",
@@ -16,5 +17,15 @@ season_factor <- function(x) {
   )
   m <- factor(m, levels = c("winter", "spring", "summer", "fall"), 
               labels = c("Winter", "Spring", "Summer", "Fall"))
+  m
+}
+
+# Extract seasonal labels from yyyy-season e.g., 2016-spring
+season_factor.ys <- function(x) {
+  stopifnot(inherits(x, "character"))
+  m <- stringr::str_split_fixed(x, pattern = "-", n = 2L)[, 2]
+  m <- factor(m, levels = c("winter", "spring", "summer", "fall"), 
+              labels = c("Winter", "Spring", "Summer", "Fall"))
+  stopifnot(!is.na(m))
   m
 }
