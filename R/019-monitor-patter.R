@@ -37,8 +37,8 @@ map <- terra::rast(here_input("map.tif"))
 #### Select analysis
 
 #### Define analysis 
-analysis <- "sim"
-# analysis <- "real"
+# analysis <- "sim"
+analysis <- "real"
 subanalysis <- "main"
 
 #### Define analysis-specific data
@@ -52,6 +52,7 @@ iteration            <- qs::qread(here_input_analysis("iteration.qs"))
 #### Monitor progress
 
 #### Monitor progress
+iteration <- iteration[julia == TRUE, ]
 # table(file.exists(iteration$file_callstats_filter))
 table(file.exists(iteration$file_callstats))
 table(file.exists(iteration$file_diagnostics))
