@@ -64,7 +64,7 @@ iteration <-
 # TO DO Filter by convergence
 # TO DO 
 
-#### Aggregate maps for each sensitivity/tagging location/season (~5 s)
+#### Aggregate maps for each sensitivity/tagging location/season (~11 s)
 # Define data.table of sensitivity/tagging location/season combinations
 # Rows = sensitivity combinations
 # Columns = site/season combinations
@@ -187,6 +187,7 @@ dev.off()
 residency <- 
   cl_lapply(iteration$file_residency, qs::qread) |> 
   rbindlist() |> 
+  filter(sensitivity == "best") |>
   mutate(site = fish$site[match(individual_id, fish$individual_id)], 
          site = case_match(site, "Grand Isle" ~ "N", "Split Rock" ~ "S"), 
          season = season_factor.ys(chain_id)) |>
@@ -194,16 +195,52 @@ residency <-
          col = regions_cs$col[match(region, regions_cs$region)]) |> 
   as.data.table()
 
+#### Precompute mean residencies, accounting for survival probability
+# mean/median values are only slightly adjusted by accounting for survivorship
+residency_stats <- 
+  residency |>
+  group_by(site, season, region) |>
+  summarise(
+    # Compute unweighted/weighted mean
+    mean_utd   = mean(estimate),
+    mean_wtd   = weighted.mean(estimate, survival_probability),
+    # Compute unweighted/weighted median
+    # * There are different ways of computed a weighted median
+    # * ggplot uses quantreg 
+    # * Plotting median_utd and median_wtd on the plot below confirms ggplot2 actions weights appropriately
+    median_utd = median(estimate), 
+    # median_wtd = matrixStats::weightedMedian(estimate, survival_probability), 
+    median_wtd = as.numeric(
+      quantreg::rq(estimate ~ 1, tau = 0.5, weights = survival_probability)$coefficients)
+  ) |>
+  ungroup() |> 
+  as.data.table()
+# Accounting for survivorship makes less than 1 % of difference to mean residency estimates
+# (but makes a bit more difference to the median)
+hist((residency_stats$mean_utd - residency_stats$mean_wtd) * 100)
+hist((residency_stats$median_utd - residency_stats$median_wtd) * 100)
+
 #### Plot the distribution of residencies in each region for the best analysis
 png(here_fig_real("main", "residency-best.png"), 
     height = 8, width = 6, units = "in", res = 800)
 p <- 
-  residency |>
-  filter(sensitivity == "best") |> 
-  as_tibble() |> 
-  ggplot(aes(region, estimate, fill = I(col))) +
-  geom_boxplot(varwidth = TRUE) +
-  geom_jitter(size = 0.25, colour = "dimgrey", width = 0.1, height = 0) +
+  residency |> 
+  ggplot(aes(region, estimate)) +
+  geom_boxplot(aes(region, estimate, fill = I(col), weight = survival_probability), 
+               varwidth = TRUE) +
+  # Add jittered points, coloured by survival probability 
+  geom_jitter(aes(region, estimate, alpha = survival_probability), 
+              size = 0.25, 
+              colour = "dimgrey",
+              width = 0.1, height = 0) +
+  # Add mean values, accounting for survival probability 
+  # * The black points line up as expected, demonstrating ggplot2 actions weights properly
+  # * Unweighted median values are generally, but not always, similar
+  # geom_point(data = residency_stats, aes(region, median_wtd), 
+  #            shape = 4, colour = "black", size = 2, stroke = 2) + 
+  # geom_point(data = residency_stats, aes(region, median_utd),
+  #            shape = 4, colour = "red", size = 1, stroke = 1) +
+  # Add number of observations
   stat_summary(
     fun.data = \(y) data.frame(
       y = max(y, na.rm = TRUE),
@@ -216,13 +253,15 @@ p <-
   coord_cartesian(ylim = c(0, 1.2), clip = "off") +
   xlab("Region") +
   ylab(expression("Residency")) +
+  # labs(alpha = "Survival probability") +
   facet_grid(season ~ site) +
   theme_bw() +
   theme(panel.grid.minor.y = element_blank(),
         panel.grid.major.y = element_blank(),
         axis.title.x = element_text(margin = margin(t = 10)),
         axis.title.y = element_text(margin = margin(r = 10)),
-        axis.text.x = element_text(angle = 45, hjust = 1)
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none"
   )
 print(p)
 dev.off()

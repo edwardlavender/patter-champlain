@@ -56,7 +56,10 @@ if (!requireNamespace("arrow", quietly = TRUE) &
                    repos = "https://packagemanager.rstudio.com/all/__linux__/focal/latest")
   arrow::arrow_info()
   options(op)
-  
+}
+if (!requireNamespace("quantreg", quietly = TRUE)) {
+  # This is required for geom_boxplot() with weights
+  renv::install("quantreg", prompt = FALSE)
 }
 # Utilities
 if (!requireNamespace("devtools", quietly = TRUE)) {
