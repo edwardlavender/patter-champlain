@@ -71,16 +71,17 @@ iteration           <- qs::qread(here_input_analysis("iteration.qs"))
 #    (these were produced when both forward and backward filters were run successfully)
 # i.e., We drop any chains in which one or more blocks failed
 iteration[, chain_group := paste(individual_id, chain_id, sensitivity)]
-iteration[, julia_success := sapply(iteration$folder_output_block, function(folder) {
+iteration[, success := sapply(iteration$folder_output_block, function(folder) {
   length(list.files(folder, "pou-")) == iteration$n_batch[1]
 })]
-iteration[julia == FALSE, julia_success := as.logical(NA)]
-table(iteration$julia_success[iteration$julia])
+iteration[julia == FALSE, success := TRUE]
+length(unique(iteration$chain_group))
 iteration <-
   iteration |>
   group_by(chain_group) |> 
-  filter(all(!julia | (julia & julia_success))) |> 
+  filter(all(success)) |> 
   as.data.table()
+length(unique(iteration$chain_group))
 stopifnot(nrow(iteration) > 0L)
 
 #### Pre-compute blank (starting) occupancy map
