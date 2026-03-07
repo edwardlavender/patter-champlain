@@ -90,6 +90,35 @@ detections.png <- here_fig(analysis, "detections.png")
 
 if (analysis == "real" & (overwrite | !file.exists(detections.png))) {
   
+  #### Define expanded study period (for demarking seasons)
+  timeframe <-
+    tribble(
+      ~chain_id,     ~chain_interval,
+      "2013-winter", interval("2013-12-01 00:00:00", "2014-03-31 23:58:00", tzone = "UTC"),
+      "2014-spring", interval("2014-04-01 00:00:00", "2014-05-31 23:58:00", tzone = "UTC"),
+      "2014-summer", interval("2014-06-01 00:00:00", "2014-09-30 23:58:00", tzone = "UTC"),
+      "2014-fall",   interval("2014-10-01 00:00:00", "2014-11-30 23:58:00", tzone = "UTC"),
+      "2014-winter", interval("2014-12-01 00:00:00", "2015-03-31 23:58:00", tzone = "UTC"),
+      "2015-spring", interval("2015-04-01 00:00:00", "2015-05-31 23:58:00", tzone = "UTC"),
+      "2015-summer", interval("2015-06-01 00:00:00", "2015-09-30 23:58:00", tzone = "UTC"),
+      "2015-fall",   interval("2015-10-01 00:00:00", "2015-11-30 23:58:00", tzone = "UTC"),
+      "2016-winter", interval("2015-12-01 00:00:00", "2016-03-31 23:58:00", tzone = "UTC"),
+      "2016-spring", interval("2016-04-01 00:00:00", "2016-05-31 23:58:00", tzone = "UTC"),
+      "2016-summer", interval("2016-06-01 00:00:00", "2016-09-30 23:58:00", tzone = "UTC"),
+      "2016-fall",   interval("2016-10-01 00:00:00", "2016-11-30 23:58:00", tzone = "UTC"),
+      "2017-winter", interval("2016-12-01 00:00:00", "2017-03-31 23:58:00", tzone = "UTC"),
+      "2017-spring", interval("2017-04-01 00:00:00", "2017-05-31 23:58:00", tzone = "UTC"), 
+      "2017-summer", interval("2017-06-01 00:00:00", "2017-09-30 23:58:00", tzone = "UTC"),
+    ) |> 
+    mutate(chain_start = int_start(chain_interval),
+           chain_end   = int_end(chain_interval),
+           chain_label = stringr::str_to_sentence(substr(chain_id, 6, nchar(chain_id)))) |> 
+    rowwise() |> 
+    mutate(chain_midpoint = mean(c(chain_start, chain_end))) |> 
+    ungroup() |> 
+    select("chain_id", "chain_start", "chain_midpoint", "chain_end", "chain_label") |> 
+    as.data.table()
+  
   #### Define mooring regions
   moorings <- 
     moorings |> 
@@ -128,7 +157,7 @@ if (analysis == "real" & (overwrite | !file.exists(detections.png))) {
   png(detections.png, 
       height = 9.69 * 1.75, width = 6.27 * 1.75, units = "in", res = 800)
   # Set parameters 
-  pp <- par(oma = c(1.5, 1.5, 0, 0))
+  pp <- par(oma = c(1.5, 1.5, 4, 0))
   xshift    <-  5 * 24 * 60 * 60
   cex.axis  <- 2
   cex.mtext <- 2.25
@@ -152,11 +181,19 @@ if (analysis == "real" & (overwrite | !file.exists(detections.png))) {
   # n <- 1e5
   points(draw$timestamp[1:n], draw$individual_id[1:n],
          pch = 3, col = draw$col, las = TRUE)
+  # Add seasonal grid (above)
+  sapply(timeframe$chain_start, \(season) {
+    abline(v = season, col = "dimgrey", lty = 2, lwd = 1.5)
+  }) |> invisible()
   # Add axes
   xat <- as.POSIXct(paste0(rep(2014:2017, each = 2), c("-01-01", "-06-01")), tz = "UTC")
   axis(side = 1, at = xat, labels = format(xat, "%b-%y"), cex.axis = cex.axis)
   mtext(side = 1, "Time (month-year)", line = 4, cex = cex.mtext)
   mtext(side = 2, "Individual", line = 4, cex = cex.mtext)
+  mtext(side = 3, 
+        at = timeframe$chain_midpoint, 
+        text = timeframe$chain_label, cex = cex.axis, 
+        line = 0.5, las = 2)
   par(pp)
   dev.off()
   toc()
@@ -168,7 +205,7 @@ if (analysis == "real" & (overwrite | !file.exists(detections.png))) {
 ###########################
 #### Review data availability 
 
-if (analysis == "real") {
+if (analysis == "real" & FALSE) {
   
   # Review data availability by spawning site/season
   # (Check the mean number of days with observations per individual for each site/season)
