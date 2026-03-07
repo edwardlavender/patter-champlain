@@ -6,7 +6,7 @@
 
 # Assign seasonal labels for a vector of time stamps
 season_factor <- function(x) {
-  stopifnot(inherits(x, "POSIXct"))
+  stopifnot(inherits(x, c("Date", "POSIXct")))
   m <- lubridate::month(x)
   m <- dplyr::case_when(
     m %in% c(12, 1, 2, 3) ~ "winter",
