@@ -245,6 +245,16 @@ hist((residency_stats$median_utd - residency_stats$median_wtd) * 100)
 #### Plot the distribution of residencies in each region for the best analysis
 png(here_fig_real("main", "residency-best.png"), 
     height = 8, width = 6, units = "in", res = 800)
+# Compute the number of observations per panel 
+# * We will add this as a label to the plot below
+n_per_panel <-
+  residency |> 
+  group_by(site, season) |> 
+  # Count n for region[1] (other regions are the same)
+  summarise(n = sum(!is.na(estimate[region == region[1]]))) |> 
+  ungroup() |> 
+  as.data.table()
+# Make plot 
 p <- 
   residency |> 
   ggplot(aes(region, estimate)) +
@@ -262,14 +272,14 @@ p <-
   #            shape = 4, colour = "black", size = 2, stroke = 2) + 
   # geom_point(data = residency_stats, aes(region, median_utd),
   #            shape = 4, colour = "red", size = 1, stroke = 1) +
-  # Add number of observations
-  stat_summary(
-    fun.data = \(y) data.frame(
-      y = max(y, na.rm = TRUE),
-      label = sum(!is.na(y))
-    ),
-    geom = "text", vjust = -1, size = 3) +
-  scale_y_continuous(limits = c(0, 1),
+  # Add label of the number of observations per panel/region
+  geom_text(data = n_per_panel,
+            aes(x = -Inf, y = Inf, label = n),
+            inherit.aes = FALSE,
+            hjust = -0.25,   
+            vjust = 1.5,
+            size = 3) + 
+  scale_y_continuous(# limits = c(0, 1),
                      breaks = seq(0, 1, 0.2),
                      expand = expansion(mult = c(0, 0))) +
   coord_cartesian(ylim = c(0, 1.2), clip = "off") +
