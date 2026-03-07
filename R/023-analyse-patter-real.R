@@ -33,12 +33,14 @@ library(tictoc)
 files_source_r(here_src())
 
 #### Load data
-map           <- terra::rast(here_input("map.tif"))
-champlain_utm <- qreadvect(here_input("champlain-utm.qs"))
-regions_cs    <- qs::qread(here_input("regions-colour-scheme.qs"))
-fish          <- qs::qread(here_input("fish.qs"))
-moorings      <- qs::qread(here_input_real("main", "moorings.qs"))
-iteration     <- qs::qread(here_input_real("main", "iteration.qs"))
+map                <- terra::rast(here_input("map.tif"))
+champlain_utm      <- qreadvect(here_input("champlain-utm.qs"))
+regions_cs         <- qs::qread(here_input("regions-colour-scheme.qs"))
+fish               <- qs::qread(here_input("fish.qs"))
+moorings           <- qs::qread(here_input_real("main", "moorings.qs"))
+iteration          <- qs::qread(here_input_real("main", "iteration.qs"))
+convergence_chains <- 
+  qs::qread(here_output_real("main", "synthesis", "convergence-chains.qs"))
 
 
 ###########################
@@ -48,21 +50,32 @@ iteration     <- qs::qread(here_input_real("main", "iteration.qs"))
 
 #### Select iterations
 # Focus on chains 
+# * Below, we read the map for each chain (from analyse-patter.R)
+# * Then for each tagging site/season, we aggregate maps over individuals/years by season
 iteration <- 
   iteration |> 
-  distinct(file_occupancy, .keep_all = TRUE) |> 
+  group_by(individual_id, sensitivity, chain_id) |> 
+  slice(1L) |> 
   as.data.table()
-# Filter by file_occupancy
+# Filter by chain success
+# * We should only keep rows for chains that succeeded (or with julia = FALSE)
+iteration <- 
+  iteration |> 
+  left_join(convergence_chains, by = c("individual_id", "sensitivity", "chain_id")) |> 
+  mutate(success_chain = if_else(julia == FALSE, TRUE, success_chain)) |> 
+  filter(success_chain == TRUE) |> 
+  as.data.table()
+# Verify that files exist exists for all chains
+stopifnot(all(file.exists(iteration$file_occupancy)))
+stopifnot(all(file.exists(iteration$file_residency)))
+# Define sites/seasons
 iteration <- 
   iteration |>
-  filter(file.exists(file_occupancy)) |> 
   # Define sites (recoded to N, S for brevity on plots) & season
   mutate(site = fish$site[match(individual_id, fish$individual_id)], 
          site = case_match(site, "Grand Isle" ~ "N", "Split Rock" ~ "S"), 
-         season = season_factor(block_start)) |>
+         season = season_factor(chain_start)) |>
   as.data.table()
-# TO DO Filter by convergence
-# TO DO 
 
 #### Aggregate maps for each sensitivity/tagging location/season (~11 s)
 # Define data.table of sensitivity/tagging location/season combinations
