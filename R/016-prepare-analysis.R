@@ -45,8 +45,8 @@ fish       <- qs::qread(here_input("fish.qs"))
 #### Select analysis
 
 #### Define analysis 
-analysis <- "sim"
-# analysis <- "real"
+# analysis <- "sim"
+analysis <- "real"
 subanalysis <- "main"
 
 #### Define analysis-specific data
@@ -55,6 +55,9 @@ detections          <- qs::qread(here_input_analysis("detections.qs"))
 moorings            <- qs::qread(here_input_analysis("moorings.qs"))
 if (analysis == "sim") {
   paths <- qs::qread(here_input_sim("main", "paths.qs"))
+}
+if (analysis == "real") {
+  survivors <- qs::qread(here_input_real("main", "survivors.qs"))
 }
 
 
@@ -345,6 +348,47 @@ if (analysis == "sim") {
   iteration |> 
     filter(sensitivity == "best") |> 
     summarise(utils.add::basic_stats(n_detections))
+}
+
+#### Record survivorship weights
+if (analysis == "real") {
+  
+  # The survivors data table includes the last detection of each individual
+  # (which may have been in a subsequent study)
+  range(survivors$end_detection)
+  
+  # Using survivors, compute survivorship weights based on Marcy-Quay et al. (2025)
+  iteration <- 
+    iteration |> 
+    # Identify for each individual the last detection (may be beyond range of study)
+    mutate(end_detection = survivors$end_detection[match(individual_id, survivors$individual_id)]) |> 
+    # Compute the midpoint of each season
+    rowwise() |> 
+    mutate(chain_midpoint = mean(c(chain_start, chain_end))) |> 
+    ungroup() |> 
+    # Compute the time since the last detection and convert to survival probability
+    # * If the midpoint of the chain is before the last detection -> survival probability = 1
+    # * Otherwise, we compute survival probability from a constant hazard model
+    mutate(time_after_end_detection = as.numeric(difftime(chain_midpoint, end_detection, units = "days")), 
+           survival_probability = if_else(time_after_end_detection < 0, 
+                                          1, 
+                                          0.93^(time_after_end_detection / 365))) |> 
+    # (optional) Zoom into selected columns & distinct rows for manual checks
+    # select(individual_id, 
+    #        chain_id, chain_start, chain_midpoint, chain_end,
+    #        end_detection, time_after_end_detection, 
+    #        survival_probability) |> 
+    # distinct() |> 
+    select(-c(end_detection, chain_midpoint, time_after_end_detection)) |> 
+    as.data.table()
+
+  # Spot checks
+  stopifnot(all(!is.na(iteration$survival_probability)))
+  stopifnot(any(iteration$survival_probability == 1))
+  range(iteration$survival_probability)
+  iteration[1, .(individual_id, chain_start, chain_end, survival_probability)]
+  survivors[individual_id == 24320, ]
+  
 }
 
 #### Filter iterations
