@@ -62,6 +62,7 @@ iteration           <- qs::qread(here_input_analysis("iteration.qs"))
 #
 ## For "real" iteration[1, ]:
 # * 15 min on 5 cl
+# * 2 + 4 min on 40 cl
 
 #### Subset iterations
 # We will produce maps for all chains where _all blocks_ have:
@@ -103,6 +104,7 @@ terra::writeRaster(occupancy_uniform,
 # terra::plot(occupancy_uniform)
 
 #### Define cluster
+# (~2 min with 40 cl)
 tic()
 cl <- parallel::makeCluster(5L)
 parallel::clusterEvalQ(cl, {
