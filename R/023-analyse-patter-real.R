@@ -94,7 +94,16 @@ map_dt <-
       paste0(site_, "-",  season_, "-", iteration$sensitivity[1], ".tif"))
     ) |>
   select(-site_, -season_) |> 
-  mutate(row = sensitivity_label, column = paste0(season, " (", site, ")")) |> 
+  mutate(
+    # Set row and column order on maps
+    row = sensitivity_label, 
+    column = paste0(season, " (", site, ")"), 
+    
+    column = factor(column, 
+                    levels = c("Winter (N)", "Winter (S)", 
+                               "Spring (N)", "Spring (S)", 
+                               "Summer (N)", "Summer (S)", 
+                               "Fall (N)",   "Fall (S)"))) |> 
   select(sensitivity, sensitivity_label, site, season, row, column, file_ud) |> 
   as.data.table()
 
