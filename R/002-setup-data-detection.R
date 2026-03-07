@@ -710,6 +710,7 @@ table(survivors$survivor[survivors$individual_id %in% detections$individual_id])
 #### Write outputs
 
 qs::qsave(fish, here_input("fish.qs"))
+qs::qsave(survivors, here_input_real("main", "survivors.qs"))
 qs::qsave(moorings_sim, here_input_sim("main", "moorings-xy.qs"))
 qs::qsave(moorings_real, here_input_real("main", "moorings.qs"))
 qs::qsave(detections, here_input_real("main", "detections.qs"))
