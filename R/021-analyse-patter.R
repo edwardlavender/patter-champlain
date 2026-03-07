@@ -209,26 +209,39 @@ sum(sapply(unique(iteration$folder_output_chain), dir_size, recursive = TRUE))
 ###########################
 #### Identify convergence
 
-#### Collate diagnostics (~123 s for "real", 109242277 rows, 8.74 GB)
+#### Collate diagnostics,  filtering by block timeline 
+# * 1 cl: ~129 s for "real", 88672444 rows, 8.74 GB), 
+# * 5 cl: no speed up
 tic()
 diagnostics <- 
-  cl_lapply(iteration$index, function(i) {
-    iteration$file_diagnostics[iteration$index == i] |> 
+  cl_lapply(iteration$index, .fun = function(i) {
+    # Define iteration row for index
+    it <- iteration[index == i, ]
+    # Define block timeline
+    block_timeline <- seq(it$block_start, it$block_end, by = "2 mins")
+    # Read diagnostics, filtering by block timeline
+    it$file_diagnostics |> 
       arrow::read_feather() |> 
       mutate(index = i, .before = 1L) |> 
-      cbind(iteration[index == i, .(individual_id, block_id, sensitivity)]) |> 
+      filter(timestamp %in% block_timeline) |> 
+      group_by(routine) |> 
+      arrange(timestamp, .by_group = TRUE) |> 
+      mutate(timestep = 1:n()) |> 
+      ungroup() |> 
+      arrange(routine, timestamp) |>
+      cbind(it[index == i, .(individual_id, block_id, sensitivity)]) |> 
       as.data.table()
   }) |> 
   rbindlist()  |> 
+  lazy_dt(immutable = FALSE) |> 
   mutate(routine_label = stringr::str_to_sentence(routine), .after = routine) |> 
   mutate(routine_label = factor(routine_label, levels = c("Filter: forward", 
                                                           "Filter: backward", 
                                                           "Smoother: two-filter"))) |> 
+  arrange(index, routine, timestamp) |> 
   as.data.table()
 toc()
 # lobstr::obj_size(diagnostics)
-# TO DO Filter diagnostics by block_timeline 
-# TO DO
 
 #### Define convergence for an example individual
 diagnostics |> 
@@ -266,27 +279,47 @@ convergence <-
                           length(which(routine == "smoother: two-filter"))) |> 
               pull(prop)
   ) |> 
+  ungroup() |> 
   mutate(success = pass_filter & (pass_smoother >= 0.75)) |> 
   left_join(convergence_filter, by = "index") |> 
   select("index", "pass_filter_fwd", "pass_filter_bwd", "pass_filter", "pass_smoother", "success") |> 
-  left_join(iteration[, .(index, individual_id, block_id, sensitivity)], by = "index") |> 
+  left_join(iteration[, .(index, individual_id, chain_id, block_id, sensitivity)], by = "index") |> 
+  # Define success_chain = TRUE if all blocks for that chain succeeded
+  group_by(individual_id, sensitivity, chain_id) |> 
+  mutate(success_chain = all(success)) |> 
+  ungroup() |> 
   as.data.table()
 
-#### Check convergence by block
-convergence
+#### Check convergence by block, with comments on the "real" analysis
+# Review filter issues (82 % pass rate)
+# * 1243 / (267 +  1243) pass filter
+table(convergence$pass_filter)
+# For the filter, increasing the number of particles helps
+table(callstats$convergence, callstats$n_particle)
+# Review smoothing (85 % pass rate for successful filter runs)
+# * 1067 / (1067 + 176)
+utils.add::basic_stats(convergence$pass_smoother, na.rm = TRUE)
+utils.add::basic_stats(convergence$pass_smoother[convergence$success], na.rm = TRUE)
+table(convergence$pass_smoother[convergence$pass_filter == TRUE] > 0.75)
+hist(convergence$pass_smoother)
+# Overall convergence rate is 71 %
+# * 1067 /( 1067 + 443)
 table(convergence$success)
 table(convergence$success, convergence$sensitivity == "best")
 table(convergence$sensitivity[convergence$success == FALSE])
-convergence[pass_filter_fwd == FALSE, ]
-convergence[success == FALSE, ]
-utils.add::basic_stats(convergence$pass_smoother, na.rm = TRUE)
-utils.add::basic_stats(convergence$pass_smoother[convergence$success], na.rm = TRUE)
 
 #### Check convergence by chain
-# TO DO
+# For the real analysis, we have 1510 individual/month-year blocks
+# We have 512 individual/season-year blocks
+# We have complete convergence for only 242/512 blocks (47 % success)
+convergence |> 
+  group_by(individual_id, sensitivity, chain_id) |>
+  slice(1L) |> 
+  ungroup() |>
+  count(success_chain)
 
 #### Review convergence failures
-# TO DO
+convergence[success == FALSE, ]
 
 #### Examine convergence failures
 # We know from setup-data-detection.R that there are some unlikely transitions 
@@ -318,14 +351,14 @@ diagnostics <- diagnostics[index %in% successful_indices, ]
 ###########################
 #### Summarise callstats
 
-#### Summarise computation time (mins)
+#### Summarise computation time (mins), by block
 # Total computation time
 callstats |> 
   group_by(index) |>
   summarise(time = sum(time)) |> 
   ungroup() |> 
   summarise(utils.add::basic_stats(time / 60))
-# Summary statisics, by routine
+# Summary statistics, by routine
 callstats |>
   mutate(routine = if_else(grepl("^filter:", routine), "filter", routine)) |>
   group_by(routine) |>
@@ -335,6 +368,7 @@ callstats |>
   group_by(routine, sensitivity) |> 
   reframe(utils.add::basic_stats(time / 60)) |> 
   as.data.table()
+# > Note that for the real-world analysis, the number of particles varies
 
 #### Visualise total computation time
 # > For simulations, total computation time varies from 150 - 190 mins (~3 hours)
@@ -431,7 +465,7 @@ toc()
 
 ###########################
 ###########################
-#### Summarise diagnostics
+#### Summarise diagnostics, by block
 
 #### Summarise ESS (for filters & smoother)
 # Summary statistics 
