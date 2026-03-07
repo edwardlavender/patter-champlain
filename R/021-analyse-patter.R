@@ -62,6 +62,10 @@ if (analysis == "sim") {
   nrow(iteration)
 }
 
+# For real-world analysis, focus on julia = TRUE
+if (analysis == "real") {
+  iteration <- iteration[julia == TRUE, ]
+}
 
 ###########################
 ###########################
