@@ -312,10 +312,13 @@ table(convergence$sensitivity[convergence$success == FALSE])
 # For the real analysis, we have 1510 individual/month-year blocks
 # We have 512 individual/season-year blocks
 # We have complete convergence for only 242/512 blocks (47 % success)
-convergence |> 
+convergence_chains <- 
+  convergence |> 
   group_by(individual_id, sensitivity, chain_id) |>
-  slice(1L) |> 
+  summarise(success_chain = all(success)) |> 
   ungroup() |>
+  as.data.table()
+convergence_chains |> 
   count(success_chain)
 
 #### Review convergence failures
@@ -540,10 +543,10 @@ toc()
 
 ###########################
 ###########################
-#### Visualise maps
+#### Record datasets
 
-#### Visualise example maps
-# TO DO
+qs::qsave(convergence, here_output_analysis("synthesis", "convergence.qs"))
+qs::qsave(convergence_chains, here_output_analysis("synthesis", "convergence-chains.qs"))
 
 
 #### End of code. 
