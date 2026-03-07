@@ -190,7 +190,7 @@ if (analysis == "sim") {
 unitsets <- 
   CJ(individual_id = individuals, block_id = blocks) |>
   mutate(block_start := parse_date_time(block_id, "y-b", tz = "UTC"),
-         block_end := block_start + months(1) - 60 * 2,
+         block_end := block_start %m+% months(1) - 60 * 2,
          julia = TRUE) |> 
   arrange(individual_id, block_start) |>
   mutate(unit_id = 1:n()) |>
@@ -221,39 +221,66 @@ unitsets <-
 
 #### For the real-analysis, identify the subset of blocks that require modelling
 if (analysis == "real") {
-  
-  # Identify the last detection for each individual
-  detections_end <- 
-    detections |> 
-    group_by(individual_id) |> 
-    summarise(timestamp_last_detection = max(timestamp)) |> 
-    as.data.table()
-  
-  # Identify which blocks require modelling
-  # * We model all blocks for _at least_ month month after the last detection
-  # * (I.e., for the rest of the month and the next whole month)
-  unitsets <- 
-    unitsets |> 
-    left_join(detections_end, by = "individual_id") |> 
-    mutate(timestamp_one_block_after_last_detection = timestamp_last_detection + months(1), 
-           julia = block_start <= timestamp_one_block_after_last_detection) |> 
-    as.data.table()
 
-  # Visual checks
-  unitsets[individual_id == individual_id[1], ]
+  #### Assign julia = FALSE (~33 s)
+  # We model all time blocks where there is at least one detection in the surrounding month(s)
+  # * I.e., any one-month block without any detections in surrounding time blocks isn't modelled
+  tic()
+  for (i in 1:nrow(unitsets)) {
+    u   <- unitsets[i, ]
+    det <- detections[individual_id == u$individual_id & 
+                        (timestamp >= u$block_start %m-% months(1) & timestamp <= u$block_end %m+% months(1)),  ]
+    if (nrow(det) == 0L) {
+      unitsets[i, julia := FALSE]
+    }
+  }
+  toc()
   
-  # Cleanup
-  unitsets <- 
-    unitsets |> 
-    select(-c(timestamp_last_detection, timestamp_one_block_after_last_detection)) |> 
-    as.data.table()
+  #### Automated checks
+  # Expect that some blocks have julia = TRUE and some have julia = ALSE
+  stopifnot(any(unitsets$julia))
+  stopifnot(any(!unitsets$julia))
+  # Expect that blocks with more than one month after the last detection should have julia = FALSE
+  unitsets |> 
+    left_join(
+      detections |> 
+        group_by(individual_id) |> 
+        summarise(timestamp_last_detection = max(timestamp)) |> 
+        as.data.table(), 
+      by = "individual_id") |> 
+    mutate(timestamp_one_block_after_last_detection = timestamp_last_detection %m+% months(1)) |> 
+    filter(block_start > timestamp_one_block_after_last_detection) |> 
+    pull(julia) |> 
+    all() |>
+    isFALSE() |> 
+    stopifnot()
+  # Verify that each individual has at least one modelled block
+  julia_per_id <- 
+    unitsets |>
+    group_by(individual_id) |> 
+    summarise(n = sum(julia)) |> 
+    pull(n) 
+  stopifnot(all(julia_per_id > 0L))
+  
+  #### Visual checks
+  # Check the dataset
+  # View(unitsets)
+  unitsets[individual_id == individual_id[1], ]
+  # Compare to visual examination of an example time series
+  p <- 
+    detections |>
+    filter(individual_id == 24321) |> 
+    as_tibble() |>
+    ggplot(aes(timestamp, 1)) +
+    geom_point() 
+  plotly::ggplotly(p)
   
 }
 
-# For the real-world analysis, there are 2070 blocks, of which 1510 require modelling (73 %)
+# For the real-world analysis, there are 2070 blocks, of which 1427 require modelling (69 %)
 nrow(unitsets)
 table(unitsets$julia)
-# View(unitsets)
+table(unitsets$julia) / nrow(unitsets)
 
 
 ###########################
@@ -492,14 +519,14 @@ if (!all(file.exists(iteration_julia$file_timeline)) | overwrite) {
         # (B) Ensure the detection time series covers the full block:
         # (i) Add detection(s) immediately before the block start, if needed
         if (nrow(during) == 0L || min(during$timestamp) > d$block_start) {
-          before <- dets[timestamp >= d$block_start - months(1) & timestamp < d$block_start, ]
+          before <- dets[timestamp >= d$block_start %m-% months(1) & timestamp < d$block_start, ]
           if (nrow(before) > 0L) {
             before <- before[timestamp == max(timestamp), ]
           }
         }
         # (ii) Add the detection(s) immediately after the block end, if needed
         if (nrow(during) == 0L || max(during$timestamp) < d$block_end) {
-          after <- dets[timestamp > d$block_end & timestamp <= d$block_end + months(1), ]
+          after <- dets[timestamp > d$block_end & timestamp <= d$block_end %m+% months(1), ]
           if (nrow(after) > 0L) {
             after <- after[timestamp == min(timestamp), ]
           }
