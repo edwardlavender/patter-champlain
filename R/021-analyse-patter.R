@@ -286,51 +286,7 @@ utils.add::basic_stats(convergence$pass_smoother[convergence$success], na.rm = T
 # TO DO
 
 #### Review convergence failures
-
-## sim:
-# index pass_filter pass_smoother success individual_id    time_id sensitivity
-# <int>      <lgcl>         <num>  <lgcl>         <int>     <POSc>      <char>
-# 1:     7       FALSE           NaN   FALSE             1 2025-01-01       ac(+)
-# 2:    13       FALSE           NaN   FALSE             2 2025-01-01       ac(-)
-# 3:    14       FALSE           NaN   FALSE             2 2025-01-01       ac(+)
-# 4:    63        TRUE     0.4146057   FALSE             9 2025-01-01       ac(+)
-# 5:   119       FALSE           NaN   FALSE            17 2025-01-01       ac(+)
-# 6:   133       FALSE           NaN   FALSE            19 2025-01-01       ac(+)
-# 7:   140       FALSE           NaN   FALSE            20 2025-01-01       ac(+)
-# 8:   147       FALSE           NaN   FALSE            21 2025-01-01       ac(+)
-# 9:   161       FALSE           NaN   FALSE            23 2025-01-01       ac(+)
-# 10:   166       FALSE           NaN   FALSE            24 2025-01-01    angle(+)
-# 11:   168       FALSE           NaN   FALSE            24 2025-01-01       ac(+)
-# 12:   176       FALSE           NaN   FALSE            26 2025-01-01        best
-# 13:   178       FALSE           NaN   FALSE            26 2025-01-01     step(+)
-# 14:   179       FALSE           NaN   FALSE            26 2025-01-01    angle(-)
-# 15:   182       FALSE           NaN   FALSE            26 2025-01-01       ac(+)
-# 16:   195       FALSE           NaN   FALSE            28 2025-01-01       ac(-)
-# 17:   196       FALSE           NaN   FALSE            28 2025-01-01       ac(+)
-
-## real:
-# index pass_filter_fwd pass_filter_bwd pass_filter pass_smoother success individual_id    time_id sensitivity
-# <int>          <lgcl>          <lgcl>      <lgcl>         <num>  <lgcl>         <int>     <POSc>      <char>
-# 1:   421            TRUE           FALSE       FALSE           NaN   FALSE         24334 2015-05-01        best
-# 2:   442            TRUE            TRUE        TRUE     0.6628352   FALSE         24334 2016-02-01        best
-# 3:   596           FALSE           FALSE       FALSE           NaN   FALSE         24339 2016-11-01        best
-# 4:   603           FALSE           FALSE       FALSE           NaN   FALSE         24339 2017-05-01        best
-# 5:   988            TRUE           FALSE       FALSE           NaN   FALSE         24352 2016-05-01        best
-# 6:  1331            TRUE            TRUE        TRUE     0.6094982   FALSE         24370 2017-05-01        best
-# 7:  1513           FALSE           FALSE       FALSE           NaN   FALSE         24378 2015-05-01        best
-# 8:  1534           FALSE           FALSE       FALSE           NaN   FALSE         24378 2016-11-01        best
-# 9:  1541           FALSE           FALSE       FALSE           NaN   FALSE         24380 2015-05-01        best
-# 10:  1555            TRUE           FALSE       FALSE           NaN   FALSE         24380 2015-11-01        best
-# 11:  1646           FALSE           FALSE       FALSE           NaN   FALSE         24383 2017-02-01        best
-# 12:  1716           FALSE           FALSE       FALSE           NaN   FALSE         24385 2016-05-01        best
-# 13:  1779           FALSE           FALSE       FALSE           NaN   FALSE         24385 2017-05-01        best
-# 14:  1786            TRUE           FALSE       FALSE           NaN   FALSE         24386 2015-10-01        best
-# 15:  1814           FALSE           FALSE       FALSE           NaN   FALSE         24386 2016-11-01        best
-# 16:  1898           FALSE           FALSE       FALSE           NaN   FALSE         24387 2017-06-01        best
-# 17:  2087           FALSE           FALSE       FALSE           NaN   FALSE         24393 2015-11-01        best
-# 18:  2262           FALSE           FALSE       FALSE           NaN   FALSE         26792 2015-05-01        best
-# 19:  2416           FALSE           FALSE       FALSE           NaN   FALSE         26803 2015-06-01        best
-# 20:  2549           FALSE           FALSE       FALSE           NaN   FALSE         26808 2016-05-01        best
+# TO DO
 
 #### Examine convergence failures
 # We know from setup-data-detection.R that there are some unlikely transitions 
