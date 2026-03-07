@@ -33,14 +33,13 @@ library(tictoc)
 files_source_r(here_src())
 
 #### Load data
-map                <- terra::rast(here_input("map.tif"))
-champlain_utm      <- qreadvect(here_input("champlain-utm.qs"))
-regions_cs         <- qs::qread(here_input("regions-colour-scheme.qs"))
-fish               <- qs::qread(here_input("fish.qs"))
-moorings           <- qs::qread(here_input_real("main", "moorings.qs"))
-iteration          <- qs::qread(here_input_real("main", "iteration.qs"))
-convergence_chains <- 
-  qs::qread(here_output_real("main", "synthesis", "convergence-chains.qs"))
+map           <- terra::rast(here_input("map.tif"))
+champlain_utm <- qreadvect(here_input("champlain-utm.qs"))
+regions_cs    <- qs::qread(here_input("regions-colour-scheme.qs"))
+fish          <- qs::qread(here_input("fish.qs"))
+moorings      <- qs::qread(here_input_real("main", "moorings.qs"))
+iteration     <- qs::qread(here_input_real("main", "iteration.qs"))
+convergence   <- qs::qread(here_output_real("main", "synthesis", "convergence.qs"))
 
 
 ###########################
@@ -49,23 +48,26 @@ convergence_chains <-
 # This code maps the overall pattern of space use by population & season
 
 #### Select iterations
-# Focus on chains 
-# * Below, we read the map for each chain (from analyse-patter.R)
-# * Then for each tagging site/season, we aggregate maps over individuals/years by season
+# 1. Define success or failure of each block
+# * blocks have success if julia = TRUE and the algorithms converged
+# * blocks have automatic success if julia = FALSE
+# 2. Focus on chains where all blocks succeed
 iteration <- 
   iteration |> 
-  group_by(individual_id, sensitivity, chain_id) |> 
-  slice(1L) |> 
-  as.data.table()
-# Filter by chain success
-# * We should only keep rows for chains that succeeded (or with julia = FALSE)
-iteration <- 
-  iteration |> 
-  left_join(convergence_chains, by = c("individual_id", "sensitivity", "chain_id")) |> 
-  mutate(success_chain = if_else(julia == FALSE, TRUE, success_chain)) |> 
-  filter(success_chain == TRUE) |> 
+  left_join(convergence |> 
+              select("individual_id", "sensitivity", "block_id", success) |> 
+              as.data.table(),
+            by = c("individual_id", "sensitivity", "block_id")) |> 
+  mutate(success = if_else(julia == FALSE, TRUE, success)) |> 
+  group_by(individual_id, chain_id, sensitivity) |> 
+  filter(all(success)) |> 
+  ungroup() |> 
+  select("individual_id", "sensitivity", "sensitivity_label", 
+         "chain_id", "chain_start", "chain_end", "survival_probability",
+         "file_occupancy", "file_residency") |>
   as.data.table()
 # Verify that files exist exists for all chains
+iteration[!file.exists(file_occupancy), ]
 stopifnot(all(file.exists(iteration$file_occupancy)))
 stopifnot(all(file.exists(iteration$file_residency)))
 # Define sites/seasons
