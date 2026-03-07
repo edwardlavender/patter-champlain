@@ -61,6 +61,8 @@ iteration <-
          site = case_match(site, "Grand Isle" ~ "N", "Split Rock" ~ "S"), 
          season = season_factor(block_start)) |>
   as.data.table()
+# TO DO Filter by convergence
+# TO DO 
 
 #### Aggregate maps for each sensitivity/tagging location/season (~5 s)
 # Define data.table of sensitivity/tagging location/season combinations
@@ -94,14 +96,16 @@ cl_lapply(split(map_dt, seq_len(nrow(map_dt))), function(dt) {
                      season %in% dt$season,  ]
   stopifnot(nrow(its) > 0L)
   
-  # Sum SpatRasters
-  occupancy <- terra::rast(its$file_occupancy[1])
+  # Sum SpatRasters for season over individuals/years, accounting for survival probability
+  occupancy <- terra::rast(its$file_occupancy[1]) * its$survival_probability[1]
   for (i in 2:nrow(its)) {
-    occupancy <- sum(occupancy, terra::rast(its$file_occupancy[i]), na.rm = TRUE)
+    occupancy <- sum(occupancy, 
+                     terra::rast(its$file_occupancy[i]) * its$survival_probability[i], 
+                     na.rm = TRUE)
   }
   
   # Renormalise SpatRasters
-  occupancy <- occupancy / nrow(its) # spatNormalise(occupancy)
+  occupancy <- spatNormalise(occupancy) # occupancy / nrow(its)
   occupancy <- terra::classify(occupancy, cbind(0, NA))
   stopifnot(isTRUE(all.equal(1, terra::global(occupancy, "sum", na.rm = TRUE)[1, 1])))
   # terra::plot(occupancy)
@@ -123,6 +127,7 @@ cl_lapply(split(map_dt, seq_len(nrow(map_dt))), function(dt) {
                               na.rm = TRUE)
   }
   occupancy_contours <- terra::classify(occupancy_contours, cbind(0, NA))
+  # terra::plot(occupancy_contours)
 
   # Write to file
   terra::writeRaster(occupancy_contours, dt$file_ud, overwrite = TRUE)
