@@ -114,6 +114,10 @@ toc()
 
 #### Synthesise outputs
 # For each chain, compute file_occupancy and file_residency
+# * file_occupancy is the occupancy map for the chain
+# * file_residency are the residency statistics
+# * When we aggregate these outputs over individuals by season, 
+#   we account for survival probability
 toc()
 cl_lapply(
   split(iteration, iteration$chain_group), 
@@ -186,12 +190,14 @@ cl_lapply(
     occupancy |> 
     terra::zonal(regions, fun = "sum", na.rm = TRUE) |> 
     lazy_dt() |> 
-    mutate(unit_id           = it$unit_id,
-           individual_id     = it$individual_id,
-           chain_id          = chain$chain_id[1],
-           sensitivity       = it$sensitivity,
-           sensitivity_label = it$sensitivity_label) |>
+    mutate(unit_id              = chain$unit_id[1],
+           individual_id        = chain$individual_id[1],
+           chain_id             = chain$chain_id[1],
+           sensitivity          = chain$sensitivity[1],
+           sensitivity_label    = chain$sensitivity_label[1], 
+           survival_probability = chain$survival_probability[1]) |>
     select("unit_id", "individual_id", "chain_id", "sensitivity", "sensitivity_label",
+           "survival_probability",
            region = "map_value", estimate = "map_value.1") |>
     as.data.table()
   
