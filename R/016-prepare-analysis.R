@@ -228,8 +228,10 @@ if (analysis == "real") {
   tic()
   for (i in 1:nrow(unitsets)) {
     u   <- unitsets[i, ]
-    det <- detections[individual_id == u$individual_id & 
+    det <- detections[individual_id == u$individual_id &
                         (timestamp >= u$block_start %m-% months(1) & timestamp <= u$block_end %m+% months(1)),  ]
+    # det <- detections[individual_id == u$individual_id &
+    #                     (timestamp >= u$block_start & timestamp <= u$block_end),  ]
     if (nrow(det) == 0L) {
       unitsets[i, julia := FALSE]
     }
