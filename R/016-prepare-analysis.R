@@ -305,8 +305,8 @@ iteration <-
   unitsets |> 
   cross_join(pars) |> 
   mutate(index = row_number(), .before = 1L) |> 
+  mutate(season = season_factor(chain_start), .before = chain_id) |> 
   mutate(
-    
     # Define input files 
     # * Some files depend on both unit_id & sensitivity parameters
     # * For convenience, we store all files in an {individual_id}/{unit_id}/{parameter_id} directory 
@@ -318,8 +318,13 @@ iteration <-
     file_containers_bwd   = file.path(folder_input, "containers-bwd.feather"),
     file_t_resample_fwd   = file.path(folder_input, "t-resample-fwd.feather"),
     file_t_resample_bwd   = file.path(folder_input, "t-resample-bwd.feather"),
-    file_vmap             = file.path("data", "input", "vmap", as.integer(mobility), "vmap.tif"),
-    
+    # Include map files
+    file_map              = if_else(season != "Summer", 
+                                    file.path("data", "input", "map.tif"),
+                                    file.path("data", "input", "map-summer.tif")),
+    file_vmap             = if_else(season != "Summer", 
+                                    file.path("data", "input", "vmap", as.integer(mobility), "vmap.tif"),
+                                    file.path("data", "input", "vmap", as.integer(mobility), "vmap-summer.tif")),
     # Define block output files (unit-specific & sensitivity specific)
     # * We use .feather to record outputs
     # * We can write these from Julia & read them into R correctly
@@ -429,7 +434,8 @@ if (analysis == "real") {
 #### Check iterations 
 # Check nrow is feasible! 
 nrow(iteration)
-# Check vmap files exist
+# Check map/vmap files exist
+stopifnot(all(file.exists(iteration$file_map)))
 stopifnot(all(file.exists(iteration$file_vmap)))
 
 #### Build directories 
@@ -613,6 +619,14 @@ if (!all(file.exists(iteration_julia$file_timeline)) | overwrite) {
   pbapply::pboptions(pbo)
   
 }
+
+#### Validate file creation
+stopifnot(all(file.exists(iteration_julia$file_acoustics)))
+stopifnot(all(file.exists(iteration_julia$file_containers_fwd)))
+stopifnot(all(file.exists(iteration_julia$file_containers_bwd)))
+stopifnot(all(file.exists(iteration_julia$file_t_resample_fwd)))
+stopifnot(all(file.exists(iteration_julia$file_t_resample_bwd)))
+stopifnot(all(file.exists(iteration_julia$file_timeline)))
 
 #### Review the number of time steps/batches
 # For the real-world time series, each block contains up to ~22320 time steps
