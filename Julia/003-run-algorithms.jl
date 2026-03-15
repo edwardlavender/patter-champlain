@@ -200,7 +200,7 @@ yobs_bwd = assemble_yobs(datasets = datasets_bwd,
 #### Set up algorithms 
 
 #### Define n_particle multipliers
-multipliers = (1, 2, 4) # (1) # (1, 3)
+multipliers = (1, 2) # (1) # (1, 3)
 
 #### Define batches 
 fwd_batches = [joinpath(iter.folder_output_block, "fwd-$i.jld2") for i in 1:iter.n_batch]
