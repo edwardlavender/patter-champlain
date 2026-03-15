@@ -38,17 +38,27 @@ using Patter
 include("./src/observation-model.jl")
 include("./src/inference.jl")
 
-#### Load datasets (map, iteration)
-# Load map & iteration 
-analysis  = "sim"
-# analysis    = "real"
+#### Load iteration
+# analysis  = "sim"
+analysis    = "real"
 subanalysis = "main"
-env         = GeoArrays.read(joinpath("data", "input", "map.tif"));
-env_init    = Patter.rast(joinpath("data", "input", "map.tif"));
 iteration   = DataFrame(Arrow.Table(joinpath("data", "input", analysis, subanalysis, "iteration.feather")))
-iteration   = iteration[iteration.sensitivity .== "best", :];
 
-#### Select iteration 
+#### Define local settings
+# Check JULIA_NUM_THREADS = 1
+Threads.nthreads()
+if (Threads.nthreads() != 1) && !isinteractive()
+error("JULIA_NUM_THREADS must be 1 for parallelisation!")
+end 
+# Set seed
+Random.seed!(123);
+
+
+###########################
+###########################
+#### Define iteration
+
+#### Process iteration
 # Set column types as needed
 iteration.n_move              = Int.(iteration.n_move);
 iteration.n_resample          = Float64.(iteration.n_resample);
@@ -56,7 +66,10 @@ iteration.n_particle_filter   = Int.(iteration.n_particle_filter);
 iteration.n_particle_smoother = Int.(iteration.n_particle_smoother);
 # (optional) Customise settings 
 # iteration.n_particle_filter .= 20000
-# Select row 
+# Filter rows 
+# iteration   = iteration[iteration.sensitivity .== "best", :];
+
+#### Define iteration row
 if isinteractive()
     row = 1
 else
@@ -74,19 +87,23 @@ else
 end
 iter = iteration[row, :]
 
-#### Define local settings
-# Check JULIA_NUM_THREADS = 1
-Threads.nthreads()
-if (Threads.nthreads() != 1) && !isinteractive()
-error("JULIA_NUM_THREADS must be 1 for parallelisation!")
-end 
-# Set seed
-Random.seed!(123);
-
 
 ###########################
 ###########################
 #### Define state-space model 
+
+
+###########################
+#### Define study system
+
+#### Define map 
+env         = GeoArrays.read(iter.file_map);
+env_init    = Patter.rast(iter.file_map);
+
+#### Define timeline
+timeline           = DataFrame(Arrow.Table(iter.file_timeline))
+timeline.timestamp = DateTime.(timeline.timestamp)
+timeline           = timeline.timestamp
 
 
 ###########################
@@ -104,11 +121,6 @@ model_move = ModelMoveCXY(env,
 
 ###########################
 #### Define observation model 
-
-#### Define timeline
-timeline           = DataFrame(Arrow.Table(iter.file_timeline))
-timeline.timestamp = DateTime.(timeline.timestamp)
-timeline           = timeline.timestamp
 
 #### Define acoustic observations
 acoustics                = DataFrame(Arrow.Table(iter.file_acoustics));
