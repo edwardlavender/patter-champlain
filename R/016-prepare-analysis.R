@@ -298,7 +298,7 @@ table(unitsets$julia) / nrow(unitsets)
 #   to start/end with detections where possible. 
 #   So these choices are reviewed below. 
 p_batch(p_mem(1500, 22320, 4, 100), 50e3)
-p_batch(p_mem(2000, 22320, 4, 100), 50e3)
+p_batch(p_mem(2500, 22320, 4, 100), 50e3)
 
 #### Define iteration 
 iteration <- 
@@ -352,10 +352,10 @@ iteration <-
     
     # Add modelling columns
     n_move              = 1000L,
-    n_particle_filter   = ifelse(analysis == "sim", 10000L, 25000L), 
-    n_particle_smoother = ifelse(analysis == "sim", 1500L, 2000L),
+    n_particle_filter   = ifelse(analysis == "sim", 10000L, 50000L), 
+    n_particle_smoother = ifelse(analysis == "sim", 1500L, 2500L),
     n_resample          = as.numeric(1000.0),
-    n_batch             = ifelse(analysis == "sim", 9L, 25L)
+    n_batch             = ifelse(analysis == "sim", 9L, 30L)
   ) |> 
   as.data.table()
 
@@ -621,11 +621,9 @@ if (!all(file.exists(iteration_julia$file_timeline)) | overwrite) {
 }
 
 #### Validate file creation
+# We check file_acoustics, file_timeline
+# Note that file_containers_* and file_t_resample_* may not exist
 stopifnot(all(file.exists(iteration_julia$file_acoustics)))
-stopifnot(all(file.exists(iteration_julia$file_containers_fwd)))
-stopifnot(all(file.exists(iteration_julia$file_containers_bwd)))
-stopifnot(all(file.exists(iteration_julia$file_t_resample_fwd)))
-stopifnot(all(file.exists(iteration_julia$file_t_resample_bwd)))
 stopifnot(all(file.exists(iteration_julia$file_timeline)))
 
 #### Review the number of time steps/batches
@@ -637,7 +635,7 @@ stopifnot(all(file.exists(iteration_julia$file_timeline)))
 nt <- pbapply::pbsapply(iteration_julia$file_timeline, \(f) nrow(arrow::read_feather(f)))
 range(nt)
 stopifnot(min(nt) > 20000 & max(nt) < 22320 * 3)
-nb <- p_batch(p_mem(2000, max(nt), 4, 100), 50e3)
+nb <- p_batch(p_mem(2500, max(nt), 4, 100), 50e3)
 range(nb)
 stopifnot(nb <= iteration_julia$n_batch[1])
 
