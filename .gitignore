@@ -5,7 +5,7 @@
 .vscode
 .DS_Store
 ._*
-data-archive
+data-archive/
 data-raw/
 data/*
 !data/inst/
