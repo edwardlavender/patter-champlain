@@ -34,11 +34,12 @@ library(truncdist)
 files_source_r(here_src())
 
 #### Load data
-map       <- terra::rast(here_input("map.tif"))
-fish      <- qs::qread(here_input("fish.qs"))
-SS4       <- qs::qread(here_data("supp", "model-obs", "SS4.qs"))
-vps_step  <- qs::qread(here_data("supp", "model-move", "futia-step.qs"))
-vps_angle <- qs::qread(here_data("supp", "model-move", "futia-angle.qs"))
+map        <- terra::rast(here_input("map.tif"))
+map_summer <- terra::rast(here_input("map-summer.tif"))
+fish       <- qs::qread(here_input("fish.qs"))
+SS4        <- qs::qread(here_data("supp", "model-obs", "SS4.qs"))
+vps_step   <- qs::qread(here_data("supp", "model-move", "futia-step.qs"))
+vps_angle  <- qs::qread(here_data("supp", "model-move", "futia-angle.qs"))
 
 
 ###########################
@@ -247,7 +248,7 @@ qs::qsave(pars_adj, here_input("pars-adj.qs"))
 qs::qsave(pars_model_move_best, here_input("pars-model-move-best.qs"))
 qs::qsave(pars_model_move_full, here_input("pars-model-move-full.qs"))
 
-# vmaps
+# vmaps (winter, spring, fall)
 dirs.create(here_input("vmap", pars_model_move_full$mobility))
 pp <- par(mfrow = c(1, nrow(pars_model_move_full)))
 lapply(split(pars_model_move_full, seq_len(nrow(pars_model_move_full))), function(d) {
@@ -255,6 +256,18 @@ lapply(split(pars_model_move_full, seq_len(nrow(pars_model_move_full))), functio
   vmap <- terra::app(vmap, as.numeric)
   terra::writeRaster(vmap, 
                      here_input("vmap", d$mobility, "vmap.tif"), 
+                     overwrite = TRUE)
+})
+par(pp)
+
+# vmaps (summer)
+dirs.create(here_input("vmap", pars_model_move_full$mobility))
+pp <- par(mfrow = c(1, nrow(pars_model_move_full)))
+lapply(split(pars_model_move_full, seq_len(nrow(pars_model_move_full))), function(d) {
+  vmap <- patter:::spatVmap(.map = map_summer, .mobility = d$mobility, .plot = TRUE)
+  vmap <- terra::app(vmap, as.numeric)
+  terra::writeRaster(vmap, 
+                     here_input("vmap", d$mobility, "vmap-summer.tif"), 
                      overwrite = TRUE)
 })
 par(pp)
