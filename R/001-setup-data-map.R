@@ -32,8 +32,15 @@ library(tictoc)
 files_source_r(here_src())
 
 #### Load data 
-champlain  <- terra::vect(here_data_raw_mf("ChamplainRegionsGrouped/ChamplainRegionsGrouped.shp"))
-moorings   <- readRDS(here_data_raw_mf("OriginalReceiverSummary_2013-2017.rds"))
+champlain  <- 
+  terra::vect(here_data_raw_mf("ChamplainRegionsGrouped", 
+                               "ChamplainRegionsGrouped.shp"))
+bathymetry <- 
+  terra::vect(here_data_raw("mfutia", 
+                            "ChamplainBathymetrySuitability",
+                            "ChamplainBathymetrySuitability.shp"))
+moorings <- 
+  readRDS(here_data_raw_mf("OriginalReceiverSummary_2013-2017.rds"))
 
 
 ###########################
@@ -42,12 +49,18 @@ moorings   <- readRDS(here_data_raw_mf("OriginalReceiverSummary_2013-2017.rds"))
 
 #### Visualise study area
 # The quality of the champlain shapefile is very high
-leaflet() |>
-  addProviderTiles(providers$Esri.WorldImagery) |>
-  addPolygons(data        = champlain,
-              color       = "red",
-              weight      = 3,
-              fillOpacity = 0)
+if (FALSE) {
+  leaflet() |>
+    addProviderTiles(providers$Esri.WorldImagery) |>
+    addPolygons(data        = champlain,
+                color       = "red",
+                weight      = 3,
+                fillOpacity = 0) |> 
+    addPolygons(data        = champlain_summer,
+                color       = "green",
+                weight      = 3,
+                fillOpacity = 0)
+}
 
 #### Define UTM SpatVector
 # NB: as.numeric(1) is needed for Patter.particle_filter()
@@ -81,13 +94,15 @@ map_zoom <- terra::crop(map,
 terra::plot(map_zoom)
 terra::lines(champlain_utm)
 # As above, interactively
-leaflet() |>
-  addProviderTiles(providers$Esri.WorldImagery) |>
-  addPolygons(data        = champlain,
-              color       = "red",
-              weight      = 3,
-              fillOpacity = 0) |> 
-  addRasterImage(terra::project(map, "WGS84"), opacity = 0.7) 
+if (FALSE) {
+  leaflet() |>
+    addProviderTiles(providers$Esri.WorldImagery) |>
+    addPolygons(data        = champlain,
+                color       = "red",
+                weight      = 3,
+                fillOpacity = 0) |> 
+    addRasterImage(terra::project(map, "WGS84"), opacity = 0.7) 
+}
 # Check ncell & compare to dat_gebco() for reference
 terra::ncell(map)                  # 107625
 terra::ncell(patter::dat_gebco())  # 50160
@@ -110,6 +125,56 @@ terra::writeRaster(map, here_input("map.tif"), overwrite = TRUE)
 terra::writeRaster(regions$SpatRaster, here_input("regions.tif"), overwrite = TRUE)
 qs::qsave(map_bbox, here_input("map-bbox.qs"))
 file.size(here_input("map.tif")) / 1e6 # MB
+
+
+###########################
+###########################
+#### Habitat suitability
+
+#### Examine bathymetry 
+# `bathymetry` is a POINT dataset
+# In each point, we know the bathymetric depth, sourced from
+# https://geodata.vermont.gov/datasets/vt-lake-champlain-bathymetry/about
+bathymetry <- terra::project(bathymetry, terra::crs(map))
+bathymetry$OBJECTI <- NULL
+bathymetry$DEPTH_F <- NULL
+bathymetry$dpth_st <- NULL
+terra::plot(bathymetry, "depth_m")
+
+#### Rasterize bathymetry
+# This does not work well
+# An interpolation method is needed 
+bathymetry |>
+  terra::rasterize(map, field = "depth_m", fun = "max", na.rm = TRUE) |> 
+  terra::plot()
+
+#### Interpolate bathymetry
+# Use triangulated interpolation 
+# - Find the nearest points (forming a local triangle) 
+# - interpolates linearly within that neighbourhood
+bathymetry <- terra::interpNear(map, bathymetry, field = "depth_m", 
+                                radius = 500, interpolate = TRUE)
+bathymetry <- terra::mask(bathymetry, map)
+terra::plot(is.na(bathymetry))
+terra::plot(bathymetry)
+
+#### Define (summer) habitat suitability
+# We assign summer-time habitat suitability based on a 20 m threshold
+# Depths shallowe than this are not thermally suitability in summer (REF poster)
+# - We assume movements into those areas are impossible
+# - This is backed up e.g., by lack of observations of Lake trout in Missisquoi Bay (shallow)
+# According to the depth threshold, suitable habitat is found in 
+# the Main Lake and the North East Arm/Mallets Bay
+# Two oxygen probes in the latter two sites suggest suboptimal habitat
+# - 200 fish have been tracked in two studies
+# - One remains in the NE Arm over summer (assumed based on entrance/exit detections)
+# - We could incorporate this additional information in future (1 % probability)
+map_summer <- bathymetry >= 20
+map_summer <- terra::subst(map_summer, from = FALSE, to = NA_real_)
+map_summer <- terra::subst(map_summer, from = TRUE, to = as.numeric(1.0))
+terra::plot(map_summer)
+map_summer
+terra::writeRaster(map_summer, here_input("map-summer.tif"), overwrite = TRUE)
 
 
 ###########################
