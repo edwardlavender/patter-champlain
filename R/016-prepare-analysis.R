@@ -635,7 +635,7 @@ stopifnot(all(file.exists(iteration_julia$file_timeline)))
 nt <- pbapply::pbsapply(iteration_julia$file_timeline, \(f) nrow(arrow::read_feather(f)))
 range(nt)
 stopifnot(min(nt) > 20000 & max(nt) < 22320 * 3)
-nb <- p_batch(p_mem(2500, max(nt), 4, 100), 50e3)
+nb <- p_batch(p_mem(max(iteration$n_batch), max(nt), 4, 100), 50e3)
 range(nb)
 stopifnot(nb <= iteration_julia$n_batch[1])
 
