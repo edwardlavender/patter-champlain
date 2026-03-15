@@ -261,7 +261,6 @@ lapply(split(pars_model_move_full, seq_len(nrow(pars_model_move_full))), functio
 par(pp)
 
 # vmaps (summer)
-dirs.create(here_input("vmap", pars_model_move_full$mobility))
 pp <- par(mfrow = c(1, nrow(pars_model_move_full)))
 lapply(split(pars_model_move_full, seq_len(nrow(pars_model_move_full))), function(d) {
   vmap <- patter:::spatVmap(.map = map_summer, .mobility = d$mobility, .plot = TRUE)
