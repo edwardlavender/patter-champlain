@@ -81,11 +81,10 @@ terra::sbar(2000)
 
 #### Select individuals (real)
 # out <- cl_lapply(c(1716, 1779, 1898, 2087, 2416), function(ind) {
-it <- iteration[individual_id == 26808 & time_id == as.POSIXct("2016-05-01 00:00:00", tz = "UTC") & sensitivity == "best", ]; it$index
-it$n_particle_filter <- 2000L
+it <- iteration[individual_id == 24321 & block_start == as.POSIXct("2015-06-01 00:00:00", tz = "UTC") & sensitivity == "best", ]; it$index
 # it <- iteration[index == ind, ]
 # it$n_particle_filter <- 1e5L
-print(it[, .(index, individual_id, time_id, sensitivity, n_particle_filter)])
+print(it[, .(index, individual_id, block_id, sensitivity, n_particle_filter)])
 
 #### Read individual-specific data
 timeline       <- arrow::read_feather(it$file_timeline)
@@ -119,19 +118,22 @@ yobs <- list(ModelObsAcousticLogisTruncLos = copy(acoustics),
              ModelObsContainer = NULL)
 
 #### Define starting locations for forward filter)
-# ~03:21, 24325, 2016-03-01, best
-pinit <- pf_filter_fwd_xinit(iter       = it, 
-                             map        = map, 
-                             timeline   = timeline, 
-                             acoustics  = acoustics, 
-                             model_move = model_move)
-xinit <- pinit$xinit
-terra::plot(map)
-points(xinit$x, xinit$y, pch = ".")
+if (FALSE) {
+  pinit <- pf_filter_fwd_xinit(iter       = it, 
+                               map        = map, 
+                               timeline   = timeline, 
+                               acoustics  = acoustics, 
+                               model_move = model_move)
+  xinit <- pinit$xinit
+  terra::plot(map)
+  points(xinit$x, xinit$y, pch = ".")
+} else {
+  xinit <- NULL
+}
 
 #### Run filter 
 # Define direction & update yobs 
-direction <- "forward"
+direction <- "backward"
 stopifnot(direction %in% c("forward", "backward"))
 if (direction == "forward") {
   yobs$ModelObsContainer <- copy(containers_fwd)
