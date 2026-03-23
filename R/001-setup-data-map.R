@@ -173,6 +173,7 @@ map_summer <- bathymetry >= 20
 map_summer <- terra::subst(map_summer, from = FALSE, to = NA_real_)
 map_summer <- terra::subst(map_summer, from = TRUE, to = as.numeric(1.0))
 terra::plot(map_summer)
+terra::lines(champlain_utm)
 map_summer
 terra::writeRaster(map_summer, here_input("map-summer.tif"), overwrite = TRUE)
 
