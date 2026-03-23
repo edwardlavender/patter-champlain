@@ -141,6 +141,7 @@ cl_lapply(
   
   #### Read generic datasets
   # chain   <- split(iteration, iteration$chain_group)[[1]]
+  map_cells <- terra::rast("./data/input/map.tif")
   regions   <- terra::rast("./data/input/regions.tif")
   occupancy <- terra::rast("./data/input/occupancy-zero.tif")
   
@@ -186,7 +187,7 @@ cl_lapply(
         mutate(timestamp = it_timeline$timestamp[match(timestep, it_timeline$timestep)]) |> 
         filter(timestamp %in% block_timeline) |> 
         # For each cell, compute the overall weight 
-        mutate(cell = terra::cellFromXY(map, cbind(x, y))) |> 
+        mutate(cell = terra::cellFromXY(map_cells, cbind(x, y))) |> 
         group_by(cell) |> 
         summarise(mark = sum(mark)) |> 
         as.data.table()
