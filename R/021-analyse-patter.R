@@ -217,35 +217,45 @@ sum(sapply(unique(iteration$folder_output_chain), dir_size, recursive = TRUE))
 # * 1 cl: ~129 s for "real", 88672444 rows, 8.74 GB), 
 # * 5 cl: no speed up
 tic()
-diagnostics <- 
-  cl_lapply(iteration$index, .fun = function(i) {
-    # Define iteration row for index
-    it <- iteration[index == i, ]
-    # Define block timeline
-    block_timeline <- seq(it$block_start, it$block_end, by = "2 mins")
-    # Read diagnostics, filtering by block timeline
-    it$file_diagnostics |> 
-      arrow::read_feather() |> 
-      mutate(index = i, .before = 1L) |> 
-      filter(timestamp %in% block_timeline) |> 
-      group_by(routine) |> 
-      arrange(timestamp, .by_group = TRUE) |> 
-      mutate(timestep = 1:n()) |> 
-      ungroup() |> 
-      arrange(routine, timestamp) |>
-      cbind(it[index == i, .(individual_id, block_id, sensitivity)]) |> 
-      as.data.table()
-  }) |> 
-  rbindlist()  |> 
-  lazy_dt(immutable = FALSE) |> 
-  mutate(routine_label = stringr::str_to_sentence(routine), .after = routine) |> 
-  mutate(routine_label = factor(routine_label, levels = c("Filter: forward", 
-                                                          "Filter: backward", 
-                                                          "Smoother: two-filter"))) |> 
-  arrange(index, routine, timestamp) |> 
-  as.data.table()
-toc()
+overwrite      <- FALSE
+diagnostics.qs <- here_output_analysis("synthesis", "diagnostics.qs")
+if (overwrite | !file.exists(diagnostics.qs)) {
+
+  diagnostics <- 
+    cl_lapply(iteration$index, .fun = function(i) {
+      # Define iteration row for index
+      it <- iteration[index == i, ]
+      # Define block timeline
+      block_timeline <- seq(it$block_start, it$block_end, by = "2 mins")
+      # Read diagnostics, filtering by block timeline
+      it$file_diagnostics |> 
+        arrow::read_feather() |> 
+        mutate(index = i, .before = 1L) |> 
+        filter(timestamp %in% block_timeline) |> 
+        group_by(routine) |> 
+        arrange(timestamp, .by_group = TRUE) |> 
+        mutate(timestep = 1:n()) |> 
+        ungroup() |> 
+        arrange(routine, timestamp) |>
+        cbind(it[index == i, .(individual_id, block_id, sensitivity)]) |> 
+        as.data.table()
+    }) |> 
+    rbindlist()  |> 
+    lazy_dt(immutable = FALSE) |> 
+    mutate(routine_label = stringr::str_to_sentence(routine), .after = routine) |> 
+    mutate(routine_label = factor(routine_label, levels = c("Filter: forward", 
+                                                            "Filter: backward", 
+                                                            "Smoother: two-filter"))) |> 
+    arrange(index, routine, timestamp) |> 
+    as.data.table()
+  
+  qs::qsave(diagnostics, diagnostics.qs)
+
+} else {
+  diagnostics <- qs::qread(diagnostics.qs)
+}
 # lobstr::obj_size(diagnostics)
+toc()
 
 #### Define convergence for an example individual
 diagnostics |> 
