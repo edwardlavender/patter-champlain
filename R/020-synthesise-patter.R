@@ -34,7 +34,8 @@ library(tictoc)
 files_source_r(here_src())
 
 #### Load data
-map <- terra::rast("./data/input/map.tif")
+map        <- terra::rast("./data/input/map.tif")
+map_summer <- terra::rast("./data/input/map-summer.tif")
 
 
 ###########################
@@ -42,7 +43,7 @@ map <- terra::rast("./data/input/map.tif")
 #### Select analysis
 
 #### Define analysis 
-analysis <- "sim"
+# analysis <- "sim"
 analysis <- "real"
 subanalysis <- "main"
 
@@ -86,6 +87,8 @@ stopifnot(nrow(iteration) > 0L)
 
 #### Pre-compute blank (starting) occupancy map
 # For each chain, this is a starting point that is updated block-by-block
+# As all values are zero (and maps are later masked) this map does not need
+# to be season specific
 occupancy_zero <- terra::setValues(map, 0)
 occupancy_zero <- terra::mask(occupancy_zero, map)
 terra::writeRaster(occupancy_zero, 
@@ -96,13 +99,22 @@ terra::writeRaster(occupancy_zero,
 #### Pre-compute uniform map
 # We assume uniform distribution over the study area when julia = FALSE
 # (I.e., a long time after the last detection)
+# (A) Fall, Winter, Spring map
 occupancy_uniform <- terra::setValues(map, 1)
 occupancy_uniform <- terra::mask(occupancy_uniform, map)
 occupancy_uniform <- spatNormalise(occupancy_uniform)
+terra::plot(occupancy_uniform)
 terra::writeRaster(occupancy_uniform, 
                    here_input("occupancy-uniform.tif"), 
                    overwrite = TRUE)
-# terra::plot(occupancy_uniform)
+# (B) Summer map 
+occupancy_uniform_summer <- terra::setValues(map_summer, 1)
+occupancy_uniform_summer <- terra::mask(occupancy_uniform_summer, map_summer)
+occupancy_uniform_summer <- spatNormalise(occupancy_uniform_summer)
+terra::plot(occupancy_uniform_summer)
+terra::writeRaster(occupancy_uniform_summer, 
+                   here_input("occupancy-uniform-summer.tif"), 
+                   overwrite = TRUE)
 
 #### Define cluster
 # (~2 min with 40 cl)
@@ -127,12 +139,22 @@ cl_lapply(
   .cl = cl,
   .fun = function(chain) {
   
-  #### Read datasets
-  # chain           <- split(iteration, iteration$chain_group)[[1]]
-  map               <- terra::rast("./data/input/map.tif")
-  regions           <- terra::rast("./data/input/regions.tif")
-  occupancy         <- terra::rast("./data/input/occupancy-zero.tif")
-  occupancy_uniform <- terra::rast("./data/input/occupancy-uniform.tif")
+  #### Read generic datasets
+  # chain   <- split(iteration, iteration$chain_group)[[1]]
+  regions   <- terra::rast("./data/input/regions.tif")
+  occupancy <- terra::rast("./data/input/occupancy-zero.tif")
+  
+  #### Read chain-specific maps
+  stopifnot(length(unique(chain$season)) == 1L)
+  if (chain$season[1] %in% c("Fall", "Winter", "Spring")) {
+    map_mask    <- terra::rast("./data/input/map.tif")
+    map_uniform <- terra::rast("./data/input/occupancy-uniform.tif")
+  } else if (chain$season[1] == "Summer") {
+    map_mask    <- terra::rast("./data/input/map-summer.tif")
+    map_uniform <- terra::rast("./data/input/occupancy-uniform-summer.tif")
+  } else {
+    stop("`chain$season[1]` should be 'Fall', 'Winter', 'Spring' or 'Summer'.")
+  }
   
   #### Update map for each block in the chain 
   # This is implemented iteratively to keep memory use down
@@ -175,15 +197,15 @@ cl_lapply(
     } else {
       
       # For un-modelled blocks, assume uniform weights & update map for all time steps
-      occupancy <- occupancy + (occupancy_uniform * length(block_timeline))
-    
+      occupancy <- occupancy + (map_uniform * length(block_timeline))
+        
     }
     
   }
   
   #### Process map
   occupancy <- terra::classify(occupancy, cbind(NA, 0))
-  occupancy <- terra::mask(occupancy, map)
+  occupancy <- terra::mask(occupancy, map_mask)
   occupancy <- spatial.extensions::spatNormalise(occupancy)
   names(occupancy) <- "map_value"
   # terra::plot(occupancy)
