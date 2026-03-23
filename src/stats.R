@@ -24,3 +24,12 @@ trunclogis <- function(receiver_alpha, receiver_beta, receiver_gamma, dist) {
   p[dist > receiver_gamma] <- 0
   p
 }
+
+# Compute the weighted median, matching ggplot behaviour 
+# * This function handles empty groupings 
+weighted.median <- function(x, w) {
+  if (length(x) == 0 || all(is.na(x))) {
+    return(NA_real_)
+  } 
+  as.numeric(quantreg::rq(x ~ 1, tau = 0.5, weights = w)$coefficients)
+}

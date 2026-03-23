@@ -234,9 +234,7 @@ residency_stats <-
     # * Plotting median_utd and median_wtd on the plot below confirms ggplot2 actions weights appropriately
     median_utd = median(estimate), 
     # median_wtd = matrixStats::weightedMedian(estimate, survival_probability), 
-    median_wtd = as.numeric(
-      quantreg::rq(estimate ~ 1, tau = 0.5, weights = survival_probability)$coefficients)
-  ) |>
+    median_wtd = weighted.median(estimate, survival_probability)) |> 
   ungroup() |> 
   as.data.table()
 # Accounting for survivorship makes less than 1 % of difference to mean residency estimates
