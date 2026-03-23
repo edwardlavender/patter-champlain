@@ -23,6 +23,7 @@ Sys.setenv("JULIA_SESSION" = FALSE)
 library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = TRUE)
+library(ggplot2)
 library(proj.verse)
 files_source_r(here_src())
 
@@ -194,7 +195,6 @@ dcounts |>
   geom_smooth()
 # Check format consistency
 head(dcounts)
-head(qs::qread(here_data("supp", "model-obs", "futia-raw.qs")))
 
 #### Write to file
 qs::qsave(dcounts, here_data("supp", "model-obs", "klinard-raw.qs"))

@@ -34,25 +34,53 @@ if (!requireNamespace("patter", quietly = TRUE)) {
 if (!requireNamespace("patter.workflows", quietly = TRUE)) {
   renv::install("edwardlavender/patter.workflows", prompt = FALSE)
 }
-if (!requireNamespace("spatstat.explore", quietly = TRUE)) {
-  renv::install("spatstat.explore", prompt = FALSE)
-}
 if (!requireNamespace("Rfast", quietly = TRUE)) {
   renv::install("Rfast", prompt = FALSE)
 }
+if (!requireNamespace("spatstat.explore", quietly = TRUE)) {
+  renv::install("spatstat.explore", prompt = FALSE)
+}
+if (!requireNamespace("arrow", quietly = TRUE) & 
+    isTRUE(Sys.info()["nodename"] == "siam-linux20")) {
+  # Install arrow on siam-linux20 with zstd support
+  # https://arrow.apache.org/docs/r/articles/install.html
+  op <- options(
+    HTTPUserAgent =
+      sprintf(
+        "R/%s R (%s)",
+        getRversion(),
+        paste(getRversion(), R.version["platform"], R.version["arch"], R.version["os"])
+      )
+  )
+  install.packages("arrow", 
+                   repos = "https://packagemanager.rstudio.com/all/__linux__/focal/latest")
+  arrow::arrow_info()
+  options(op)
+}
+if (!requireNamespace("quantreg", quietly = TRUE)) {
+  # This is required for geom_boxplot() with weights
+  renv::install("quantreg", prompt = FALSE)
+}
 # Utilities
+if (!requireNamespace("devtools", quietly = TRUE)) {
+  # devtools is required for testthat
+  renv::install("devtools", prompt = FALSE)
+}
+if (!requireNamespace("lobstr", quietly = TRUE)) {
+  renv::install("lobstr", prompt = FALSE)
+}
 if (!requireNamespace("spatial.extensions", quietly = TRUE)) {
   # This is required to restore patter.workflows
   renv::install("edwardlavender/spatial.extensions", prompt = FALSE)
 }
-if (!requireNamespace("utils.add", quietly = TRUE)) {
-  renv::install("edwardlavender/utils.add", prompt = FALSE)
+if (!requireNamespace("testthat", quietly = TRUE)) {
+  renv::install("testthat", prompt = FALSE)
 }
 if (!requireNamespace("usethis", quietly = TRUE)) {
   renv::install("usethis", prompt = FALSE)
 }
-if (!requireNamespace("lobstr", quietly = TRUE)) {
-  renv::install("lobstr", prompt = FALSE)
+if (!requireNamespace("utils.add", quietly = TRUE)) {
+  renv::install("edwardlavender/utils.add", prompt = FALSE)
 }
 # commonmark/(r)markdown packages (for README documentation)
 if (!requireNamespace("commonmark", quietly = TRUE)) {

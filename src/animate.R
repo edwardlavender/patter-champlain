@@ -20,33 +20,38 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
   
   # Animate particles from the particle filter for the AC algorithm
   # * Code adapted for debugging from https://github.com/edwardlavender/patter-flapper/blob/main/src/debug-convergence.R
-  # @param .sim The data.table row
+  # @param .iter The data.table row
   # @param .map The SpatRaster
-  # @param .moorings The moorings data.table
-  # @param .start,.stop Integers that define the time steps of interest
+  # @param .steps Integers that define the time steps of interest
   # @param .input The named list of arguments passed to pf_filter()
   # @param .output The named list of outputs from pf_filter()
+  # @param .outdir The output directory 
   
-  animate_ac <- function(.sim, 
+  animate_ac <- function(.iter, 
                          .map, 
                          .steps,
                          .input, .output, 
-                         .tnow,
+                         .outdir,
                          .cl = 1L) {
 
     # Checks
     .steps <- .steps[.steps <= length(.input$.timeline)]
     
     # Create directories
-    frames <- here_fig("debug", .tnow, "frames")
+    dir.create(.outdir, recursive = TRUE)
+    frames <- file.path(.outdir, "frames")
     unlink(frames, recursive = TRUE)
     dir.create(frames, recursive = TRUE)
-    mp4 <- here_fig("debug", .tnow)
-    dir.create(mp4)
+    mp4 <- .outdir
+    
+    # Record parameter settings
+    sink(file.path(.outdir, "arguments.txt"))
+    print(.input)
+    sink()
     
     # Define datasets
     timeline   <- .input$.timeline
-    acoustics  <- copy(.input$.yobs$ModelObsAcousticLogisTrunc)
+    acoustics  <- copy(.input$.yobs$ModelObsAcousticLogisTruncLos)
     acoustics[, timestep := (1:length(timeline))[match(timestamp, timeline)]]
     detections <- acoustics[obs == 1L, ]
     moorings <- 
@@ -95,7 +100,9 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
       #### Plot detection time series ------------------------------------------
       
       plot(detections$timestep, detections$sensor_id, 
-           xlab = "Time (steps)", ylab = "Receiver ID")
+           xlab = "Time (steps)", ylab = "Receiver ID", 
+           xlim = c(0, length(timeline)))
+      mtext(side = 3, t, line = 0, font = 2)
       if (nrow(det) > 0L) {
         points(det$timestep, det$sensor_id, col = "green", lwd = 2)
       }
@@ -157,6 +164,7 @@ if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
     input   <- gtools::mixedsort(list.files(frames, full.names = TRUE))
     output  <- file.path(mp4, "ani.mp4")
     av::av_encode_video(input, output, framerate = 150)
+    unlink(frames, recursive = TRUE)
     tictoc::toc()
     
     # Open animation (on MacOS)

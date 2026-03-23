@@ -26,6 +26,7 @@ library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
 library(ggplot2)
+library(leaflet)
 library(lubridate)
 library(prettyGraphics)
 library(tictoc)
@@ -34,13 +35,15 @@ files_source_r(here_src())
 #### Load data 
 # lkt_detections_2013-2017.rds: raw detections (93 fish)
 # lkt_detections_2013-2017_filtered.qs: filtered detections (as in Futia et al., 2024)
-epsg_utm            <- qs::qread(here_input("epsg-utm.qs"))
 map                 <- terra::rast(here_input("map.tif"))
 map_bbox            <- qs::qread(here_input("map-bbox.qs"))
+champlain_utm       <- qs::qread(here_input("champlain-utm.qs"))
+epsg_utm            <- qs::qread(here_input("epsg-utm.qs"))
+moorings            <- readRDS(here_data_raw_mf("OriginalReceiverSummary_2013-2017.rds"))
+surgery             <- fread(here_data_raw_mf("surgery_log.csv"))
 detections          <- readRDS(here_data_raw_mf("lkt_detections_2013-2017.rds"))
 detections_filtered <- qs::qread(here_data_raw_mf("lkt_detections_2013-2017_filtered.qs"))
-moorings            <- readRDS(here_data_raw_mf("OriginalReceiverSummary_2013-2017.rds"))
-surgery             <- fread(here_data_raw("mfutia", "model_comparison", "surgery_log.csv"))
+survivors           <- fread(here_data_raw_mf("transmitter_end_dates.csv"))
 
 
 ###########################
@@ -104,7 +107,7 @@ surgery |>
          Sex = sex, 
          `Total length (mm)` = length) |> 
   tidy_numbers(digits = c(0, 0, 4, 4, 0)) |> 
-  tidy_write(here_fig("fish.txt"))
+  tidy_write(here_fig("tables", "fish.txt"))
 
 
 ###########################
@@ -118,6 +121,8 @@ fish <-
   group_by(animal_id) |> 
   summarise(individual_id = animal_id[1], 
             len = length[1] / 1000, 
+            date = as.Date(cap_date[1]),
+            site = cap_site[1],
             lat = deploy_lat[1], 
             lon = deploy_long[1],
             # Checks 
@@ -140,6 +145,12 @@ fish[, y := xy[, 2]]
 stopifnot(all(!is.na(terra::extract(map, xy)[, 1])))
 terra::plot(map)
 points(xy)
+# Check tagging sites
+table(fish$site)
+terra::plot(map)
+points(xy[fish$site == "Grand Isle", ])
+terra::plot(map)
+points(xy[fish$site == "Split Rock", ])
 # Check tagging dates
 # * Note that fish were tagged at different times
 # * If we analyse the data in blocks e.g., months, we need to account for this
@@ -156,8 +167,9 @@ stopifnot(all(fish$nlat == 1L))
 stopifnot(all(fish$nlon == 1L))
 
 #### Clean up
-fish |> 
-  select(individual_id, len, x, y, lon, lat) |> 
+fish <- 
+  fish |> 
+  select(individual_id, len, date, site, x, y, lon, lat) |> 
   as.data.table()
 
 #### Comments
@@ -188,7 +200,7 @@ head(moorings)
 rxy <- 
   cbind(moorings$deploy_lon, moorings$deploy_lat) |> 
   terra::vect(crs = "EPSG:4326") |> 
-  terra::project("EPSG:3175") |>
+  terra::project(epsg_utm) |>
   terra::crds()
 stopifnot(nrow(rxy) > 0L)
 stopifnot(all(!is.na(terra::extract(map, rxy)$map_value)))
@@ -214,11 +226,11 @@ str(moorings)
 moorings |>
   as_tibble() |> 
   janitor::clean_names() |> 
-  select(station_name, 
+  select(receiver_station = station_name, 
          receiver_sn,
          start = deploy_date_time, end = recover_date_time, 
          lat = deploy_lat, lon = deploy_long, depth) |> 
-  arrange(station_name, start, receiver_sn) |> 
+  arrange(receiver_station, start, receiver_sn) |> 
   mutate(ID = as.character(row_number()), 
          lon = plyr::round_any(lon, 0.0001),
          lon = add_lagging_point_zero(lon, 4), 
@@ -228,19 +240,20 @@ moorings |>
          depth = add_lagging_point_zero(depth, 1),
          ) |> 
   select(ID, 
-         Station = station_name, 
+         Station = receiver_station, 
          Receiver = receiver_sn,
          Start = start,
          End = end, 
          `Longitude (°)` = lon, 
          `Latitude (°)` = lat, 
          `Depth (m)` = depth) |> 
-  tidy_write(here_fig("moorings.txt"))
+  tidy_write(here_fig("tables", "moorings.txt"))
   
 #### Process moorings for modelling
-moorings <- 
+moorings_raw <- 
   moorings |> 
-  mutate(receiver_station = StationName, 
+  janitor::clean_names() |> 
+  mutate(receiver_station = station_name, 
          receiver_id = row_number(),
          receiver_sn = as.integer(as.character(receiver_sn)),
          receiver_start = as.POSIXct(paste0(deploy_date_time, "00:00:00"), tz = "UTC"), 
@@ -252,6 +265,7 @@ moorings <-
          receiver_id, receiver_sn, receiver_start, receiver_end, 
          receiver_int, receiver_x, receiver_y) |>
   as.data.frame()
+moorings <- copy(moorings_raw)
 
 #### Check deployment periods
 ggplot(moorings) +
@@ -281,6 +295,7 @@ hist(detections$length)
 max(detections$length)
 
 #### Process detections
+# (Temporarily retain receiver station labels)
 detections <- 
   detections |> 
   mutate(individual_id = as.integer(as.character(animal_id)), 
@@ -289,7 +304,8 @@ detections <-
          receiver_sn = as.integer(as.character(receiver_sn))) |>
   select(individual_id, 
          timestamp,
-         receiver_sn) |> 
+         receiver_sn,
+         receiver_station = StationName) |> 
   as.data.table()
 
 #### Order detections by duration
@@ -322,9 +338,9 @@ detections <- detections[!is.na(receiver_id), ]
 #### Clean up
 
 # Define study period
-study_start <- min(detections$timestamp)
-study_end   <- max(detections$timestamp)
-study_int   <- lubridate::interval(study_start, study_end)
+# study_start <- min(detections$timestamp)
+# study_end   <- max(detections$timestamp)
+# study_int   <- lubridate::interval(study_start, study_end)
 
 #### Clean up moorings 
 head(moorings)
@@ -332,17 +348,13 @@ nrow(moorings)
 moorings <- 
   moorings |> 
   as.data.frame() |>
-  mutate(int = lubridate::interval(receiver_start, receiver_end)) |> 
-  filter(int_overlaps(int, study_int)) |> 
+  # mutate(int = lubridate::interval(receiver_start, receiver_end)) |> 
+  # filter(int_overlaps(int, study_int)) |> 
   select(receiver_station, receiver_id, receiver_start, receiver_end, receiver_x, receiver_y) |> 
   as.data.table()
 nrow(moorings)
-# Define moorings for simulation analyses
-# * We average the locations of the receivers in each Station
-# * (Receivers were redeployed in the same area (station) after servicing)
-# * The receiver_start and receiver_end columns will be replaced later
-#   in line with the simulation timeline (see sim-data.R)
-moorings_sim <- 
+# Define moorings_stations
+moorings_stations <- 
   moorings |> 
   group_by(receiver_station) |> 
   mutate(receiver_x = mean(receiver_x), 
@@ -350,6 +362,14 @@ moorings_sim <-
   slice(1L) |> 
   ungroup() |> 
   mutate(receiver_id = row_number()) |> 
+  as.data.table()
+# Define moorings for simulation analyses
+# * We average the locations of the receivers in each Station
+# * (Receivers were redeployed in the same area (station) after servicing)
+# * The receiver_start and receiver_end columns will be replaced later
+#   in line with the simulation timeline (see sim-data.R)
+moorings_sim <- 
+  moorings_stations |> 
   select(-receiver_station) |> 
   as.data.table()
 nrow(moorings_sim)
@@ -375,7 +395,7 @@ par(pp)
 head(detections)
 detections <-
   detections |> 
-  select(individual_id, timestamp, receiver_id) |> 
+  select(individual_id, timestamp, receiver_id, receiver_station) |> 
   as.data.table()
 # Record 'raw' detections
 detections_raw <- copy(detections)
@@ -388,36 +408,201 @@ stopifnot(nr > 1L)
 
 ###########################
 ###########################
-#### Apply filters 
+#### Visualise mooring stations
+
+# It is important to visualise mooring stations
+# Below we will check for evidence of movement through receiver gates without detection
+# This is important to understand for the parameterisation of the acoustic observation model
+
+#### Validate station names
+if (FALSE) { 
+  
+  # Define detection_stations data.table
+  detections_stations <- 
+    lazy_dt(detections) |> 
+    left_join(moorings_raw |> 
+                select(receiver_id, receiver_station, receiver_x, receiver_y), 
+              by = "receiver_id") |> 
+    mutate(receiver_station.x = as.character(receiver_station.x), 
+           receiver_station.y = as.character(receiver_station.y)) |> 
+    as.data.table()
+  
+  # Confirm that receiver_stations are valid 
+  stopifnot(all(detections_stations$receiver_station.x == detections_stations$receiver_station.y))
+  
+  # Map receiver stations
+  # > This is to check the spatial distribution of receiver stations has been correctly assigned
+  if (FALSE) {
+    
+    # Define base maps
+    stations <- sort(unique(moorings_raw$receiver_station))
+    champlain_utm_facets <- bind_rows(lapply(stations, function(s) {
+      mutate(champlain_utm, receiver_station = s)
+    }))
+    
+    # Map receiver stations in moorings_raw
+    tic()
+    ggplot() +
+      geom_sf(data = champlain_utm_facets) +
+      geom_point(data = moorings_raw, aes(receiver_x, receiver_y)) +
+      facet_wrap(~receiver_station)
+    toc()
+    
+    # Plot receiver stations in detections (~15 mins!)
+    tic()
+    png(here_fig("stations-detections.png"), 
+        height = 20, width = 20, units = "in", res = 600)
+    p <- 
+      ggplot() +
+      geom_sf(data = champlain_utm_facets) +
+      geom_point(data = 
+                   detections_stations |> 
+                   # Slice by receiver_x and receiver_y for speed
+                   group_by(receiver_x, receiver_y) |> 
+                   slice(1L) |> 
+                   as.data.table(), 
+                 aes(receiver_x, receiver_y)) +
+      facet_wrap(~receiver_station)
+    print(p)
+    dev.off()
+    toc()
+  }
+  
+}
+
+#### Define map layers (WGS84)
+# Define map_ll
+map_ll <- terra::project(map, "EPSG:4326")
+# Define moorings_real_ll
+moorings_real_ll <- 
+  moorings_real |> 
+  sf::st_as_sf(coords = c("receiver_x", "receiver_y"),
+               crs = epsg_utm) |> 
+  sf::st_transform(4326)
+# Define stations_ll
+stations_ll <- moorings_stations |> 
+  sf::st_as_sf(
+    coords = c("receiver_x", "receiver_y"),
+    crs = epsg_utm) |> 
+  sf::st_transform(4326)
+# Define containers_ll
+containers_ll <- 
+  moorings_real |> 
+  sf::st_as_sf(coords = c("receiver_x", "receiver_y"),
+               crs = epsg_utm) |> 
+  sf::st_buffer(dist = 1000) |> 
+  sf::st_transform(4326)
+
+#### Map receiver stations (static)
+terra::plot(map)
+points(moorings_real$receiver_x, moorings_real$receiver_y)
+# basicPlotteR::addTextLabels(moorings_real$receiver_x, 
+#                             moorings_real$receiver_y, 
+#                             moorings_real$receiver_id)
+basicPlotteR::addTextLabels(moorings_stations$receiver_x, 
+                            moorings_stations$receiver_y, 
+                            moorings_stations$receiver_station)
+
+#### Map receiver stations (interactive) 
+leaflet() |>
+  addProviderTiles(providers$Esri.WorldImagery) |>
+  addRasterImage(map_ll, opacity = 0.7) |>
+  addPolygons(
+    data = containers_ll,
+    fillOpacity = 0.2,
+    weight = 1) |>
+  addCircleMarkers(
+    data = moorings_real_ll,
+    radius = 4,
+    stroke = FALSE,
+    fillOpacity = 1) |>
+  # addLabelOnlyMarkers(
+  #   data = moorings_real_ll,
+  #   label = ~receiver_id,
+  #   labelOptions = labelOptions(noHide = TRUE, direction = "top", textOnly = TRUE)) |> 
+  addLabelOnlyMarkers(
+    data = stations_ll,
+    label = ~receiver_station,
+    labelOptions = labelOptions(noHide = TRUE, direction = "top", textOnly = TRUE))
+
+#### Station structure
+# Whallon/Split Rock (northern end of southern area of Lake)
+# Arnold West/Arnold Central/Arnold East receiver gate (further south)
+# Crown Point (southernmost receiver)
+
+# Split Rock receivers: 
+moorings_raw |> 
+  filter(receiver_station == "Split Rock") |> 
+  select("receiver_station", "receiver_id", "receiver_x", "receiver_y") |> 
+  as.data.table()
+
+# receiver_station receiver_id receiver_x receiver_y
+# <fctr>       <int>      <num>      <num>
+# 1:       Split Rock          41    1790579   903528.9
+# 2:       Split Rock          67    1790552   903490.0
+# 3:       Split Rock         105    1790552   903490.0
+
+
+###########################
+###########################
+#### Apply detection filters 
 
 #### Raw data summary statistics
 # 1,735,137 detections
 # from 93 individuals
 # derived from 153 receiver deployments 
 # over a four year period
-
 nrow(detections)
 length(unique(detections$individual_id))
 range(detections$timestamp)
 difftime(max(detections$timestamp), min(detections$timestamp), units = "days")
 nrow(moorings_real)
 
-#### False detections 
+#### Implement Futia et al. (2024) filters e.g., for false detections
 # Check study duration
-c(study_start, study_end)
+# c(study_start, study_end)
 range(detections_filtered$detection_timestamp_utc)
 # Format detections_filtered
 detections_filtered |> setDT()
 detections_filtered[, individual_id := as.integer(as.character(animal_id))]
 # Filter detections using detections_filtered (inner join)
 # * This ensures we carry forward false detection filters etc. implemented by Futia et al. (2024)
+detections_pre_filter <- copy(detections)
 detections <- detections[
   detections_filtered,
   on = .(individual_id = individual_id, timestamp = detection_timestamp_utc),
   nomatch = 0
 ]
+detections <- detections[, .(individual_id, timestamp, receiver_id, receiver_station)]
+
+#### Exclude all data before the 2014 tagging season 
+# This is no longer implemented
+# In prepare-analysis.R, we define the time period of the analysis from 2014-2017
+# We keep detections prior to this date b/c they may inform the starting locations
+# table(fish$date)
+# nrow(detections)
+# detections <- detections[timestamp >= as.POSIXct("2014-11-04 23:59:59", tz = "UTC"), ]
+# nrow(detections)
+
+#### Exclude individuals that were only detected in the tagging season
+# Identify individuals that were only detected in tagging season
+# (These individuals may have died & we drop them)
+individuals_detected_in_one_season <- 
+  detections |> 
+  mutate(season = paste0(season_factor(timestamp), "-", lubridate::year(timestamp)),
+         cap_date = fish$date[match(individual_id, fish$individual_id)], 
+         cap_season = paste0(season_factor(cap_date), "-", lubridate::year(cap_date))) |> 
+  group_by(individual_id) |> 
+  summarise(one = all(season == cap_season)) |> 
+  filter(one == TRUE) |>
+  ungroup() |> 
+  as.data.table()
+# All individuals were also detected in a season after tagging
+table(individuals_detected_in_one_season$one)
+detections <- detections[!(individual_id %in% individuals_detected_in_one_season$individual_id), ]
 
 #### Summarise filtered detection dataset
+nrow(detections_pre_filter)
 nrow(detections_filtered)
 nrow(detections)
 length(unique(detections$individual_id))
@@ -426,13 +611,110 @@ length(unique(detections_filtered$individual_id))
 
 ###########################
 ###########################
+#### Examine detection transitions
+
+#### Potential movements of interest 
+# (optional) TO DO Move this code to setup-data-detection-*.R script
+# Movements through detection gates can be challenging depending on the formulation of the detection probability model
+# Specific movements we should check for, based on examination of the station layout, include: 
+# * Movements north from Crown Point to any other receiver without detection at Arnold West/Arnold Central/Arnold East
+# * Movements from any receiver to Crown Point without detection at Arnold West/Arnold Central/Arnold East
+# * Movements to/from Arnold West/Arnold Central/Arnold East without detection at Crown Point (from the South) or Split Rock (from the North)
+# (There are others but based on initial modelling movements in the south appear more problematic) 
+
+# Define dataset
+# detections_dataset <- copy(detections_pre_filter)
+detections_dataset <- copy(detections)
+
+# Define detection transitions from receiver_station -> receiver_station_next
+detections_transitions <- 
+  detections_dataset |> 
+  mutate(time_id = lubridate::floor_date(timestamp, "months")) |> 
+  group_by(individual_id, time_id) |> 
+  mutate(receiver_station_next = lead(receiver_station)) |>
+  ungroup() |>
+  filter(!is.na(receiver_station_next)) |> 
+  select(individual_id, timestamp, time_id, receiver_station, receiver_station_next) |> 
+  as.data.table()
+
+# There are no detections from Crown Point further north to any receiver without detection at Arnold
+# (Only one individual detected at Crown Point)
+detections_transitions |>
+  filter(receiver_station %in% "Crown Point")
+
+# There are no detections arriving at Crown Point without detection at Arnold
+detections_transitions |> 
+  filter(receiver_station_next %in% "Crown Point")
+
+# There are some transitions from Crown Point -> Whallon (may be acceptable for model?)
+# There are also more problematic transitions to:
+# * Saxton
+# * Willsboro
+# * Burlington
+# * Winooski Delta Mid
+# * Schuyler
+
+detections_transitions |> 
+  filter((receiver_station %in% c("Arnold West", "Arnold Central", "Arnold East") & 
+            !(receiver_station_next %in% c("Arnold West", "Arnold Central", "Arnold East", "Crown Point", "Split Rock", "Whallon"))))
+
+# individual_id           timestamp    time_id receiver_station receiver_station_next
+# <int>              <POSc>     <POSc>           <fctr>                <fctr>
+# 1:         24391 2015-05-11 03:10:15 2015-05-01      Arnold West              Schuyler
+# 2:         24327 2015-12-19 12:49:48 2015-12-01      Arnold East    Winooski Delta Mid
+# 3:         24385 2016-07-03 18:09:55 2016-07-01      Arnold West             Willsboro
+# 4:         24339 2016-12-02 08:53:33 2016-12-01      Arnold East                Saxton
+# 5:         24385 2017-05-23 17:36:23 2017-05-01   Arnold Central            Burlington
+# 6:         24321 2017-06-07 11:11:40 2017-06-01   Arnold Central              Schuyler
+
+# There are some movements from Whallon -> Arnold without detection on Split Rock which may be problematic
+detections_transitions |> 
+  filter((receiver_station %in% c("Whallon") & 
+            (receiver_station_next %in% c("Arnold West", "Arnold Central", "Arnold East")))) |> 
+  arrange(individual_id, time_id)
+
+#### Drop receiver_station
+detections[, receiver_station := NULL]
+
+
+###########################
+###########################
+#### Process survivors 
+
+#### Process survivors 
+# Here, we identify survivors at the end of the study period 
+# Survivors were identified from detections out width the presence study period
+# (using MF's extended datasets)
+survivors <- 
+  survivors |> 
+  select(individual_id = "transmitter_id",  end_battery = "est_dead_bat", end_detection = "last_det") |> 
+  mutate(survivor = end_detection > max(detections$timestamp)) |>
+  as.data.table()
+
+#### Examine battery life
+# All individuals had the capacity to be detected beyond the end of the study
+# (200+ day buffer in terms of battery life)
+table(survivors$end_battery > max(detections$timestamp))
+table(difftime(survivors$end_battery, max(detections$timestamp), units = "days"))
+
+#### Examine survivors
+# Of the 69 individuals in the detection dataset, 
+# 32 individuals were definitely alive at the end of the time series 
+# 37 individuals were probably, but not definitely, alive (no future detections)
+length(unique(detections$individual_id))
+table(survivors$survivor[survivors$individual_id %in% detections$individual_id])
+
+
+###########################
+###########################
 #### Write outputs
 
 qs::qsave(fish, here_input("fish.qs"))
-qs::qsave(moorings_sim, here_input_sim("moorings-xy.qs"))
-qs::qsave(moorings_real, here_input_real("moorings.qs"))
-qs::qsave(detections, here_input_real("detections.qs"))
-qs::qsave(detections_raw, here_input_real("detections-raw.qs"))
+qs::qsave(survivors, here_input_real("main", "survivors.qs"))
+qs::qsave(moorings_sim, here_input_sim("main", "moorings-xy.qs"))
+qs::qsave(moorings_real, here_input_real("main", "moorings.qs"))
+qs::qsave(detections, here_input_real("main", "detections.qs"))
+qs::qsave(detections_raw, here_input_real("main", "detections-raw.qs"))
 
 
 #### End of code. 

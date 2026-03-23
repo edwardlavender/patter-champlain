@@ -27,8 +27,8 @@ files_source_r(here_src())
 
 #### Load data
 map         <- terra::rast(here_input("map.tif"))
-detections  <- qs::qread(here_input_real("detections.qs"))
-moorings    <- qs::qread(here_input_real("moorings.qs"))
+detections  <- qs::qread(here_input_real("main", "detections.qs"))
+moorings    <- qs::qread(here_input_real("main", "moorings.qs"))
 
 
 ###########################
@@ -60,15 +60,16 @@ if (requireNamespace("flapper", quietly = TRUE)) {
   msp <- sp::SpatialPoints(moorings[, c("receiver_x", "receiver_y")], sp::CRS(terra::crs(map)))
   msp <- sp::SpatialPointsDataFrame(msp, data.frame(receiver_id = moorings$receiver_id))
   # Compute speeds
-  # TO DO Repeat with best-guess detection range
+  # transmission internals: 120 s (nominal delay), 60 -> 180 s
+  # detection_range: 7000, 5250, 8750 s
   mvt <- flapper::get_mvt_mobility_from_acoustics(data = detections, 
                                                   fct = "individual_id", 
                                                   moorings = msp, 
-                                                  detection_range = 7500, 
+                                                  detection_range = 7000, 
                                                   calc_distance = "lcp", 
                                                   bathy = raster::raster(grid),
                                                   step = 120,
-                                                  transmission_interval = 160)
+                                                  transmission_interval = 120)
   toc()
   
 }
@@ -78,24 +79,24 @@ if (requireNamespace("flapper", quietly = TRUE)) {
 # --------------------------------------
 #   Estimates (m/s)-----------------------
 #   variable min mean  max
-# 1 speed_min_ms   0 0.03 0.33
+# 1 speed_min_ms   0 0.02 0.35
 # 2 speed_avg_ms   0 0.10 0.90
-# 3 speed_max_ms   0 0.18 1.53
+# 3 speed_max_ms   0 0.18 1.49
 # --------------------------------------
 #   Estimates (m/step)--------------------
 #   variable  min  mean    max
-# 1 speed_min_mstep 0.00  3.15  39.44
-# 2 speed_avg_mstep 0.08 12.11 108.29
-# 3 speed_max_mstep 0.13 21.07 184.03
+# 1 speed_min_mstep 0.01  2.55  41.57
+# 2 speed_avg_mstep 0.08 11.80 108.29
+# 3 speed_max_mstep 0.12 21.05 178.98
 # --------------------------------------
 
 #### Conclusions 
-# Even if we assume 'minimum distance' movements, maximum speeds of 48 m/2 min are apparent.
+# Even if we assume 'minimum distance' movements, maximum speeds of 42 m/2 min are apparent.
 # (But travelled  speeds are likely to be higher than this value 
 # ... as this assumes the minimum possible travel distance)
-# If we assume larger movements, speeds may be up to 109 m/2 min.
+# If we assume larger movements, speeds may be up to 108 m/2 min.
 # This is a reasonable middle-of-the-road estimate for maximum movement speeds. 
-# In the most extreme case (unlikely), movement speeds up to 198 m/2 min are apparent.
+# In the most extreme case (unlikely), movement speeds up to 179 m/2 min are apparent.
 # (This is the upper bound for movement speeds suggested by the data.)
 # These results are consistent for different transmission intervals
 # (But the movement model needs to consider the effect of random transmission)

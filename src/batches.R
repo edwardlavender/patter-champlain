@@ -37,3 +37,13 @@ p_mem(2000, 22320, 4, 100) # 428544 MB = 428 GB
 p_batch(214272 * 4, 4e5 * 0.75) # 3 batches if 1000 particles recorded
 p_batch(321408 * 4, 4e5 * 0.75) # 5 batches if 1500 particles recorded
 p_batch(428544 * 4, 4e5 * 0.75) # 6 batches if 2000 particles recorded
+
+# Compute number of batches if N GB memory available:
+# > Using 1 core
+p_batch(p_mem(1000, 22320, 4, 1), 4e3)
+# > Using 2 cores
+p_batch(p_mem(1000, 22320, 4, 2), 4e3)
+# > Using more cores
+p_batch(p_mem(1000, 22320, 4, 3), 4e3)
+p_batch(p_mem(1000, 22320, 4, 4), 4e3)
+p_batch(p_mem(1000, 22320, 4, 5), 4e3)

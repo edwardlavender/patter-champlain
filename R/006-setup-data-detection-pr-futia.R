@@ -62,7 +62,7 @@ moorings_locs <-
   distinct(StationName, .keep_all = TRUE) |> 
   select(location = StationName, lon = deploy_long, lat = deploy_lat)
 # Map
-png(here_fig("champlain-range-tests.png"), 
+png(here_fig("model", "model-obs", "champlain-range-tests.png"), 
     height = 10, width = 10, units = "in", res = 600)
 pp <- par(mfrow = c(1, 2))
 terra::plot(map_ll)

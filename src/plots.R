@@ -42,3 +42,24 @@ mark_mobility <- function(mobility, col = "black", ...) {
   arrows(x0 = mobility, y0 = -0.003, x1 = mobility, y1 = 0,
          length = 0.04, lwd = 1.25, col = col, ...)
 }
+
+# Quick plots of simulated occupancy distributions & simulated paths 
+if (!patter:::os_linux() | (patter:::os_linux() & !patter:::julia_session())) {
+  
+  lapply_qplot_sim <- function(.iteration, .n_plot = 4L) {
+    ind <- sample.int(nrow(.iteration), size = .n_plot)
+    pp <- par(mfrow = prettyGraphics::par_mf(.n_plot))
+    lapply(ind, function(i) {
+      it   <- .iteration[i, ]
+      map  <- terra::rast(it$file_occupancy_sim)
+      path <- qs::qread(it$file_path_sim)
+      # Plot occupancy distribution & add simulated path
+      terra::plot(map, main = it$unit_id[i])
+      patter:::add_sp_path(path$x, path$y, length = 0.01, lwd = 0.05) |> 
+        suppressWarnings()
+    })
+    par(pp)
+    nothing()
+  }
+  
+}

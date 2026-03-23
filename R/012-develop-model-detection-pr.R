@@ -218,12 +218,18 @@ dcounts |>
 #### Record parameters
 
 #### Define 'best-guess' parameters (list)
-# Pull out coefficients for suitable model
-coefs <- coef(models[["F151"]][["GLM"]])
-# Define parameters
-a <- as.numeric(coefs[1])
-b <- as.numeric(coefs[2])
-g <- 7000
+# We previously selected F151 as the best model
+# Model validation showed this model is too generous
+# I.e., it is difficult for fish to move through detection gates
+# The former restrictive model (former best model * 25 % restriction) appears appropriate
+# and is approximately half way between F146 and F151
+# We therefore now take that model as our best model 
+coefs   <- coef(models[["F151"]][["GLM"]])
+inflate <- pars_adj$inflate
+deflate <- pars_adj$deflate
+a       <- as.numeric(coefs[1]) * deflate
+b       <- as.numeric(coefs[2]) * inflate
+g       <- 7000
 # Collate parameter list
 pars_model_obs_best <- list(receiver_alpha = a, 
                             receiver_beta  = b, 
@@ -233,8 +239,6 @@ pars_model_obs_best <- list(receiver_alpha = a,
 # We use the same degree of uncertainty as for the movement model
 # For restrictive model: deflate alpha, inflate beta
 # For flexible model: inflate alpha, deflate beta
-inflate <- pars_adj$inflate
-deflate <- pars_adj$deflate
 pars_model_obs_full <- data.table(receiver_alpha = c(a, a * deflate, a * inflate), 
                                   receiver_beta = c(b, b * inflate, b * deflate), 
                                   receiver_gamma = c(g, g * deflate, g * inflate))
@@ -257,7 +261,7 @@ pred_patter <-
 #### Publication-quality plot
 
 #### Make plot
-png(here_fig("model-obs.png"), 
+png(here_fig("model", "model-obs", "detection-probability.png"), 
     height = 5, width = 10, units = "in", res = 800)
 gg <- 
   ggplot(dcounts, aes(x = dist, y = prop)) +
@@ -280,9 +284,14 @@ gg <-
                        )) +
   # geom_point(shape = ".") + 
   # Add best, restrictive and flexible models
-  geom_line(data = pred_patter, aes(x = dist, y = fit, 
-                                      colour = sensitivity_label, group = sensitivity_label),
+  geom_line(data = pred_patter[sensitivity_label == "Best", ], 
+            aes(x = dist, y = fit, 
+                colour = sensitivity_label, group = sensitivity_label),
             lwd = 1.75,  inherit.aes = FALSE) +
+  geom_line(data = pred_patter[sensitivity_label != "Best", ],  
+            aes(x = dist, y = fit, 
+                colour = sensitivity_label, group = sensitivity_label),
+            lwd = 1.25,  inherit.aes = FALSE) +
   # Add GLMs
   geom_line(data = pred_empirical[model == "GLM", ], 
             aes(x = dist, y = fit, colour = study, group = study), 

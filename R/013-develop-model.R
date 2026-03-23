@@ -36,9 +36,15 @@ pars_model_obs  <- qs::qread(here_input("pars-model-obs-full.qs"))
 ########################### 
 #### Collate pars
 
+# Define movement and observation model parameters
 pm <- pars_model_move
 po <- pars_model_obs
 
+# Define sensitivity labels
+lbl <- c("Best", "Step(-)", "Step(+)", "Angle(-)", "Angle(+)", "AC(-)", "AC(+)")
+lbl <- factor(lbl, levels = lbl)
+
+# Collate parameters
 pars <- rbind(
   
   data.table(sensitivity    = "best", 
@@ -105,16 +111,23 @@ pars <- rbind(
              receiver_gamma = po$receiver_gamma[3])
   
 ) |> 
-  mutate(parameter_id = row_number(), .before = "sensitivity") |> 
+  mutate(parameter_id = row_number(), .before = "sensitivity", 
+         sensitivity_label = lbl) |>
+  select(parameter_id, sensitivity, sensitivity_label, 
+         mobility, shape, scale, phi, 
+         receiver_alpha, receiver_beta, receiver_gamma) |> 
   as.data.table()
 
+# Record as qs file
 qs::qsave(pars, here_input("pars-patter.qs"))
 
+# Record as table
 pars |> 
+  select(-sensitivity) |>
   mutate(parameter_id = as.character(parameter_id), 
          mobility = as.character(mobility)) |> 
   tidy_numbers(digits = c(4, 4, 4, 4, 4, 0)) |> 
-  tidy_write(here_fig("pars.txt"))
+  tidy_write(here_fig("tables", "pars.txt"))
 
 
 #### End of code.
