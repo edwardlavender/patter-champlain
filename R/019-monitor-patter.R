@@ -82,7 +82,7 @@ names(logs) <- as.character(rows)
 table(iteration$index %in% rows)
 # Read logs
 logs
-# Search for 'error', 'fail' or simular
+# Search for 'error', 'fail' or similar
 logtxt <- do.call(paste, lapply(logs, function(l) paste0(l, collapse = ", ")))
 stringr::str_detect(tolower(logtxt), "error")
 stringr::str_detect(tolower(logtxt), "fail")
@@ -122,7 +122,11 @@ if (nrow(iteration) > 0L) {
     summarise(n = n(), success_rate = length(which(convergence)) / n)
   
   #### Check total computation time per iteration
-  # Compute times
+  # Compute times by convergence & routine
+  callstats |> 
+    group_by(convergence, routine) |>
+    reframe(utils.add::basic_stats(time / 60))
+  # Compute times (includes non convergence)
   computation_time <- 
     callstats |> 
     group_by(index) |> 
@@ -131,8 +135,8 @@ if (nrow(iteration) > 0L) {
     reframe(utils.add::basic_stats(mins))
   computation_time
   # Estimate end time for all iterations
-  start <- as.POSIXct("2026-02-24 17:00:00", tz = "UTC")
-  ncpu  <- 50L
+  start <- as.POSIXct("2026-03-15 17:00:00", tz = "UTC")
+  ncpu  <- 80L
   start + (computation_time$median * 60) * n_iteration / ncpu
   start + (computation_time$mean * 60) * n_iteration / ncpu
   start + (computation_time$max * 60) * n_iteration / ncpu
