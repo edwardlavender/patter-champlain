@@ -504,7 +504,7 @@ p <-
   geom_hline(yintercept = 0, linetype = 3) + 
   # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
   xlab("Region") + 
-  ylab(expression("Residency error (" * italic(RE) * ")")) + 
+  ylab("Residency error") + 
   labs(fill = "Region") +
   theme_bw() +
   theme(panel.grid.minor.y = element_blank(), 
@@ -527,7 +527,7 @@ p <-
   geom_hline(yintercept = 0, linetype = 3) + 
   # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
   xlab("Region") + 
-  ylab(expression("Residency error (" * italic(RE) * ")")) + 
+  ylab("Residency error") + 
   labs(fill = "Analysis") +
   theme_bw() +
   theme(panel.grid.minor.y = element_blank(), 
@@ -539,6 +539,10 @@ print(p)
 dev.off()
 
 #### Summarise residency skill overs region simply (%)
+# Range in absolute mean error for 'best' analyses
+residency_skill |> 
+  filter(sensitivity == "best") |> 
+  summarise(utils.add::basic_stats(abs(simulation - estimate) * 100))
 # Overall residency skill for 'best' analyses
 residency_skill |> 
   filter(sensitivity == "best") |> 
@@ -567,7 +571,7 @@ p <-
   geom_jitter(size = 0.25, colour = "dimgrey", width = 0.1, height = 0) +
   # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
   xlab("Sensitivity") + 
-  ylab(expression("MOE (" * italic(RE) * ")")) + 
+  ylab("MOE (%)") + 
   labs(fill = "Analysis") +
   theme_bw() +
   theme(panel.grid.minor.y = element_blank(), 
