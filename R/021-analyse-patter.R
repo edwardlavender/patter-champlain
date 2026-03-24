@@ -305,6 +305,9 @@ convergence <-
   as.data.table()
 
 #### Check convergence by block, with comments on the "real" analysis
+# Review convergence (sense check)
+callstats[convergence == FALSE, ]
+convergence[success == FALSE, ]
 # Review filter issues (82 % pass rate)
 # * 1243 / (267 +  1243) pass filter
 table(convergence$pass_filter)
@@ -320,6 +323,7 @@ hist(convergence$pass_smoother)
 # * 1067 /( 1067 + 443)
 table(convergence$success)
 table(convergence$success, convergence$sensitivity == "best")
+table(convergence$success, convergence$sensitivity != "best")
 table(convergence$sensitivity[convergence$success == FALSE])
 
 #### Check convergence by chain
@@ -524,7 +528,7 @@ diagnostics |>
   filter(sensitivity == "best") |> 
   filter(routine == "smoother: two-filter") |> 
   summarise(utils.add::basic_stats(ncell_home, na.rm = TRUE))
-# cf. 31298 grid cells in lake (not NA)
+# cf. 31296 grid cells in lake (not NA)
 terra::freq(map)
 # Visualisation (~14 s)
 tic()
