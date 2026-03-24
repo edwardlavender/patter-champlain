@@ -563,7 +563,7 @@ residency_skill |>
 # * I.e., we expect reduced variation (increased precision)
 # * We show the variation with a boxplot over all tracks
 png(here_fig_sim("main", "residency-skill-moe.png"), 
-    height = 6, width = 12, units = "in", res = 800)
+    height = 4, width = 8, units = "in", res = 800)
 p <- 
   residency_skill_moe |>
   ggplot(aes(sensitivity_label, moe, fill = sensitivity_label)) + 
