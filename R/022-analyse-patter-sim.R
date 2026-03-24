@@ -405,6 +405,7 @@ map_dt <-
       as.data.table()
   ) |> 
   arrange(row, column) |> 
+  mutate(file_ud = if_else(column == "Trajectory", NA_character_, file_ud)) |>
   as.data.table()
 # (B) Define simulated paths
 map_paths <- 
@@ -428,6 +429,43 @@ p <- ggmaps(.mapdt = map_dt, .map = map,
   theme(strip.text = element_text(face = "bold"))
 print(p)
 dev.off()
+
+#### As above but using probability mass quantiles 
+# Define probs and zlim (as above)
+probs <- seq(0.05, 1, by = 0.05)
+zlim  <- c(0, length(probs))
+# Update map_dt with occupancy-quantiles.tif rasters
+map_dt[, file_ud_quantile := file.path(dirname(file_ud), "occupancy-quantiles.tif")]
+cl_lapply(split(map_dt, seq_len(nrow(map_dt))), function(d) {
+  if (!is.na(d$file_ud)) {
+    occupancy          <- terra::rast(d$file_ud)
+    occupancy_contours <- terra::setValues(occupancy, 0)
+    for (p in probs) {
+      occupancy_contours <- sum(occupancy_contours, 
+                                map_hr_prop(occupancy, .prop = p), 
+                                na.rm = TRUE)
+    }
+    occupancy_contours <- terra::classify(occupancy_contours, cbind(0, NA))
+    terra::writeRaster(occupancy_contours, d$file_ud_quantile, overwrite = TRUE)
+  }
+  nothing()
+})
+map_dt[, file_ud := file_ud_quantile]
+map_dt[, file_ud_quantile := NULL]
+# Make figure
+op <- options(terra.pal = grDevices::terrain.colors(length(probs), rev = TRUE))
+png(here_fig_sim("main", "maps-full-quantiles.png"), 
+    height = 14, width = 6, units = "in", res = 800)
+p <- ggmaps(.mapdt = map_dt, .map = map, .zlim = zlim,
+            .coast = champlain_utm, .geom_coast = list(colour = "black"),
+            .path = map_paths, 
+            .geom_path = list(linewidth = 0.2, arrow = grid::arrow(length = unit(0.001, "cm"))), 
+            .scale_path = scale_colour_gradientn(colours = viridis::inferno(nrow(path)))) + 
+  # Use bold
+  theme(strip.text = element_text(face = "bold"))
+print(p)
+dev.off()
+options(op)
 
 #### Visualise occupancy skill (MAE)
 # This is principally useful as a measure of sensitivity
