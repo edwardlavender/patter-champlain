@@ -92,7 +92,7 @@ nc <- terra::freq(map)[["count"]]
 # > It is useful for future comparisons against other methods
 # > Other metrics e.g., EMD are more interpretable in terms of how 'accurate' maps are
 # > But for this work we simply compare simulated tracks & associated maps
-overwrite <- TRUE
+overwrite <- FALSE
 file_occupancy_skill <- here_output_sim_main("synthesis", "occupancy-skill.qs")
 if (!file.exists(file_occupancy_skill) | overwrite) {
   
@@ -171,7 +171,7 @@ if (!file.exists(file_occupancy_skill) | overwrite) {
 
 #### Compute residency skill
 # Compute error between simulated & reconstructed residency estimates _by region_
-overwrite <- TRUE
+overwrite <- FALSE
 file_residency_skill <- here_output_sim_main("synthesis", "residency-skill.qs")
 if (!file.exists(file_residency_skill) | overwrite) {
   
@@ -254,20 +254,20 @@ terra::plot(map,
 # Cover base map colouration
 terra::plot(map, col = "white", legend = FALSE, add = TRUE)
 # Add path & coastline
-patter:::add_sp_path(path$x, path$y, lwd = 0.25, length = 0.01, 
+patter:::add_sp_path(path$x, path$y, lwd = 0.75, length = 0, 
                      col = viridis::inferno(nrow(path))) |> 
   suppressWarnings()
 # Add receivers
-points(moorings$receiver_x, moorings$receiver_y, pch = 4, cex = 0.5)
-terra::lines(champlain_utm)
+points(moorings$receiver_x, moorings$receiver_y, pch = 4, cex = 0.35)
+terra::lines(champlain_utm, lwd = 0.5)
 dev.off()
 
 #### Map occupancy distribution for example individual
 png(here_fig_sim("main", "example-occupancy.png"), 
     height = 5, width = 5, units = "in", res = 800)
 terra::plot(occupancy, pax = list(labels = FALSE, lwd.ticks = 0))
-points(moorings$receiver_x, moorings$receiver_y, pch = 4, cex = 0.5)
-terra::lines(champlain_utm)
+points(moorings$receiver_x, moorings$receiver_y, pch = 4, cex = 0.35)
+terra::lines(champlain_utm, lwd = 0.5)
 dev.off()
 
 #### Map occupancy quantiles for example individual
@@ -291,8 +291,8 @@ terra::plot(occupancy_contours,
             pax = list(labels = FALSE, lwd.ticks = 0),
             plg = list(at = pretty(zlim),
                        labels = prettyGraphics::add_lagging_point_zero(pretty(zlim) / max(zlim))))
-points(moorings$receiver_x, moorings$receiver_y, pch = 4, cex = 0.5)
-terra::lines(champlain_utm)
+points(moorings$receiver_x, moorings$receiver_y, pch = 4, cex = 0.35)
+terra::lines(champlain_utm, lwd = 0.5)
 dev.off()
 
 #### Map residency error for example individual
@@ -303,10 +303,11 @@ mx <- max(abs(residency$skill))
 # Make map
 png(here_fig_sim("main", "example-residency.png"), 
     height = 5, width = 5, units = "in", res = 800)
-terra::plot(champlain_utm,y = "skill",
+terra::plot(champlain_utm, y = "skill",
             range = c(-mx, mx), 
             col = terra::map.pal("differences", 100), type = "continuous", 
-            pax = list(labels = FALSE, lwd.ticks = 0))
+            pax = list(labels = FALSE, lwd.ticks = 0), lwd = 0.5)
+points(moorings$receiver_x, moorings$receiver_y, pch = 4, cex = 0.35)
 dev.off()
 
 
