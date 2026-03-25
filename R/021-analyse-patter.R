@@ -374,6 +374,7 @@ diagnostics <- diagnostics[index %in% successful_indices, ]
 
 #### Summarise computation time (mins), by block
 # Total computation time
+# (Note that for the real-world analysis, the number of particles varies)
 callstats |> 
   group_by(index) |>
   summarise(time = sum(time)) |> 
@@ -389,7 +390,11 @@ callstats |>
   group_by(routine, sensitivity) |> 
   reframe(utils.add::basic_stats(time / 60)) |> 
   as.data.table()
-# > Note that for the real-world analysis, the number of particles varies
+# Cf. the number of time steps for successful algorithm runs (~6 s)
+# 20160 -> 58572 time steps
+pbapply::pbsapply(iteration$file_timeline, 
+       \(f) arrow::read_feather(f) |> nrow()) |> 
+  utils.add::basic_stats()
 
 #### Visualise total computation time
 # > For simulations, total computation time varies from 150 - 190 mins (~3 hours)
@@ -492,6 +497,13 @@ toc()
 # Summary statistics 
 diagnostics |> 
   group_by(routine) |> 
+  reframe(utils.add::basic_stats(ess, na.rm = TRUE)) 
+# As above but grouping both filter runs
+diagnostics[, routine_simple := 
+              if_else(routine %in% c("filter: forward", "filter: backward"),
+                      "filter", "smoother")]
+diagnostics |> 
+  group_by(routine_simple) |> 
   reframe(utils.add::basic_stats(ess, na.rm = TRUE)) 
 # Visualisation (~14 s)
 tic()
