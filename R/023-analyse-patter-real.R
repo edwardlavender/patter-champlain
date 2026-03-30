@@ -24,6 +24,7 @@ set.seed(123L)
 library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
 library(patter)
 library(patter.workflows)
 library(prettyGraphics)
@@ -100,12 +101,11 @@ map_dt <-
     # Set row and column order on maps
     row = sensitivity_label, 
     column = paste0(season, " (", site, ")"), 
-    
     column = factor(column, 
-                    levels = c("Winter (N)", "Winter (S)", 
+                    levels = c("Fall (N)",   "Fall (S)", 
+                               "Winter (N)", "Winter (S)", 
                                "Spring (N)", "Spring (S)", 
-                               "Summer (N)", "Summer (S)", 
-                               "Fall (N)",   "Fall (S)"))) |> 
+                               "Summer (N)", "Summer (S)"))) |> 
   select(sensitivity, sensitivity_label, site, season, row, column, file_ud) |> 
   as.data.table()
 
@@ -259,7 +259,7 @@ p <-
   residency |> 
   ggplot(aes(region, estimate)) +
   geom_boxplot(aes(region, estimate, fill = I(col), weight = survival_probability), 
-               varwidth = TRUE) +
+               varwidth = FALSE) +
   # Add jittered points, coloured by survival probability 
   geom_jitter(aes(region, estimate, alpha = survival_probability), 
               size = 0.25, 

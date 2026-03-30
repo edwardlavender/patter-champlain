@@ -15,8 +15,8 @@ season_factor <- function(x) {
     m %in% c(10, 11)      ~ "fall",
     TRUE                  ~ NA_character_
   )
-  m <- factor(m, levels = c("winter", "spring", "summer", "fall"), 
-              labels = c("Winter", "Spring", "Summer", "Fall"))
+  m <- factor(m, levels = c("fall", "winter", "spring", "summer"), 
+              labels = c("Fall", "Winter", "Spring", "Summer"))
   m
 }
 
@@ -24,8 +24,8 @@ season_factor <- function(x) {
 season_factor.ys <- function(x) {
   stopifnot(inherits(x, "character"))
   m <- stringr::str_split_fixed(x, pattern = "-", n = 2L)[, 2]
-  m <- factor(m, levels = c("winter", "spring", "summer", "fall"), 
-              labels = c("Winter", "Spring", "Summer", "Fall"))
+  m <- factor(m, levels = c("fall", "winter", "spring", "summer"), 
+              labels = c("Fall", "Winter", "Spring", "Summer"))
   stopifnot(!is.na(m))
   m
 }
