@@ -212,6 +212,7 @@ if (!file.exists(file_residency_skill) | overwrite) {
 } else {
   residency_skill <- qs::qread(file_residency_skill)
 }
+residency_skill[, perc := skill * 100]
 
 #### Average residency skill over regions using MOE (Futia et al., 2024)
 # MOE = mean(abs(truth_r - estimate_r) * truth_r), averaged over all regions r
@@ -298,12 +299,13 @@ dev.off()
 #### Map residency error for example individual
 # Update spatial layer with skill 
 champlain_utm$skill <- residency$skill[match(champlain_utm$region, residency$region)]
+champlain_utm$skill_perc <- champlain_utm$skill * 100
 # Choose y limits to be symmetrical to force diverging colour scale centred at zero
-mx <- max(abs(residency$skill))
+mx <- max(abs(champlain_utm$skill_perc))
 # Make map
 png(here_fig_sim("main", "example-residency.png"), 
     height = 5, width = 5, units = "in", res = 800)
-terra::plot(champlain_utm, y = "skill",
+terra::plot(champlain_utm, y = "skill_perc",
             range = c(-mx, mx), 
             col = terra::map.pal("differences", 100), type = "continuous", 
             pax = list(labels = FALSE, lwd.ticks = 0), lwd = 0.5)
@@ -499,12 +501,12 @@ p <-
   filter(sensitivity == "best") |> 
   as_tibble() |> 
   ggplot() + 
-  geom_boxplot(aes(region, skill, fill = I(col)), 
+  geom_boxplot(aes(region, perc, fill = I(col)), 
                linewidth = 0.5, size = 1, varwidth = TRUE) + 
   geom_hline(yintercept = 0, linetype = 3) + 
   # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
   xlab("Region") + 
-  ylab("Residency error") + 
+  ylab("Residency error (%)") + 
   labs(fill = "Region") +
   theme_bw() +
   theme(panel.grid.minor.y = element_blank(), 
@@ -522,12 +524,12 @@ png(here_fig_sim("main", "residency-skill-sensitivity.png"),
 p <- 
   residency_skill |>
   ggplot() + 
-  geom_boxplot(aes(region, skill, fill = sensitivity_label), 
+  geom_boxplot(aes(region, perc, fill = sensitivity_label), 
                linewidth = 0.25, size = 0.5, varwidth = TRUE) + 
   geom_hline(yintercept = 0, linetype = 3) + 
   # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
   xlab("Region") + 
-  ylab("Residency error") + 
+  ylab("Residency error (%)") + 
   labs(fill = "Analysis") +
   theme_bw() +
   theme(panel.grid.minor.y = element_blank(), 
@@ -547,13 +549,13 @@ residency_skill |>
 residency_skill |> 
   filter(sensitivity == "best") |> 
   # filter(!(estimate == 0 & simulation == 0)) |> 
-  reframe(utils.add::basic_stats(skill * 100))
+  reframe(utils.add::basic_stats(perc))
 # Residency skill for 'best' analyses split by region
 residency_skill |> 
   filter(sensitivity == "best") |> 
   group_by(region) |> 
   # filter(!(estimate == 0 & simulation == 0)) |> 
-  reframe(utils.add::basic_stats(skill * 100))
+  reframe(utils.add::basic_stats(perc))
 
 #### Visualise residency skill averaged over tracks using MOE, including sensitivity
 # Plot distribution of MOE % across all tracks by sensitivity, as in Futia et al. 2024

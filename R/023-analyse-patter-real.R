@@ -212,6 +212,7 @@ residency <-
   cl_lapply(iteration$file_residency, qs::qread) |> 
   rbindlist() |> 
   filter(sensitivity == "best") |>
+  mutate(perc = estimate * 100) |> 
   mutate(site = fish$site[match(individual_id, fish$individual_id)], 
          site = case_match(site, "Grand Isle" ~ "N", "Split Rock" ~ "S"), 
          season = season_factor.ys(chain_id)) |>
@@ -226,15 +227,15 @@ residency_stats <-
   group_by(site, season, region) |>
   summarise(
     # Compute unweighted/weighted mean
-    mean_utd   = mean(estimate),
-    mean_wtd   = weighted.mean(estimate, survival_probability),
+    mean_utd   = mean(perc),
+    mean_wtd   = weighted.mean(perc, survival_probability),
     # Compute unweighted/weighted median
     # * There are different ways of computed a weighted median
     # * ggplot uses quantreg 
     # * Plotting median_utd and median_wtd on the plot below confirms ggplot2 actions weights appropriately
-    median_utd = median(estimate), 
-    # median_wtd = matrixStats::weightedMedian(estimate, survival_probability), 
-    median_wtd = weighted.median(estimate, survival_probability)) |> 
+    median_utd = median(perc), 
+    # median_wtd = matrixStats::weightedMedian(perc, survival_probability), 
+    median_wtd = weighted.median(perc, survival_probability)) |> 
   ungroup() |> 
   as.data.table()
 # Accounting for survivorship makes less than 1 % of difference to mean residency estimates
@@ -251,17 +252,17 @@ n_per_panel <-
   residency |> 
   group_by(site, season) |> 
   # Count n for region[1] (other regions are the same)
-  summarise(n = sum(!is.na(estimate[region == region[1]]))) |> 
+  summarise(n = sum(!is.na(perc[region == region[1]]))) |> 
   ungroup() |> 
   as.data.table()
 # Make plot 
 p <- 
   residency |> 
-  ggplot(aes(region, estimate)) +
-  geom_boxplot(aes(region, estimate, fill = I(col), weight = survival_probability), 
+  ggplot(aes(region, perc)) +
+  geom_boxplot(aes(region, perc, fill = I(col), weight = survival_probability), 
                varwidth = FALSE) +
   # Add jittered points, coloured by survival probability 
-  geom_jitter(aes(region, estimate, alpha = survival_probability), 
+  geom_jitter(aes(region, perc, alpha = survival_probability), 
               size = 0.25, 
               colour = "dimgrey",
               width = 0.1, height = 0) +
@@ -280,11 +281,11 @@ p <-
             vjust = 1.5,
             size = 3) + 
   scale_y_continuous(# limits = c(0, 1),
-                     breaks = seq(0, 1, 0.2),
+                     breaks = seq(0, 100, 20),
                      expand = expansion(mult = c(0, 0))) +
-  coord_cartesian(ylim = c(0, 1.2), clip = "off") +
+  coord_cartesian(ylim = c(0, 120), clip = "off") +
   xlab("Region") +
-  ylab(expression("Residency")) +
+  ylab(expression("Residency (%)")) +
   # labs(alpha = "Survival probability") +
   facet_grid(season ~ site) +
   theme_bw() +
