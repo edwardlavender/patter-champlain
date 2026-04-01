@@ -240,8 +240,8 @@ residency_stats <-
   as.data.table()
 # Accounting for survivorship makes less than 1 % of difference to mean residency estimates
 # (but makes a bit more difference to the median)
-hist((residency_stats$mean_utd - residency_stats$mean_wtd) * 100)
-hist((residency_stats$median_utd - residency_stats$median_wtd) * 100)
+hist((residency_stats$mean_utd - residency_stats$mean_wtd))
+hist((residency_stats$median_utd - residency_stats$median_wtd))
 
 #### Plot the distribution of residencies in each region for the best analysis
 png(here_fig_real("main", "residency-best.png"), 
@@ -269,8 +269,10 @@ p <-
   # Add mean values, accounting for survival probability 
   # * The black points line up as expected, demonstrating ggplot2 actions weights properly
   # * Unweighted median values are generally, but not always, similar
-  # geom_point(data = residency_stats, aes(region, median_wtd), 
-  #            shape = 4, colour = "black", size = 2, stroke = 2) + 
+  geom_point(data = residency_stats, aes(region, mean_wtd),
+             shape = 4, colour = "black", size = 0.75, stroke = 1) +
+  # geom_point(data = residency_stats, aes(region, median_wtd),
+  #            shape = 4, colour = "black", size = 2, stroke = 2) +
   # geom_point(data = residency_stats, aes(region, median_utd),
   #            shape = 4, colour = "red", size = 1, stroke = 1) +
   # Add label of the number of observations per panel/region
