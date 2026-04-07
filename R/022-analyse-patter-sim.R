@@ -569,7 +569,7 @@ png(here_fig_sim("main", "residency-skill-moe.png"),
 p <- 
   residency_skill_moe |>
   ggplot(aes(sensitivity_label, moe, fill = sensitivity_label)) + 
-  geom_boxplot(linewidth = 0.25, size = 0.5, varwidth = TRUE) + 
+  geom_boxplot(linewidth = 0.25, size = 0.5, varwidth = TRUE, outliers = FALSE) + 
   geom_jitter(size = 0.25, colour = "dimgrey", width = 0.1, height = 0) +
   # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
   xlab("Sensitivity") + 
@@ -619,7 +619,7 @@ png(here_fig_sim("main", "residency-skill-moe-full.png"),
 p <-
   residency_skill_moe_full |>
   ggplot(aes(sensitivity_label, moe, fill = sensitivity_label)) +
-  geom_boxplot(linewidth = 0.25, size = 0.5, varwidth = TRUE) +
+  geom_boxplot(linewidth = 0.25, size = 0.5, varwidth = TRUE, outliers = FALSE) +
   geom_jitter(size = 0.25, colour = "dimgrey", width = 0.1, height = 0) +
   # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) +
   xlab("Sensitivity") +

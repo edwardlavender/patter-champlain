@@ -220,6 +220,8 @@ residency <-
          col = regions_cs$col[match(region, regions_cs$region)]) |> 
   as.data.table()
 
+qs::qsave(residency, here_output_real("main", "synthesis", "residency.qs"))
+
 #### Precompute mean residencies, accounting for survival probability
 # mean/median values are only slightly adjusted by accounting for survivorship
 residency_stats <- 
@@ -260,7 +262,7 @@ p <-
   residency |> 
   ggplot(aes(region, perc)) +
   geom_boxplot(aes(region, perc, fill = I(col), weight = survival_probability), 
-               varwidth = FALSE) +
+               outliers = FALSE, varwidth = FALSE) +
   # Add jittered points, coloured by survival probability 
   geom_jitter(aes(region, perc, alpha = survival_probability), 
               size = 0.25, 
