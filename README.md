@@ -134,6 +134,7 @@ The main elements of the project structure are as follows:
     - `synthesise-patter.R` collates `patter` outputs;
     - `analysis-patter-*.R` analyse outputs;
     - `refine-patter.R` interactively examines convergence failures;
+    - `exports.R` exports selected datasets for related projects;
 
 9.  **`renv/`** implements local dependency management for
     [`R`](https://www.r-project.org/).
