@@ -56,7 +56,7 @@ if (FALSE) {
                 color       = "red",
                 weight      = 3,
                 fillOpacity = 0) |> 
-    addPolygons(data        = champlain_summer,
+    addPolygons(data        = bathymetry,
                 color       = "green",
                 weight      = 3,
                 fillOpacity = 0)
