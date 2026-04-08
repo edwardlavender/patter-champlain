@@ -230,6 +230,8 @@ residency_skill_moe <-
   select("individual_id", "algorithm", "sensitivity", "sensitivity_label", "moe") |> 
   as.data.table()
 
+qs::qsave(residency_skill_moe, here_output_sim("main", "synthesis", "residency-moe.qs"))
+
 
 ###########################
 ###########################
