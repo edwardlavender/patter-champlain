@@ -21,6 +21,7 @@ library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
 library(lubridate)
+library(proj.verse)
 files_source_r(here_src())
 
 
@@ -29,6 +30,7 @@ files_source_r(here_src())
 #### Simulation study 
 
 #### Simulation datasets
+# Input
 paths <- 
   here_input_sim("main", "paths.qs") |> 
   qs::qread() |> 
@@ -41,8 +43,13 @@ detections <-
   qs::qread() |> 
   select(individual_id, timestamp, receiver_id, receiver_x, receiver_y) |> 
   as.data.frame()
+residency_moe <- 
+  here_output_sim("main", "synthesis", "residency-moe.qs") |> 
+  qs::qread() 
+# Output
 qs::qsave(paths, here_data("export", "sim-paths.qs"))
 qs::qsave(detections, here_data("export", "sim-detections.qs"))
+qs::qsave(residency_moe, here_data("export", "sim-residency-moe.qs"))
 
 #### Real-world datasets
 # Read detections
@@ -71,6 +78,14 @@ residency  <-
 qs::qsave(moorings, here_data("export", "real-moorings.qs"))
 qs::qsave(detections, here_data("export", "real-detections.qs"))
 qs::qsave(residency, here_data("export", "real-residency.qs"))
+
+
+###########################
+###########################
+#### Wahoo study
+
+file.copy(here_input_real("main", "survivors.qs"), 
+          here_data("export", "survivors.qs"))
 
 
 #### End of code. 
