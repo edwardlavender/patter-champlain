@@ -109,14 +109,14 @@ Follow the steps described below to clone the project and reproduce the workflow
 
 1.  **Clone the project** via GitHub. 
 
-3. **Setup project**, following the instructions in `dev/002-clone.R`:
+2. **Setup project**, following the instructions in `dev/002-clone.R`:
 
     - **Packages.** Work through `dev/002-clone.R` to use [`renv`](https://rstudio.github.io/renv/articles/renv.html) to regenerate the local project library. Packages can also be manually reinstalled via `002-clone.R`, if required. 
     - **Directories.** Rebuild the project directory tree, via `proj.templates::use_template_tree()`.
 
-4.  **Source `data-raw/`** from the sources provided or the authors.
+3.  **Source `data-raw/`** from the sources provided or the authors.
 
-5.  **Run scripts** to reproduce the analyses: 
+4.  **Run scripts** to reproduce the analyses: 
 
     - Run `setup-`, `develop-`, `sim-` and `explore-` `.R` scripts to set up the project;
     - Using `tmux` or similar, execute `001-workflow.sh` to perform inference via `run-algorithms.jl`;
