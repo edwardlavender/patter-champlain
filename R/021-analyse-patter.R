@@ -188,6 +188,8 @@ callstats <- lapply(iteration$index, function(i) {
                                                           "Filter: backward", 
                                                           "Smoother: two-filter"))) |> 
   as.data.table()
+# Record callstats
+qs::qsave(callstats, here_output_analysis("synthesis", "callstats.qs"))
 
 # Compute total run time (days on 100 cl)
 # > sim : 0.6895771
