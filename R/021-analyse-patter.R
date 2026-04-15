@@ -426,22 +426,30 @@ callstats[, nt := iteration$nt[match(index, iteration$index)]]
 utils.add::basic_stats(callstats$nt)
 
 #### Summarise computation time, by time step and particle
-# A) Total computation time per time step
+#
+# A) Total computation time per time step (secs)
 callstats |> 
-  mutate(time_per_t = time / nt) |> 
-  reframe(utils.add::basic_stats(time_per_t))
-# min mean median  max   sd  IQR  MAD
-# 0.07 0.45   0.23 1.57 0.37 0.66 0.09
-# B) Computation time per time step by routine
+  group_by(index) |> 
+  mutate(time = sum(time)) |> 
+  slice(1L) |> 
+  ungroup() |> 
+  summarise(time_per_t = time / nt) |> 
+  reframe(utils.add::basic_stats(time_per_t, p = NULL))
+# min  mean median   max    sd   IQR   MAD
+# <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl> <dbl>
+# 0.918  1.36   1.31  2.20 0.241 0.385 0.251
+#
+# B) Computation time per time step by routine (secs)
 callstats |> 
   mutate(routine = if_else(grepl("^filter:", routine), "filter", routine)) |>
   mutate(time_per_t = time / nt) |> 
   group_by(routine) |> 
-  reframe(utils.add::basic_stats(time_per_t))
-# routine                min  mean median   max    sd   IQR   MAD
-# <chr>                <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl> <dbl>
-# 1 filter                0.07  0.2    0.19  0.54  0.05  0.06  0.04
-# 2 smoother: two-filter  0.66  0.96   0.92  1.57  0.17  0.28  0.18
+  reframe(utils.add::basic_stats(time_per_t, p = NULL))
+# routine                 min  mean median   max     sd    IQR    MAD
+# <chr>                 <dbl> <dbl>  <dbl> <dbl>  <dbl>  <dbl>  <dbl>
+# 1 filter               0.0732 0.201  0.193 0.543 0.0475 0.0620 0.0450
+# 2 smoother: two-filter 0.656  0.961  0.917 1.57  0.171  0.281  0.181 
+#
 # C) Computation time per time step per particle by routine
 callstats |> 
   mutate(routine = if_else(grepl("^filter:", routine), "filter", routine)) |>
