@@ -200,7 +200,7 @@ iteration[, timeline_max := do.call(c, pbapply::pblapply(
   \(f) max(arrow::read_feather(f)$timestamp)
 ))]
 callstats[, timeline_min := iteration$timeline_min[match(index, iteration$index)]]
-callstats[, timeline_max := iteration$timeline_m[match(index, iteration$index)]]
+callstats[, timeline_max := iteration$timeline_max[match(index, iteration$index)]]
 
 #### Record callstats
 qs::qsave(callstats, here_output_analysis("synthesis", "callstats.qs"))
