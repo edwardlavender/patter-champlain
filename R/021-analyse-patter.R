@@ -170,30 +170,49 @@ if (FALSE) {
 
 ###########################
 ###########################
-#### Compute resource requirements
+#### Process callstats 
 
-#### Compute total run time
-# Read callstats
+#### Define iterations
 iteration <- iteration[file.exists(file_callstats), ]
+
+#### Read callstats
 callstats <- lapply(iteration$index, function(i) {
   iteration$file_callstats[iteration$index == i] |> 
     arrow::read_feather() |> 
     mutate(index = i, .before = 1L) |> 
     cbind(iteration[index == i, .(individual_id, block_id, sensitivity, sensitivity_label)]) |> 
     as.data.table()
-  }) |> 
+}) |> 
   rbindlist() |> 
   mutate(routine_label = stringr::str_to_sentence(routine), .after = routine) |> 
   mutate(routine_label = factor(routine_label, levels = c("Filter: forward", 
                                                           "Filter: backward", 
                                                           "Smoother: two-filter"))) |> 
   as.data.table()
-# Record callstats
+
+#### Add columns for wahoo-champlain
+iteration[, timeline_min := do.call(c, pbapply::pblapply(
+  file_timeline,
+  \(f) min(arrow::read_feather(f)$timestamp)
+))]
+iteration[, timeline_max := do.call(c, pbapply::pblapply(
+  file_timeline,
+  \(f) max(arrow::read_feather(f)$timestamp)
+))]
+callstats[, timeline_min := iteration$timeline_min[match(index, iteration$index)]]
+callstats[, timeline_max := iteration$timeline_m[match(index, iteration$index)]]
+
+#### Record callstats
 qs::qsave(callstats, here_output_analysis("synthesis", "callstats.qs"))
 
-# Compute total run time (days on 100 cl)
-# > sim : 0.6895771
-# > real: 3.300165
+
+###########################
+###########################
+#### Compute resource requirements
+
+#### Compute total run time (days on 100 cl)
+# sim : 0.6895771
+# real: 3.300165
 sum(callstats$time) / 60 / 60 / 24 / 100
 
 #### Compute total output size by block (MB, GB)
