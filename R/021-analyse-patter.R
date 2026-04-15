@@ -369,6 +369,13 @@ callstats <- callstats[index %in% successful_indices, ]
 diagnostics <- diagnostics[index %in% successful_indices, ]
 # > Subsequent analyses focus on successful runs only 
 
+#### Update callstats$convergence
+# Set callstats$convergence = TRUE to avoid confusion
+# (callstats$convergence may be FALSE for some indicies b/c 
+# for smoothing runs b/c/ convergence there is defined by Patter.jl 
+# not using the criteria in this project)
+callstats[, convergence := TRUE]
+
 
 ###########################
 ###########################
@@ -394,9 +401,38 @@ callstats |>
   as.data.table()
 # Cf. the number of time steps for successful algorithm runs (~6 s)
 # 20160 -> 58572 time steps
-pbapply::pbsapply(iteration$file_timeline, 
-       \(f) arrow::read_feather(f) |> nrow()) |> 
-  utils.add::basic_stats()
+iteration[, nt := pbapply::pbsapply(iteration$file_timeline, 
+                                    \(f) arrow::read_feather(f) |> nrow())]
+callstats[, nt := iteration$nt[match(index, iteration$index)]]
+utils.add::basic_stats(callstats$nt)
+
+#### Summarise computation time, by time step and particle
+# A) Total computation time per time step
+callstats |> 
+  mutate(time_per_t = time / nt) |> 
+  reframe(utils.add::basic_stats(time_per_t))
+# min mean median  max   sd  IQR  MAD
+# 0.07 0.45   0.23 1.57 0.37 0.66 0.09
+# B) Computation time per time step by routine
+callstats |> 
+  mutate(routine = if_else(grepl("^filter:", routine), "filter", routine)) |>
+  mutate(time_per_t = time / nt) |> 
+  group_by(routine) |> 
+  reframe(utils.add::basic_stats(time_per_t))
+# routine                min  mean median   max    sd   IQR   MAD
+# <chr>                <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl> <dbl>
+# 1 filter                0.07  0.2    0.19  0.54  0.05  0.06  0.04
+# 2 smoother: two-filter  0.66  0.96   0.92  1.57  0.17  0.28  0.18
+# C) Computation time per time step per particle by routine
+callstats |> 
+  mutate(routine = if_else(grepl("^filter:", routine), "filter", routine)) |>
+  mutate(time_per_t_per_particle = time / nt / n_particle) |> 
+  group_by(routine) |> 
+  reframe(utils.add::basic_stats(time_per_t_per_particle, p = NULL))
+# routine                     min       mean     median        max          sd        IQR         MAD
+# <chr>                     <dbl>      <dbl>      <dbl>      <dbl>       <dbl>      <dbl>       <dbl>
+# 1 filter               0.00000146 0.00000397 0.00000385 0.00000717 0.000000849 0.00000122 0.000000883
+# 2 smoother: two-filter 0.000262   0.000385   0.000367   0.000627   0.0000683   0.000113   0.0000722 
 
 #### Visualise total computation time
 # > For simulations, total computation time varies from 150 - 190 mins (~3 hours)
