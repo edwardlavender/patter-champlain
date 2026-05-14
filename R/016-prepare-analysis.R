@@ -45,8 +45,8 @@ fish       <- qs::qread(here_input("fish.qs"))
 #### Select analysis
 
 #### Define analysis 
-# analysis <- "sim"
-analysis <- "real"
+analysis <- "sim"
+# analysis <- "real"
 subanalysis <- "main"
 
 #### Define analysis-specific data
@@ -96,6 +96,18 @@ if (analysis == "real") {
 }
 
 nrow(detections)
+
+#### Review detection rates
+# Check how the detection rate of tagged fish in the wild
+# compares to the 2-min simulated data?
+detections |> 
+  mutate(day = as.Date(timestamp), 
+         month = lubridate::month(timestamp), 
+         year = lubridate::year(timestamp)) |> 
+  group_by(individual_id, month, year) |> 
+  summarise(days = length(unique(day))) |> 
+  ungroup() |> 
+  reframe(utils.add::basic_stats(days))
 
 
 ###########################
