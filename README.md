@@ -124,8 +124,10 @@ The main elements of the project structure are as follows:
       datasets and develops the acoustic observation model;
     - `develop-model.R` collates state-space model parameters;
     - `sim-data.R` simulates trajectories and observations;
+    - `explore-data.R` explores datasets;
+    - `run-heuristic.R` runs a heuristic algorithm;
     - `prepare-analysis.R` prepares iteration `data.table`s and
-      directories for simulation/real-world analyses;
+      directories for simulation/real-world analyses using `patter`;
     - (deprecated) `trial-patter*.R` explored the use of `patter` to
       analyse simulation/real-world datasets;
     - (deprecated) `plan-patter.R` supported the development of an

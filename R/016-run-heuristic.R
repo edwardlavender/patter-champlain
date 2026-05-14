@@ -7,7 +7,7 @@
 #    (We will compare residency estimates derived by this approach to patter)
 
 #### Prerequisites
-# 1) NA
+# 1) This script currently focuses on the simulation analysis 
 
 
 ###########################
