@@ -133,6 +133,7 @@ stopifnot(all(!is.na(positions_centroid$region)))
 
 #### Compute residency for each region relative to total number of positions
 # head(qs::qread(here_output_sim_main("synthesis", "residency-skill.qs")))
+# unit_id individual_id chain_id sensitivity sensitivity_label region   estimate
 residency <- 
   positions_centroid |> 
   group_by(animal_id) |> 
@@ -145,11 +146,14 @@ residency <-
   group_by(animal_id) |> 
   tidyr::complete(region, fill = list(estimate = 0)) |> 
   ungroup() |> 
-  mutate(algorithm = "Int",
-         sensitivity = "Int", 
+  mutate(unit_id           = animal_id, 
+         individual_id     = animal_id,
+         chain_id          = "2014-Jan",
+         sensitivity       = "Int", 
          sensitivity_label = "Int") |> 
-  select(individual_id = "animal_id", "algorithm", "sensitivity", "sensitivity_label",  "region", "estimate") |> 
-  arrange(individual_id, algorithm, sensitivity, region) |> 
+  select("unit_id", "individual_id", "chain_id", 
+         "sensitivity", "sensitivity_label",  "region", "estimate") |> 
+  arrange(individual_id, chain_id, sensitivity, region) |> 
   as.data.table()
 
 # Confirm every individual has one residency estimate for every region

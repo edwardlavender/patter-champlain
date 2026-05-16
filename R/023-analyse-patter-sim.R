@@ -39,6 +39,7 @@ iteration     <- qs::qread(here_input_sim("main", "iteration.qs"))
 paths         <- qs::qread(here_input_sim("main", "paths.qs"))
 champlain_utm <- qreadvect(here_input("champlain-utm.qs"))
 moorings      <- qs::qread(here_input_sim("main", "moorings.qs"))
+residency_int <- qs::qread(here_output_sim("main", "synthesis", "residency-int.qs"))
 
 
 ###########################
@@ -178,56 +179,59 @@ if (!file.exists(file_residency_skill) | overwrite) {
   residency_skill <- iteration[file.exists(file_residency), ]
   stopifnot(nrow(residency_skill) > 0L)
   
+  #### Read residency estimates
+  # Define residency (patter)
+  residency_patter <- lapply(residency_skill$file_residency, qs::qread) |> rbindlist()
+  residency_patter[, package := "patter"]
+  # Define residency (Int)
+  residency_int[, package := "glatos"]
+  # Define residency (sim)
+  # * We only load one file per individual (since all files are identical)
+  residency_sim <- lapply(residency_skill[, .SD[1], by = individual_id]$file_residency_sim, qs::qread) |> rbindlist() 
+
+  #### Define residency skill
   residency_skill <- 
-    split(residency_skill, seq_len(nrow(residency_skill))) |> 
-    cl_lapply(function(d) {
-      # d <- iteration_skill[1, ]
-      # Load residency for simulated path 
-      sim <- qs::qread(d$file_residency_sim)
-      # Read output (estimated) residency
-      out <- qs::qread(d$file_residency)
-      # Merge datasets with "simulation" and "estimated" columns for residency statistics
-      out <- 
-        out |> 
-        left_join(sim |> 
-                    select("region", simulation = "estimate") |> 
-                    as.data.table(),
-                  by = "region")
-      # Compute residency skill/error (estimated time - truth)
-      # * <0: underestimation of residency
-      # * >0: overestimation of residency  
-      out[, skill := estimate - simulation]
-      out
-      
-    }) |> 
-    rbindlist() |> 
-    # Add colours by region
+    # Merge package estimates & simulations 
+    rbind(residency_patter, residency_int) |> 
+    # Define simulation" and "estimated" columns to compute skill 
+    left_join(residency_sim |> 
+                select(individual_id = "path_id", "region", simulation = "estimate") |> 
+                as.data.table(),
+              by = c("individual_id", "region")) |>
+    # Compute residency skill/error (estimated time - truth)
+    # * <0: underestimation of residency
+    # * >0: overestimation of residency  
+    mutate(skill = estimate - simulation, 
+            perc = skill * 100) |> 
+    # Add colours by region for plotting 
     mutate(region = factor(region, levels = levels(regions_cs$region)), 
            col = regions_cs$col[match(region, regions_cs$region)]) |> 
+    arrange(unit_id, individual_id, chain_id, 
+            package, sensitivity, sensitivity_label, region) |> 
+    select("unit_id", "individual_id", "chain_id", 
+           "package", "sensitivity", "sensitivity_label", 
+           "region", "col", "estimate", "simulation", "skill", "perc") |> 
     as.data.table()
   
   qs::qsave(residency_skill, file_residency_skill)
-  residency_skill
   
 } else {
   residency_skill <- qs::qread(file_residency_skill)
 }
-residency_skill[, perc := skill * 100]
 
 #### Average residency skill over regions using MOE (Futia et al., 2024)
 # MOE = mean(abs(truth_r - estimate_r) * truth_r), averaged over all regions r
 # MOE varies between 0 (no error) and 100 % (completely wrong)
 residency_skill_moe <- 
   residency_skill |> 
-  group_by(individual_id, sensitivity) |> 
-  mutate(algorithm = "patter") |> 
+  group_by(package, individual_id, sensitivity) |> 
   # Compute MOE as the mean absolute error over all regions, weighted by prop. time per region
   mutate(moe = weighted.mean(abs(simulation - estimate), simulation) * 100) |> 
   # This code is equivalent: 
   # mutate(moe = sum(abs(simulation - estimate) * simulation) / sum(simulation) * 100) |> 
   slice(1L) |> 
   ungroup() |>
-  select("individual_id", "algorithm", "sensitivity", "sensitivity_label", "moe") |> 
+  select("individual_id", "package", "sensitivity", "sensitivity_label", "moe") |> 
   as.data.table()
 
 qs::qsave(residency_skill_moe, here_output_sim("main", "synthesis", "residency-moe.qs"))
@@ -238,11 +242,17 @@ qs::qsave(residency_skill_moe, here_output_sim("main", "synthesis", "residency-m
 #### Example plots
 
 #### Select individual 
-it        <- iteration[1, ]
-path      <- qs::qread(it$file_path)
-occupancy <- terra::rast(it$file_occupancy)
-residency <- residency_skill[individual_id == it$individual_id & sensitivity == "best", ]
+it            <- iteration[1, ]
+path          <- qs::qread(it$file_path)
+occupancy     <- terra::rast(it$file_occupancy)
+residency_pat <- residency_skill[individual_id == it$individual_id & 
+                                   sensitivity == "best" & 
+                                   package == "patter", ]
+residency_gla <- residency_skill[individual_id == it$individual_id & 
+                                   sensitivity == "Int" & 
+                                   package == "glatos", ]
 stopifnot(it$sensitivity == "best")
+stopifnot(nrow(residency_pat) == nrow(residency_gla))
 
 #### Map simulated path for example individual
 png(here_fig_sim("main", "example-path.png"), 
@@ -298,14 +308,30 @@ points(moorings$receiver_x, moorings$receiver_y, pch = 4, cex = 0.35)
 terra::lines(champlain_utm, lwd = 0.5)
 dev.off()
 
-#### Map residency error for example individual
+#### Map residency error for example individual (patter)
 # Update spatial layer with skill 
-champlain_utm$skill <- residency$skill[match(champlain_utm$region, residency$region)]
+champlain_utm$skill      <- residency_pat$skill[match(champlain_utm$region, residency_pat$region)]
+champlain_utm$skill_perc <- champlain_utm$skill * 100
+# Choose y limits to be symmetrical to force diverging colour scale centred at zero
+mx <- max(abs(range(c(residency_pat$perc, residency_gla$perc))))
+# Make map
+png(here_fig_sim("main", "example-residency-patter.png"), 
+    height = 5, width = 5, units = "in", res = 800)
+terra::plot(champlain_utm, y = "skill_perc",
+            range = c(-mx, mx), 
+            col = terra::map.pal("differences", 100), type = "continuous", 
+            pax = list(labels = FALSE, lwd.ticks = 0), lwd = 0.5)
+points(moorings$receiver_x, moorings$receiver_y, pch = 4, cex = 0.35)
+dev.off()
+
+#### As above for the Int model 
+# Update spatial layer with skill 
+champlain_utm$skill      <- residency_gla$skill[match(champlain_utm$region, residency_gla$region)]
 champlain_utm$skill_perc <- champlain_utm$skill * 100
 # Choose y limits to be symmetrical to force diverging colour scale centred at zero
 mx <- max(abs(champlain_utm$skill_perc))
 # Make map
-png(here_fig_sim("main", "example-residency.png"), 
+png(here_fig_sim("main", "example-residency-glatos.png"), 
     height = 5, width = 5, units = "in", res = 800)
 terra::plot(champlain_utm, y = "skill_perc",
             range = c(-mx, mx), 
@@ -522,12 +548,15 @@ dev.off()
 #### Visualise residency skill, by region, including sensitivity
 # This plot is by region & sensitivity
 png(here_fig_sim("main", "residency-skill-sensitivity.png"), 
-    height = 6, width = 12, units = "in", res = 800)
+    height = 4, width = 12, units = "in", res = 800)
 p <- 
   residency_skill |>
+  # (optional) Filter Int model 
+  filter(sensitivity_label != "Int") |> 
   ggplot() + 
   geom_boxplot(aes(region, perc, fill = sensitivity_label), 
                linewidth = 0.25, size = 0.5, varwidth = TRUE) + 
+  scale_fill_discrete(drop = FALSE) +
   geom_hline(yintercept = 0, linetype = 3) + 
   # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
   xlab("Region") + 
@@ -552,6 +581,11 @@ residency_skill |>
   filter(sensitivity == "best") |> 
   # filter(!(estimate == 0 & simulation == 0)) |> 
   reframe(utils.add::basic_stats(perc))
+# Comparative skill for 'Int' analysis
+residency_skill |> 
+  filter(sensitivity == "Int") |> 
+  # filter(!(estimate == 0 & simulation == 0)) |> 
+  reframe(utils.add::basic_stats(perc))
 # Residency skill for 'best' analyses split by region
 residency_skill |> 
   filter(sensitivity == "best") |> 
@@ -567,13 +601,16 @@ residency_skill |>
 # * I.e., we expect reduced variation (increased precision)
 # * We show the variation with a boxplot over all tracks
 png(here_fig_sim("main", "residency-skill-moe.png"), 
-    height = 4, width = 8, units = "in", res = 800)
+    height = 3, width = 8, units = "in", res = 800)
 p <- 
   residency_skill_moe |>
+  # (optional) Filter Int model 
+  # filter(sensitivity_label != "Int") |> 
   ggplot(aes(sensitivity_label, moe, fill = sensitivity_label)) + 
   geom_boxplot(linewidth = 0.25, size = 0.5, varwidth = TRUE, outliers = FALSE) + 
   geom_jitter(size = 0.25, colour = "dimgrey", width = 0.1, height = 0) +
   # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
+  scale_fill_discrete(drop = FALSE) +
   xlab("Sensitivity") + 
   ylab("MOE (%)") + 
   labs(fill = "Analysis") +
@@ -586,55 +623,64 @@ p <-
 print(p)
 dev.off()
 
+# Summarise MOE
+residency_skill_moe |> 
+  group_by(package, sensitivity) |> 
+  summarise(utils.add::basic_stats(moe))
+
 #### (optional) Compare MOE to heuristic methods (Futia et al., 2024)
 
-## Read MOE scores for best model in Futia et al. (2024)
-# * AInt_model_performance.qs includes error by region for each track 
-# * Int_model_moe.qs has the mean weighted error (sum across regions by individuals) that was used for Fig 3.
-residency_skill_moe_int <- 
-  here_data_raw_mf("Int_model_moe.qs") |> 
-  qs::qread() |> 
-  mutate(
-    individual_id = animal_id, 
-    algorithm = as.character(model), 
-    sensitivity = "Int",
-    sensitivity_label = factor("Int", levels = c("Int", levels(residency_skill_moe$sensitivity_label))), 
-    moe = mean_wt_abs_err
-  ) |> 
-  select("individual_id", "algorithm", "sensitivity", "sensitivity_label", "moe") |> 
-  as.data.table()
-
-## Compute summary statistics
-# For patter:
-# * TO DO
-# For Int algorithm: 
-# * Average MOE ± SD = 5.1 ± 8.1 %
-# * Max MOE =40.4 % 
-residency_skill_moe_full <- rbind(residency_skill_moe, residency_skill_moe_int)
-residency_skill_moe_full |> 
-  group_by(algorithm, sensitivity) |> 
-  reframe(utils.add::basic_stats(moe))
-
-#### (optional) Update ggplot of MOE including Int model from Futia et al. (2024)
-png(here_fig_sim("main", "residency-skill-moe-full.png"),
-    height = 6, width = 12, units = "in", res = 800)
-p <-
-  residency_skill_moe_full |>
-  ggplot(aes(sensitivity_label, moe, fill = sensitivity_label)) +
-  geom_boxplot(linewidth = 0.25, size = 0.5, varwidth = TRUE, outliers = FALSE) +
-  geom_jitter(size = 0.25, colour = "dimgrey", width = 0.1, height = 0) +
-  # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) +
-  xlab("Sensitivity") +
-  ylab("MOE (%)") +
-  labs(fill = "Analysis") +
-  theme_bw() +
-  theme(panel.grid.minor.y = element_blank(),
-        panel.grid.major.y = element_blank(),
-        axis.title.x = element_text(margin = margin(t = 10)),
-        axis.title.y = element_text(margin = margin(r = 10)),
-        axis.text.x = element_text(angle = 45, hjust = 1))
-print(p)
-dev.off()
+if (FALSE) {
+  
+  ## Read MOE scores for best model in Futia et al. (2024)
+  # * AInt_model_performance.qs includes error by region for each track 
+  # * Int_model_moe.qs has the mean weighted error (sum across regions by individuals) that was used for Fig 3.
+  residency_skill_moe_int <- 
+    here_data_raw_mf("Int_model_moe.qs") |> 
+    qs::qread() |> 
+    mutate(
+      individual_id = animal_id, 
+      package = as.character(model), 
+      sensitivity = "Int",
+      sensitivity_label = factor("Int", levels = c("Int", levels(residency_skill_moe$sensitivity_label))), 
+      moe = mean_wt_abs_err
+    ) |> 
+    select("individual_id", "package", "sensitivity", "sensitivity_label", "moe") |> 
+    as.data.table()
+  
+  ## Compute summary statistics
+  # For patter:
+  # * TO DO
+  # For Int package: 
+  # * Average MOE ± SD = 5.1 ± 8.1 %
+  # * Max MOE =40.4 % 
+  residency_skill_moe_full <- rbind(residency_skill_moe, residency_skill_moe_int)
+  residency_skill_moe_full |> 
+    group_by(package, sensitivity) |> 
+    reframe(utils.add::basic_stats(moe))
+  
+  #### (optional) Update ggplot of MOE including Int model from Futia et al. (2024)
+  png(here_fig_sim("main", "residency-skill-moe-full.png"),
+      height = 6, width = 12, units = "in", res = 800)
+  p <-
+    residency_skill_moe_full |>
+    ggplot(aes(sensitivity_label, moe, fill = sensitivity_label)) +
+    geom_boxplot(linewidth = 0.25, size = 0.5, varwidth = TRUE, outliers = FALSE) +
+    geom_jitter(size = 0.25, colour = "dimgrey", width = 0.1, height = 0) +
+    # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) +
+    xlab("Sensitivity") +
+    ylab("MOE (%)") +
+    labs(fill = "Analysis") +
+    theme_bw() +
+    theme(panel.grid.minor.y = element_blank(),
+          panel.grid.major.y = element_blank(),
+          axis.title.x = element_text(margin = margin(t = 10)),
+          axis.title.y = element_text(margin = margin(r = 10)),
+          axis.text.x = element_text(angle = 45, hjust = 1))
+  print(p)
+  dev.off()
+  
+}
 
 
 #### End of code. 
