@@ -45,8 +45,8 @@ fish       <- qs::qread(here_input("fish.qs"))
 #### Select analysis
 
 #### Define analysis 
-analysis <- "sim"
-# analysis <- "real"
+# analysis <- "sim"
+analysis <- "real"
 subanalysis <- "main"
 
 #### Define analysis-specific data
@@ -194,6 +194,10 @@ if (analysis == "sim") {
                  by = "months") |> 
     format("%y-%b") |>
     tolower()
+  # Check the total number of time steps
+  length(seq(as.POSIXct("2014-12-01 00:00:00"), 
+          as.POSIXct("2017-05-31 23:58:00"), 
+          by = "2 mins"))
   
 }
 
@@ -650,6 +654,14 @@ stopifnot(min(nt) > 20000 & max(nt) < 22320 * 3)
 nb <- p_batch(p_mem(max(iteration$n_batch), max(nt), 4, 100), 50e3)
 range(nb)
 stopifnot(nb <= iteration_julia$n_batch[1])
+
+#### Review number of geolocation estimates (real-world analysis)
+# Check number of individual/month blocks 
+nrow(iteration)        # 2070
+nrow(iteration_julia)  # 1427
+# Approximate number of geolocation estimates
+22320 * 2070 # 46,202,400
+22320 * 1427 # 31,850,640
 
 #### Check total size of input directories
 # For sim, with write_feather_compressed():
