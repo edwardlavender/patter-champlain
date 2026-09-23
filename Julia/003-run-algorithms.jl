@@ -37,7 +37,8 @@ include("./src/inference.jl")
 
 #### Load iteration
 # analysis  = "sim"
-analysis    = "real"
+# analysis    = "real"
+analysis    = "validation"
 subanalysis = "main"
 iteration   = DataFrame(Arrow.Table(joinpath("data", "input", analysis, subanalysis, "iteration.feather")))
 
