@@ -3,13 +3,19 @@ set -euo pipefail
 
 # SCRIPT="./Julia/002-run-filter.jl" 
 SCRIPT="./Julia/003-run-algorithms.jl"
-ANALYSIS="real"
-NROW=1427
-NCPU=80
+ANALYSIS="validation"
+NROW=665
+NCPU=50
 LOGDIR="./data/output/$ANALYSIS/main/logs"
 mkdir -p "$LOGDIR"
 
 export JULIA_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+export OPENBLAS_DEFAULT_NUM_THREADS=1
+export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+export BLIS_NUM_THREADS=1
+export VECLIB_MAXIMUM_THREADS=1
 
 seq 1 "$NROW" |
   xargs -P "$NCPU" -I {} \
