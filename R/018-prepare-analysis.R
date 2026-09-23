@@ -252,8 +252,8 @@ if (analysis %in% c("sim", "real")) {
         start |>
         format("%y-%b") |>
         tolower(), 
-      chain_start = start, 
-      chain_end = end, 
+      chain_start = lubridate::floor_date(start, "2 mins"),
+      chain_end = lubridate::ceiling_date(end, "2 mins"),
       block_id = chain_id, 
       block_start = chain_start, 
       block_end = chain_end, 
@@ -672,11 +672,23 @@ if (!all(file.exists(iteration_julia$file_timeline)) | overwrite) {
   
 }
 
-#### Validate file creation
+#### Review example files
+eg_timeline  <- arrow::read_feather(iteration_julia$file_timeline[1])
+eg_acoustics <- arrow::read_feather(iteration_julia$file_acoustics[1])
+range(eg_timeline$timestamp) == range(eg_acoustics$timestamp)
+
+#### Automated checks
+## Validate file creation
 # We check file_acoustics, file_timeline
 # Note that file_containers_* and file_t_resample_* may not exist
 stopifnot(all(file.exists(iteration_julia$file_acoustics)))
 stopifnot(all(file.exists(iteration_julia$file_timeline)))
+## Validate timeline/acoustics$timestamp alignment
+pbapply::pblapply(split(iteration_julia, iteration_julia$index), function(it) {
+  timeline <- arrow::read_feather(it$file_timeline)
+  acoustics <- arrow::read_feather(it$file_acoustics)
+  stopifnot(all(acoustics$timestamp %in% timeline$timestamp))
+}) |> invisible()
 
 #### Review the number of time steps/batches
 # For the real-world time series, each block contains up to ~22320 time steps
