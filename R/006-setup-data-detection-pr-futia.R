@@ -89,6 +89,7 @@ table(range_test_locs$location %in% moorings_locs$location)
 
 #### Reformat data
 detections <- 
+  validation <- 
   detections |> 
   select(transmitter_id, 
          receiver_id = receiver_sn,
@@ -107,7 +108,11 @@ detections <-
                                 cbind(receiver_lon, receiver_lat), 
                                 lonlat = TRUE, pairwise = TRUE)
   ) |> 
-  # Cleanup
+  as.data.table()
+
+# Cleanup
+detections <-
+  copy(detections) |>
   arrange(transmitter_id, timestamp) |>
   select(transmitter_id, start, end, timestamp, receiver_id, dB, delay, dist) |> 
   as.data.table()
@@ -166,7 +171,7 @@ dcounts |>
 
 #### Write to file
 qs::qsave(dcounts, here_data("supp", "model-obs", "futia-raw.qs"))
-
+qs::qsave(validation, here_data("supp", "model-obs", "futia-raw-validation.qs"))
 
 #### End of code. 
 ###########################
