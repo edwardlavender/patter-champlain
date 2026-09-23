@@ -32,6 +32,10 @@ here_input_real <- function(...) {
   here_input("real", ...)
 }
 
+here_input_validation <- function(...) {
+  here_input("validation", ...)
+}
+
 here_output <- function(...) {
   here::here("data", "output", ...)
 }
@@ -58,6 +62,14 @@ here_output_real <- function(...) {
 
 here_output_real_main <- function(...) {
   here_output("real", "main", ...)
+}
+
+here_output_validation <- function(...) {
+  here_output("validation", ...)
+}
+
+here_output_validation_main <- function(...) {
+  here_output("validation", "main", ...)
 }
 
 here_debug <- function(...) {
