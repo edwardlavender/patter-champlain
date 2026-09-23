@@ -170,7 +170,61 @@ if (!file.exists(file_occupancy_skill) | overwrite) {
   occupancy_skill <- qs::qread(file_occupancy_skill)
 }
 
-#### Compute residency skill
+#### Compute residency skill at grid cell level (reviewer request) (~114 s)
+overwrite <- FALSE
+file_residency_skill_grid <- here_output_sim_main("synthesis", "residency-skill-grid.qs")
+if (!file.exists(file_residency_skill_grid) | overwrite) {
+  
+  tic()
+  
+  # Define template data.table
+  # * This defines iteration (e.g., individual_id) and associated files 
+  # * We select a subset of columns to reduce memory requirements
+  residency_skill_grid <- 
+    iteration |> 
+    filter(file.exists(file_occupancy)) |> 
+    select("index", "unit_id", "individual_id", "chain_id", 
+           "parameter_id", "sensitivity", "sensitivity_label", 
+           "file_occupancy") |> 
+    as.data.table()
+    
+  stopifnot(nrow(residency_skill_grid) > 0L)
+  
+  # Iterate over individuals & compute residency error at grid cell level
+  residency_skill_grid <- 
+    lapply(split(residency_skill_grid, seq_len(nrow(residency_skill_grid))), function(d) {
+    # Compute POU for track (true residency in each grid cell)
+    # d <- residency_skill_grid[1, ]
+    path <- paths[path_id == d$individual_id, ]
+    true <- map_pou(.map = map, .coord = path, .plot = FALSE)$ud
+    # Read modelled POU for track (estimated residency in each grid cell)
+    model <- terra::rast(d$file_occupancy)
+    # Compute percentage error (%)
+    perc <- (model - true) * 100
+    # (optional) Sense check maps
+    if (FALSE) {
+      pp <- par(mfrow = c(1, 3))
+      terra::plot(true)
+      terra::plot(model)
+      terra::plot(perc)
+      par(pp)
+    }
+    # Add percentage error to data.table
+    # (& select relevant columns to reduce memory requirements)
+    perc_df <- as.data.frame(perc, cells = TRUE, na.rm = TRUE)
+    colnames(perc_df) <- c("cell", "perc")
+    cbind(d, perc_df)
+
+  }) |> rbindlist()
+  
+  toc()
+  qs::qsave(residency_skill_grid, file_residency_skill_grid)
+
+} else {
+  residency_skill_grid <- qs::qread(file_residency_skill_grid)
+}
+
+#### Compute residency skill at regional level
 # Compute error between simulated & reconstructed residency estimates _by region_
 overwrite <- FALSE
 file_residency_skill <- here_output_sim_main("synthesis", "residency-skill.qs")
@@ -308,7 +362,7 @@ points(moorings$receiver_x, moorings$receiver_y, pch = 4, cex = 0.35)
 terra::lines(champlain_utm, lwd = 0.5)
 dev.off()
 
-#### Map residency error for example individual (patter)
+#### Map regional residency error for example individual (patter)
 # Update spatial layer with skill 
 champlain_utm$skill      <- residency_pat$skill[match(champlain_utm$region, residency_pat$region)]
 champlain_utm$skill_perc <- champlain_utm$skill * 100
@@ -520,6 +574,51 @@ p <-
         axis.title.y = element_text(margin = margin(r = 10))) 
 print(p)
 dev.off()
+
+#### Visualise residency skill at grid cell level (best + sensitivity) 
+# ~323 s with outliers
+if (FALSE) {
+  tic()
+  png(here_fig_sim("main", "residency-skill-grid.png"), 
+      height = 4, width = 6, units = "in", res = 800)
+  p <- 
+    residency_skill_grid |> 
+    # group_by(individual_id) |>
+    # slice_sample(n = 100) |>
+    # ungroup() |>
+    # as.data.table() |> 
+    ggplot() + 
+    geom_boxplot(aes(sensitivity_label, perc, fill = sensitivity_label), 
+                 linewidth = 0.5, size = 1, varwidth = FALSE, 
+                 outliers = TRUE) +
+    geom_hline(yintercept = 0, linetype = 3) + 
+    # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
+    xlab("Analysis") + 
+    ylab("Residency error (%)") + 
+    guides(fill = "none") +
+    theme_bw() +
+    theme(panel.grid.minor.y = element_blank(), 
+          panel.grid.major.y = element_blank(), 
+          axis.title.x = element_text(margin = margin(t = 10)),
+          axis.title.y = element_text(margin = margin(r = 10)), 
+          axis.text.x = element_text(angle = 45, hjust = 1))
+  print(p)
+  dev.off()
+  toc()
+}
+# Summary statistics
+residency_skill_grid |> 
+  group_by(sensitivity_label) |> 
+  reframe(utils.add::basic_stats(perc)) |> 
+  ungroup() |>
+  as.data.table()
+# Summary statistics
+residency_skill_grid |> 
+  filter(perc > 0) |>
+  group_by(sensitivity_label) |> 
+  reframe(utils.add::basic_stats(perc)) |> 
+  ungroup() |>
+  as.data.table()
 
 #### Visualise residency skill by region, for 'best' analyses
 png(here_fig_sim("main", "residency-skill-best.png"), 
