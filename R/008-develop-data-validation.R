@@ -184,20 +184,29 @@ tests <-
   as.data.table()
          
 #### Clean up
-moorings |> 
+moorings <- 
+  moorings |> 
   select("receiver_id", 
          "receiver_x", "receiver_y",
          "receiver_start", "receiver_end") |> 
   arrange(receiver_id) |> 
   as.data.table()
 
-detections |> 
+detections <- 
+  detections |> 
   select("individual_id", "timestamp", "receiver_id") |> 
   arrange(individual_id, timestamp, receiver_id) |> 
   as.data.table()
 
-head(moorings)
-head(moorings)
+#### Checks
+moorings
+detections
+
+#### Write to file
+qs::qsave(tests, here_input_validation("main", "tests.qs"))
+qs::qsave(moorings, here_input_validation("main", "moorings.qs"))
+qs::qsave(detections, here_input_validation("main", "detections.qs"))
+
 
 #### End of code. 
 ###########################
