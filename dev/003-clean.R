@@ -39,6 +39,7 @@ dirs.create("data")
 dirs.create(here_input())
 dirs.create(here_input_sim("main"))
 dirs.create(here_input_real("main"))
+dirs.create(here_input_validation("main"))
 dirs.create(here_input("vmap"))
 
 # data/debug/ 
@@ -62,7 +63,14 @@ dirs.create(here_output_real_main("blocks"))
 dirs.create(here_output_sim_main("chains"))
 dirs.create(here_output_real_main("synthesis"))
 
-# data/output/sim/main/
+# data/output/validation/main
+dirs.create(here_output_validation_main())
+dirs.create(here_output_validation_main("logs"))
+dirs.create(here_output_validation_main("blocks"))
+dirs.create(here_output_validation_main("chains"))
+dirs.create(here_output_validation_main("synthesis"))
+
+# data/supp/
 dirs.create(here_data("supp"))
 dirs.create(here_data("supp", "model-move"))
 dirs.create(here_data("supp", "model-obs"))
@@ -75,6 +83,7 @@ dirs.create(here_fig("model", "model-move"))
 dirs.create(here_fig("model", "model-obs"))
 dirs.create(here_fig("real", "main"))
 dirs.create(here_fig("sim", "main"))
+dirs.create(here_fig("validation", "main"))
 dirs.create(here_fig("tables"))
 
 #### Record tree
