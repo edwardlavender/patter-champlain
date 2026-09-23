@@ -64,7 +64,10 @@ n_futia_moorings <- nrow(futia_moorings)
 #### Process associated detections 
 futia_detections <-
   futia_detections |> 
-  mutate(dataset = "F") |> 
+  mutate(dataset = "F", 
+         timestamp = lubridate::force_tz(timestamp, "UTC"), 
+         start = lubridate::with_tz(start, "UTC"), 
+         end = lubridate::with_tz(end, "UTC")) |> 
   rename(receiver_sn = receiver_id) |> 
   filter(receiver_sn %in% futia_moorings$receiver_sn) |> 
   select("dataset", "transmitter_id", "tag_lon", "tag_lat", "start", "end",
@@ -105,7 +108,10 @@ pinheiro_moorings <-
          receiver_lat = rec_deploy_lat) |> 
   distinct(dataset, receiver_sn, receiver_lon, receiver_lat) |> 
   mutate(receiver_start = min(pinheiro_detections$detection_timestamp_utc),
-         receiver_end = max(pinheiro_detections$detection_timestamp_utc)) |> 
+         receiver_end   = max(pinheiro_detections$detection_timestamp_utc), 
+         receiver_start = lubridate::force_tz(receiver_start, "UTC"), 
+         receiver_end   = lubridate::force_tz(receiver_end, "UTC")
+         ) |> 
   select("dataset", 
          "receiver_sn", 
          "receiver_lon", "receiver_lat", 
@@ -116,9 +122,9 @@ pinheiro_moorings <-
 pinheiro_detections <- 
   pinheiro_detections |>  
   janitor::clean_names() |>
-  mutate(dataset = "P") |> 
+  mutate(dataset = "P", 
+         timestamp = lubridate::force_tz(detection_timestamp_utc, "UTC")) |> 
   rename(transmitter_id = transmitter, 
-         timestamp = detection_timestamp_utc, 
          tag_lon = tag_deploy_lon, 
          tag_lat = tag_deploy_lat, 
          receiver_lon = rec_deploy_lon, 
@@ -174,10 +180,13 @@ detections <-
   arrange(dataset, transmitter_id, tag_lon, tag_lat, start, timestamp, receiver_id) |> 
   group_by(dataset, transmitter_id, tag_lon, tag_lat, start) |> 
   mutate(individual_id = cur_group_id(), .before = 1L) |>
+  ungroup() |> 
+  # Enforce UTC
+  
   as.data.table()
 
 #### Collate 'tagging' (range test) information
-# This defines test IDs, the location of the range testing tagt, and the start/end time
+# This defines test IDs, the location of the range testing tag, and the start/end time
 tests <- 
   detections |> 
   distinct(individual_id, dataset, tag_lon, tag_lat, start, end) |>
@@ -199,8 +208,25 @@ detections <-
   as.data.table()
 
 #### Checks
+# Review datasets
 moorings
 detections
+# Validate time zones (UTC)
+stopifnot(all(sapply(list(
+  futia_moorings$receiver_start,
+  futia_moorings$receiver_end,
+  pinheiro_moorings$receiver_start,
+  pinheiro_moorings$receiver_end,
+  moorings$receiver_start, 
+  moorings$receiver_end, 
+  
+  futia_detections$timestamp,
+  pinheiro_detections$timestamp, 
+  detections$timestamp, 
+  
+  tests$start, 
+  tests$end
+), lubridate::tz) == "UTC"))
 
 #### Write to file
 qs::qsave(tests, here_input_validation("main", "tests.qs"))
