@@ -46,7 +46,8 @@ fish       <- qs::qread(here_input("fish.qs"))
 
 #### Define analysis 
 # analysis <- "sim"
-analysis <- "real"
+# analysis <- "real"
+analysis   <- "validation"
 subanalysis <- "main"
 
 #### Define analysis-specific data
@@ -98,16 +99,18 @@ if (analysis == "real") {
 nrow(detections)
 
 #### Review detection rates
-# Check how the detection rate of tagged fish in the wild
-# compares to the 2-min simulated data?
-detections |> 
-  mutate(day = as.Date(timestamp), 
-         month = lubridate::month(timestamp), 
-         year = lubridate::year(timestamp)) |> 
-  group_by(individual_id, month, year) |> 
-  summarise(days = length(unique(day))) |> 
-  ungroup() |> 
-  reframe(utils.add::basic_stats(days))
+if (analysis %in% c("sim", "real")) {
+  # Check how the detection rate of tagged fish in the wild
+  # compares to the 2-min simulated data?
+  detections |> 
+    mutate(day = as.Date(timestamp), 
+           month = lubridate::month(timestamp), 
+           year = lubridate::year(timestamp)) |> 
+    group_by(individual_id, month, year) |> 
+    summarise(days = length(unique(day))) |> 
+    ungroup() |> 
+    reframe(utils.add::basic_stats(days))
+}
 
 
 ###########################
@@ -120,120 +123,149 @@ detections |>
 # For real-world analysis, we model each individual and every seasonal block from
 # the start to the end of the study period
 
-if (analysis == "sim") {
+if (analysis %in% c("sim", "real")) {
   
-  #### Define individuals
-  # We model 1:100 individuals
-  individuals <- sort(unique(paths$path_id))
-  
-  #### Define study timeframe
-  # We simulated data over one month
-  # interval(min(paths$timestamp), max(paths$timestamp))
-  # 2025-01-01 UTC--2025-01-31 23:58:00 UTC
-  timeframe <-
-    tribble(
-      ~chain_id,  ~chain_interval,
-      "2014-Jan", interval(min(paths$timestamp), max(paths$timestamp), tzone = "UTC")
-    ) |> 
-    mutate(chain_start = int_start(chain_interval), 
-           chain_end = int_end(chain_interval)) |> 
-    select(-chain_interval) |> 
-    as.data.table()
-  
-  #### Define time blocks
-  # All data were simulated over the same one-month period
-  blocks <- 
-    min(paths$timestamp) |>
-    format("%y-%b") |>
-    tolower()
-
-} else if (analysis == "real") {
-
-  #### Define individuals
-  # We focus on individuals detected in at least two seasons 
-  # (as defined in the detections data.table)
-  individuals <- sort(unique(detections$individual_id))
-  
-  #### Define study timeframe
-  # We are interested in seasonal patterns, defined as: 
-  # * Winter: December 1–March 31
-  # * Spring: April 1–May 31
-  # * Summer: June 1–September 30
-  # * Fall: October 1–November 30
-  # For the start of the study period, we use Winter 2014
-  # * This is the first full season of data for most fish (tagged during fall 2013)
-  sort(unique(fish$date[lubridate::year(fish$date) > 2013]))
-  # For the end of the study period, we use Spring 2015
-  # * When was the array dismantled? 
-  max(detections$timestamp)
-  # Define study period
-  timeframe <-
-    tribble(
-      ~chain_id,     ~chain_interval,
-      "2014-winter", interval("2014-12-01 00:00:00", "2015-03-31 23:58:00", tzone = "UTC"),
-      "2015-spring", interval("2015-04-01 00:00:00", "2015-05-31 23:58:00", tzone = "UTC"),
-      "2015-summer", interval("2015-06-01 00:00:00", "2015-09-30 23:58:00", tzone = "UTC"),
-      "2015-fall",   interval("2015-10-01 00:00:00", "2015-11-30 23:58:00", tzone = "UTC"),
-      "2016-winter", interval("2015-12-01 00:00:00", "2016-03-31 23:58:00", tzone = "UTC"),
-      "2016-spring", interval("2016-04-01 00:00:00", "2016-05-31 23:58:00", tzone = "UTC"),
-      "2016-summer", interval("2016-06-01 00:00:00", "2016-09-30 23:58:00", tzone = "UTC"),
-      "2016-fall",   interval("2016-10-01 00:00:00", "2016-11-30 23:58:00", tzone = "UTC"),
-      "2017-winter", interval("2016-12-01 00:00:00", "2017-03-31 23:58:00", tzone = "UTC"),
-      "2017-spring", interval("2017-04-01 00:00:00", "2017-05-31 23:58:00", tzone = "UTC")
-    ) |> 
-    mutate(chain_start = int_start(chain_interval), 
-           chain_end = int_end(chain_interval)) |> 
-    select(-chain_interval) |> 
-    as.data.table()
-  
-  #### Define time blocks
-  # We use monthly blocks over the study period
-  blocks <- 
-    seq(as.POSIXct("2014-12-01 00:00:00"), 
-                 as.POSIXct("2017-05-31 23:58:00"), 
-                 by = "months") |> 
-    format("%y-%b") |>
-    tolower()
-  # Check the total number of time steps
-  length(seq(as.POSIXct("2014-12-01 00:00:00"), 
+  if (analysis == "sim") {
+    
+    #### Define individuals
+    # We model 1:100 individuals
+    individuals <- sort(unique(paths$path_id))
+    
+    #### Define study timeframe
+    # We simulated data over one month
+    # interval(min(paths$timestamp), max(paths$timestamp))
+    # 2025-01-01 UTC--2025-01-31 23:58:00 UTC
+    timeframe <-
+      tribble(
+        ~chain_id,  ~chain_interval,
+        "2014-Jan", interval(min(paths$timestamp), max(paths$timestamp), tzone = "UTC")
+      ) |> 
+      mutate(chain_start = int_start(chain_interval), 
+             chain_end = int_end(chain_interval)) |> 
+      select(-chain_interval) |> 
+      as.data.table()
+    
+    #### Define time blocks
+    # All data were simulated over the same one-month period
+    blocks <- 
+      min(paths$timestamp) |>
+      format("%y-%b") |>
+      tolower()
+    
+  } else if (analysis == "real") {
+    
+    #### Define individuals
+    # We focus on individuals detected in at least two seasons 
+    # (as defined in the detections data.table)
+    individuals <- sort(unique(detections$individual_id))
+    
+    #### Define study timeframe
+    # We are interested in seasonal patterns, defined as: 
+    # * Winter: December 1–March 31
+    # * Spring: April 1–May 31
+    # * Summer: June 1–September 30
+    # * Fall: October 1–November 30
+    # For the start of the study period, we use Winter 2014
+    # * This is the first full season of data for most fish (tagged during fall 2013)
+    sort(unique(fish$date[lubridate::year(fish$date) > 2013]))
+    # For the end of the study period, we use Spring 2015
+    # * When was the array dismantled? 
+    max(detections$timestamp)
+    # Define study period
+    timeframe <-
+      tribble(
+        ~chain_id,     ~chain_interval,
+        "2014-winter", interval("2014-12-01 00:00:00", "2015-03-31 23:58:00", tzone = "UTC"),
+        "2015-spring", interval("2015-04-01 00:00:00", "2015-05-31 23:58:00", tzone = "UTC"),
+        "2015-summer", interval("2015-06-01 00:00:00", "2015-09-30 23:58:00", tzone = "UTC"),
+        "2015-fall",   interval("2015-10-01 00:00:00", "2015-11-30 23:58:00", tzone = "UTC"),
+        "2016-winter", interval("2015-12-01 00:00:00", "2016-03-31 23:58:00", tzone = "UTC"),
+        "2016-spring", interval("2016-04-01 00:00:00", "2016-05-31 23:58:00", tzone = "UTC"),
+        "2016-summer", interval("2016-06-01 00:00:00", "2016-09-30 23:58:00", tzone = "UTC"),
+        "2016-fall",   interval("2016-10-01 00:00:00", "2016-11-30 23:58:00", tzone = "UTC"),
+        "2017-winter", interval("2016-12-01 00:00:00", "2017-03-31 23:58:00", tzone = "UTC"),
+        "2017-spring", interval("2017-04-01 00:00:00", "2017-05-31 23:58:00", tzone = "UTC")
+      ) |> 
+      mutate(chain_start = int_start(chain_interval), 
+             chain_end = int_end(chain_interval)) |> 
+      select(-chain_interval) |> 
+      as.data.table()
+    
+    #### Define time blocks
+    # We use monthly blocks over the study period
+    blocks <- 
+      seq(as.POSIXct("2014-12-01 00:00:00"), 
           as.POSIXct("2017-05-31 23:58:00"), 
-          by = "2 mins"))
+          by = "months") |> 
+      format("%y-%b") |>
+      tolower()
+    # Check the total number of time steps
+    length(seq(as.POSIXct("2014-12-01 00:00:00"), 
+               as.POSIXct("2017-05-31 23:58:00"), 
+               by = "2 mins"))
+    
+  }
+  
+  #### Define unitsets
+  # For the real-world analysis, there are 2070 individual-month blocks 
+  unitsets <- 
+    CJ(individual_id = individuals, block_id = blocks) |>
+    mutate(block_start := parse_date_time(block_id, "y-b", tz = "UTC"),
+           block_end := block_start %m+% months(1) - 60 * 2,
+           julia = TRUE) |> 
+    arrange(individual_id, block_start) |>
+    mutate(unit_id = 1:n()) |>
+    select("unit_id", "individual_id", 
+           "block_id", "block_start", "block_end", 
+           "julia") |>
+    as.data.table()
+  
+  #### Assign chains
+  # We implement the algorithm in blocks (e.g., individuals/months):
+  # * For each block, Julia produces callstats, diagnostics and pou-{i} files
+  # * The pou-{i} file contains :timestep, :id, :x, :y, :mark
+  # We aggregate patterns over multiple blocks (chains)
+  # * For the simulation analysis, blocks = chains
+  # * For the real-world analysis, chains are individuals/seasons
+  # Hence, we assign chain_id to the iteration data.table
+  # * After analysis, we aggregate maps/residency over all time stamps in each chain
+  unitsets <- 
+    unitsets |>
+    left_join(
+      timeframe,
+      join_by(between(block_start, chain_start, chain_end))) |> 
+    select("unit_id", "individual_id", 
+           "chain_id", "chain_start", "chain_end", 
+           "block_id", "block_start", "block_end",
+           "julia") |> 
+    as.data.table()
+  
+} else if (analysis == "validation") {
+  
+  # We have multiple range tests distinguished by unit_id/individual_id
+  # We nominally define other columns, e.g., blocks, chains here for consistency
+  unitsets <- 
+    qs::qread(here_input_validation("main", "tests.qs")) |> 
+    mutate(
+      unit_id = 1:n(), 
+      chain_id = 
+        start |>
+        format("%y-%b") |>
+        tolower(), 
+      chain_start = start, 
+      chain_end = end, 
+      block_id = chain_id, 
+      block_start = chain_start, 
+      block_end = chain_end, 
+      julia = TRUE
+      ) |>
+    select("unit_id", "individual_id", 
+           "chain_id", "chain_start", "chain_end", 
+           "block_id", "block_start", "block_end",
+           "julia") |> 
+    as.data.table()
   
 }
-
-#### Define unitsets
-# For the real-world analysis, there are 2070 individual-month blocks 
-unitsets <- 
-  CJ(individual_id = individuals, block_id = blocks) |>
-  mutate(block_start := parse_date_time(block_id, "y-b", tz = "UTC"),
-         block_end := block_start %m+% months(1) - 60 * 2,
-         julia = TRUE) |> 
-  arrange(individual_id, block_start) |>
-  mutate(unit_id = 1:n()) |>
-  select("unit_id", "individual_id", 
-         "block_id", "block_start", "block_end", 
-         "julia") |>
-  as.data.table()
-
-#### Assign chains
-# We implement the algorithm in blocks (e.g., individuals/months):
-# * For each block, Julia produces callstats, diagnostics and pou-{i} files
-# * The pou-{i} file contains :timestep, :id, :x, :y, :mark
-# We aggregate patterns over multiple blocks (chains)
-# * For the simulation analysis, blocks = chains
-# * For the real-world analysis, chains are individuals/seasons
-# Hence, we assign chain_id to the iteration data.table
-# * After analysis, we aggregate maps/residency over all time stamps in each chain
-unitsets <- 
-  unitsets |>
-  left_join(
-    timeframe,
-    join_by(between(block_start, chain_start, chain_end))) |> 
-  select("unit_id", "individual_id", 
-         "chain_id", "chain_start", "chain_end", 
-         "block_id", "block_start", "block_end",
-         "julia") |> 
-  as.data.table()
 
 #### For the real-analysis, identify the subset of blocks that require modelling
 if (analysis == "real") {
@@ -534,28 +566,30 @@ if (!all(file.exists(iteration_julia$file_timeline)) | overwrite) {
       #  (These criteria stop us jumping too far backward/forward in time)
       
       dets   <- detections[individual_id == d$individual_id, ]
-      if (nrow(dets) > 0L) {
-        
-        # (A) Extract detections during the relevant time block (may be zero)
-        during <- before <- after <- NULL
-        during <- dets[timestamp >= d$block_start & timestamp <= d$block_end, ]
-        
-        # (B) Ensure the detection time series covers the full block:
-        # (i) Add detection(s) immediately before the block start, if needed
-        if (nrow(during) == 0L || min(during$timestamp) > d$block_start) {
-          before <- dets[timestamp >= d$block_start %m-% months(1) & timestamp < d$block_start, ]
-          if (nrow(before) > 0L) {
-            before <- before[timestamp == max(timestamp), ]
+      if (analysis == "real") {
+        if (nrow(dets) > 0L) {
+          
+          # (A) Extract detections during the relevant time block (may be zero)
+          during <- before <- after <- NULL
+          during <- dets[timestamp >= d$block_start & timestamp <= d$block_end, ]
+          
+          # (B) Ensure the detection time series covers the full block:
+          # (i) Add detection(s) immediately before the block start, if needed
+          if (nrow(during) == 0L || min(during$timestamp) > d$block_start) {
+            before <- dets[timestamp >= d$block_start %m-% months(1) & timestamp < d$block_start, ]
+            if (nrow(before) > 0L) {
+              before <- before[timestamp == max(timestamp), ]
+            }
           }
-        }
-        # (ii) Add the detection(s) immediately after the block end, if needed
-        if (nrow(during) == 0L || max(during$timestamp) < d$block_end) {
-          after <- dets[timestamp > d$block_end & timestamp <= d$block_end %m+% months(1), ]
-          if (nrow(after) > 0L) {
-            after <- after[timestamp == min(timestamp), ]
+          # (ii) Add the detection(s) immediately after the block end, if needed
+          if (nrow(during) == 0L || max(during$timestamp) < d$block_end) {
+            after <- dets[timestamp > d$block_end & timestamp <= d$block_end %m+% months(1), ]
+            if (nrow(after) > 0L) {
+              after <- after[timestamp == min(timestamp), ]
+            }
           }
+          dets <- rbind(during, before, after)
         }
-        dets <- rbind(during, before, after)
       }
       dets <- 
         dets |> 
@@ -599,19 +633,21 @@ if (!all(file.exists(iteration_julia$file_timeline)) | overwrite) {
       # - We use a threshold that is slightly below the default
       # - See setup-data-map.R
       containers_fwd <- containers_bwd <- NULL
-      if (nrow(dets) > 1L) {
-        threshold  <- 44159.98
-        containers <- assemble_acoustics_containers(.timeline  = timeline$timestamp, 
-                                                    .acoustics = accs,
-                                                    .mobility  = d$mobility, 
-                                                    .map       = NULL, 
-                                                    .threshold = threshold)
-        containers_fwd <- containers$forward
-        containers_bwd <- containers$backward
-        stopifnot(nrow(containers_fwd) > 0L & nrow(containers_bwd) > 0L)
-        stopifnot(max(c(containers_fwd$radius, containers_bwd$radius)) <= threshold)
-        write_feather_compressed(containers_fwd, d$file_containers_fwd)
-        write_feather_compressed(containers_bwd, d$file_containers_bwd)
+      if (analysis %in% c("sim", "real")) {
+        if (nrow(dets) > 1L) {
+          threshold  <- 44159.98
+          containers <- assemble_acoustics_containers(.timeline  = timeline$timestamp, 
+                                                      .acoustics = accs,
+                                                      .mobility  = d$mobility, 
+                                                      .map       = NULL, 
+                                                      .threshold = threshold)
+          containers_fwd <- containers$forward
+          containers_bwd <- containers$backward
+          stopifnot(nrow(containers_fwd) > 0L & nrow(containers_bwd) > 0L)
+          stopifnot(max(c(containers_fwd$radius, containers_bwd$radius)) <= threshold)
+          write_feather_compressed(containers_fwd, d$file_containers_fwd)
+          write_feather_compressed(containers_bwd, d$file_containers_bwd)
+        }
       }
       
       #### Define t_resample
@@ -648,12 +684,14 @@ stopifnot(all(file.exists(iteration_julia$file_timeline)))
 # The worst-case scenario is we jump back almost a whole month and forwards a whole month
 # (i.e., 22320 * 3 timesteps)
 # Here, we review the number of time steps and check the number of batches is sufficient
-nt <- pbapply::pbsapply(iteration_julia$file_timeline, \(f) nrow(arrow::read_feather(f)))
-range(nt)
-stopifnot(min(nt) > 20000 & max(nt) < 22320 * 3)
-nb <- p_batch(p_mem(max(iteration$n_batch), max(nt), 4, 100), 50e3)
-range(nb)
-stopifnot(nb <= iteration_julia$n_batch[1])
+if (analysis == "real") {
+  nt <- pbapply::pbsapply(iteration_julia$file_timeline, \(f) nrow(arrow::read_feather(f)))
+  range(nt)
+  stopifnot(min(nt) > 20000 & max(nt) < 22320 * 3)
+  nb <- p_batch(p_mem(max(iteration$n_batch), max(nt), 4, 100), 50e3)
+  range(nb)
+  stopifnot(nb <= iteration_julia$n_batch[1])
+}
 
 #### Review number of geolocation estimates (real-world analysis)
 # Check number of individual/month blocks 
