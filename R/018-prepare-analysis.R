@@ -403,8 +403,11 @@ iteration <-
     n_particle_filter   = ifelse(analysis == "sim", 10000L, 50000L), 
     n_particle_smoother = ifelse(analysis == "sim", 1500L, 2500L),
     n_resample          = as.numeric(1000.0),
-    n_batch             = ifelse(analysis %in% c("sim", "validation"), 9L, 30L)
-  ) |> 
+    n_batch             = case_when(analysis == "sim"        ~ 9L,
+                                    analysis == "validation" ~ 4L,
+                                    analysis == "real"       ~ 30L,
+                                    .default                  = NA_integer_)
+    ) |> 
   as.data.table()
 
 #### Record the number of detections
@@ -680,6 +683,8 @@ iteration_julia[, nt := pbapply::pbsapply(file_timeline,
                                           \(x) nrow(arrow::read_feather(x)))]
 # Set n_batch accordingly 
 # * This is defined above before iteration and iteration_julia are separated
+stopifnot(all(!is.na(iteration$n_batch)))
+stopifnot(all(!is.na(iteration_julia$n_batch)))
 
 #### Review example files
 eg_timeline  <- arrow::read_feather(iteration_julia$file_timeline[1])
