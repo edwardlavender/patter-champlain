@@ -263,6 +263,19 @@ tests <-
   detections |> 
   distinct(individual_id, dataset, tag_lon, tag_lat, start, end) |>
   as.data.table()
+txy <- 
+  tests |> 
+  select("tag_lon", "tag_lat") |> 
+  as.matrix() |> 
+  terra::vect(crs = "WGS84") |> 
+  terra::project(terra::crs(map)) |> 
+  terra::geom(df = TRUE)
+tests <- 
+  tests |> 
+  mutate(tag_x = txy$x, 
+         tag_y = txy$y, 
+         .after = tag_lat) |> 
+  as.data.table()
 
 #### Clean up
 moorings <- 
