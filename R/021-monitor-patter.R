@@ -38,7 +38,8 @@ map <- terra::rast(here_input("map.tif"))
 
 #### Define analysis 
 # analysis <- "sim"
-analysis <- "real"
+# analysis <- "real"
+analysis <- "validation"
 subanalysis <- "main"
 
 #### Define analysis-specific data
