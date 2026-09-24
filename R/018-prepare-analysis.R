@@ -501,6 +501,7 @@ if (FALSE) {
 dirs.create(iteration$folder_input)
 dirs.create(iteration$folder_output_block)
 dirs.create(iteration$folder_output_chain)
+dirs.create(here_output(analysis, subanalysis, "logs"))
 
 
 ###########################
@@ -705,8 +706,8 @@ stopifnot(all(file.exists(iteration_julia$file_timeline)))
 if (analysis == "validation") {
   # We do not use containers for the validation analysis
   # Legacy container files may contain time stamps that cause errors
-  stopifnot(any(file.exists(iteration$file_containers_fwd)))
-  stopifnot(any(file.exists(iteration$file_containers_bwd)))
+  stopifnot(!any(file.exists(iteration$file_containers_fwd)))
+  stopifnot(!any(file.exists(iteration$file_containers_bwd)))
 }
 ## Validate timeline/acoustics$timestamp alignment
 pbapply::pblapply(split(iteration_julia, iteration_julia$index), function(it) {
