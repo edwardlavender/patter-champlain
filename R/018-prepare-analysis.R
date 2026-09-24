@@ -496,6 +496,7 @@ if (FALSE) {
   unlink(iteration$folder_input, recursive = TRUE)
   unlink(iteration$folder_output_block, recursive = TRUE)
   unlink(iteration$folder_output_chain, recursive = TRUE)
+  unlink(here_output(analysis, subanalysis, "logs"), recursive = TRUE)
 }
 dirs.create(iteration$folder_input)
 dirs.create(iteration$folder_output_block)
@@ -700,6 +701,13 @@ range(eg_acoustics$timestamp)
 # Note that file_containers_* and file_t_resample_* may not exist
 stopifnot(all(file.exists(iteration_julia$file_acoustics)))
 stopifnot(all(file.exists(iteration_julia$file_timeline)))
+## Check for legacy files 
+if (analysis == "validation") {
+  # We do not use containers for the validation analysis
+  # Legacy container files may contain time stamps that cause errors
+  stopifnot(any(file.exists(iteration$file_containers_fwd)))
+  stopifnot(any(file.exists(iteration$file_containers_bwd)))
+}
 ## Validate timeline/acoustics$timestamp alignment
 pbapply::pblapply(split(iteration_julia, iteration_julia$index), function(it) {
   timeline  <- arrow::read_feather(it$file_timeline)
