@@ -403,7 +403,7 @@ iteration <-
     n_particle_filter   = ifelse(analysis == "sim", 10000L, 50000L), 
     n_particle_smoother = ifelse(analysis == "sim", 1500L, 2500L),
     n_resample          = as.numeric(1000.0),
-    n_batch             = ifelse(analysis == "sim", 9L, 30L)
+    n_batch             = ifelse(analysis %in% c("sim", "validation"), 9L, 30L)
   ) |> 
   as.data.table()
 
@@ -671,6 +671,15 @@ if (!all(file.exists(iteration_julia$file_timeline)) | overwrite) {
   pbapply::pboptions(pbo)
   
 }
+
+#### Define n_batch
+# Record number of time steps 
+iteration[, nt := pbapply::pbsapply(file_timeline, 
+                                    \(x) nrow(arrow::read_feather(x)))]
+iteration_julia[, nt := pbapply::pbsapply(file_timeline, 
+                                          \(x) nrow(arrow::read_feather(x)))]
+# Set n_batch accordingly 
+# * This is defined above before iteration and iteration_julia are separated
 
 #### Review example files
 eg_timeline  <- arrow::read_feather(iteration_julia$file_timeline[1])
