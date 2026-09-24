@@ -43,13 +43,25 @@ metadata   <- qs::qread(here_data_raw("model-obs","futia-et-al-2025",
 #### Define detections/non-detections
 
 #### Review time zones
+# detections$detection_timestamp_utc is in UTC
+# local_time, set_dt and pull_dt are in America/New_York
+# For the purpose of the range test analyses, we use local_time
+# We keep track of detection_timestamp_utc (below) for the validation analysis
+head(detections[, c("detection_timestamp_utc", "local_time")])
 lubridate::tz(detections$detection_timestamp_utc)
 lubridate::tz(detections$detection_timestamp_utc)
 lubridate::tz(metadata$set_dt)
 lubridate::tz(metadata$pull_dt)
 
 #### Merge range test detections with associated metadata
-# The set and pull times are exact to the second that the range test tags were set and deployed, so there should not be any more detections than what is possible in that window. I added the extension to the recover times as some receivers had minor clock drift that was not completely accounted for in the time corrections, so there were some deployments where the detections did not line up perfectly within the recorded deployment period. Adding 75 seconds allowed me to capture all detections but was a short enough interval that it did not overlap with the following deployment. 
+# The set and pull times are exact to the second that the range test tags 
+# were set and deployed, so there should not be any more detections than 
+# what is possible in that window. I added the extension to the recover times 
+# as some receivers had minor clock drift that was not completely accounted 
+# for in the time corrections, so there were some deployments where the detections 
+# did not line up perfectly within the recorded deployment period. Adding 75 
+# seconds allowed me to capture all detections but was a short enough interval 
+# that it did not overlap with the following deployment. 
 detections <- 
   detections |> 
   mutate(receiver_sn = as.integer(receiver_sn)) |> 
@@ -99,6 +111,9 @@ detections <-
   detections |> 
   select(transmitter_id, 
          receiver_id = receiver_sn,
+         # Keep track of detection_timestamp_utc for validation analysis
+         detection_timestamp_utc,
+         # For range tests, use local_time 
          timestamp = local_time,
          tag_lon = deploy_lon,
          tag_lat = deploy_lat,
