@@ -474,6 +474,8 @@ if (analysis == "real") {
   iteration[1, .(individual_id, chain_start, chain_end, survival_probability)]
   survivors[individual_id == 24320, ]
   
+} else {
+  iteration[, survival_probability := NA_real_]
 }
 
 #### Filter iterations

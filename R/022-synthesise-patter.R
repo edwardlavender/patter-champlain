@@ -43,8 +43,9 @@ map_summer <- terra::rast("./data/input/map-summer.tif")
 #### Select analysis
 
 #### Define analysis 
-# analysis <- "sim"
-analysis <- "real"
+analysis <- "sim"
+# analysis <- "real"
+analysis <- "validation"
 subanalysis <- "main"
 
 #### Define analysis-specific data
@@ -118,14 +119,16 @@ terra::writeRaster(occupancy_uniform_summer,
 
 #### Define cluster
 # (~2 min with 40 cl)
-tic()
-cl <- parallel::makeCluster(5L)
-parallel::clusterEvalQ(cl, {
-  library(data.table)
-  library(dtplyr)
-  library(dplyr, warn.conflicts = FALSE)
-})
-toc()
+cl <- NULL
+# tic()
+# cl <- parallel::makeCluster(5L)
+# parallel::clusterExport(cl, "analysis")
+# parallel::clusterEvalQ(cl, {
+#   library(data.table)
+#   library(dtplyr)
+#   library(dplyr, warn.conflicts = FALSE)
+# })
+# toc()
 
 #### Synthesise outputs
 # For each chain, compute file_occupancy and file_residency
@@ -146,15 +149,24 @@ cl_lapply(
   occupancy <- terra::rast("./data/input/occupancy-zero.tif")
   
   #### Read chain-specific maps
+  # For analysis == sim/validation analysis, we use the standard map
+  # For analysis == "real", we account for summertime habitat suitability 
   stopifnot(length(unique(chain$season)) == 1L)
-  if (chain$season[1] %in% c("Fall", "Winter", "Spring")) {
+  if (analysis %in% c("sim", "validation")) {
     map_mask    <- terra::rast("./data/input/map.tif")
     map_uniform <- terra::rast("./data/input/occupancy-uniform.tif")
-  } else if (chain$season[1] == "Summer") {
-    map_mask    <- terra::rast("./data/input/map-summer.tif")
-    map_uniform <- terra::rast("./data/input/occupancy-uniform-summer.tif")
+  } else if (analysis == "real") {
+    if (chain$season[1] %in% c("Fall", "Winter", "Spring")) {
+      map_mask    <- terra::rast("./data/input/map.tif")
+      map_uniform <- terra::rast("./data/input/occupancy-uniform.tif")
+    } else if (chain$season[1] == "Summer") {
+      map_mask    <- terra::rast("./data/input/map-summer.tif")
+      map_uniform <- terra::rast("./data/input/occupancy-uniform-summer.tif")
+    } else {
+      stop("`chain$season[1]` should be 'Fall', 'Winter', 'Spring' or 'Summer'.")
+    }
   } else {
-    stop("`chain$season[1]` should be 'Fall', 'Winter', 'Spring' or 'Summer'.")
+    stop("Unknown `analysis`.")
   }
   
   #### Update map for each block in the chain 
