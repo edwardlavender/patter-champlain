@@ -84,6 +84,15 @@ futia_moorings <-
          "receiver_lon", "receiver_lat") |> 
   as.data.table()
 
+# Fix overlapping retrieval dates for receiver 110541
+# * This receiver is recorded as being in two places at once
+# * MF has checked records and confirmed correct retrieval date of 2021-06-17
+# * It was recovered and redeployed on the same day and at the same site.
+futia_moorings[receiver_sn == "110541", ]
+futia_moorings[receiver_sn == "110541" & receiver_end == as.POSIXct("2021-06-22 00:00:00", tz = "UTC"), 
+               receiver_end := as.POSIXct("2021-06-17 00:00:00", tz = "UTC")]
+futia_moorings[receiver_sn == "110541", ]
+
 # Filter Futia & Marsden moorings to receivers within ~10000 m of a tag 
 # * This improves efficiency for range tests
 rll <- 
@@ -174,7 +183,7 @@ moorings <-
   as.data.table()
 
 # Identify receivers recorded in two places at once
-# * This is the case for one receiver: 110541
+# * This is the case for one receiver: 110541 (solved above)
 receivers_in_two_places_at_once <-
   moorings |>
   arrange(receiver_sn, receiver_start) |>
@@ -182,12 +191,13 @@ receivers_in_two_places_at_once <-
   filter(any(receiver_start < lag(receiver_end), na.rm = TRUE)) |>
   pull(receiver_sn) |>
   unique()
+stopifnot(length(receivers_in_two_places_at_once) == 0L)
 
 # Assign receiver_id
 moorings <- 
   moorings |>
   # Drop receivers in two places at once before defining receiver_id
-  filter(!receiver_sn %in% receivers_in_two_places_at_once) |>
+  # filter(!receiver_sn %in% receivers_in_two_places_at_once) |>
   arrange(dataset, receiver_sn, receiver_start) |> 
   mutate(receiver_id = row_number(), .before = 1L) |> 
   as.data.table()
