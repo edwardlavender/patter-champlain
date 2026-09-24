@@ -689,9 +689,10 @@ stopifnot(all(!is.na(iteration$n_batch)))
 stopifnot(all(!is.na(iteration_julia$n_batch)))
 
 #### Review example files
-eg_timeline  <- arrow::read_feather(iteration_julia$file_timeline[1])
-eg_acoustics <- arrow::read_feather(iteration_julia$file_acoustics[1])
-range(eg_timeline$timestamp) == range(eg_acoustics$timestamp)
+eg_timeline  <- arrow::read_feather(iteration_julia$file_timeline[614])
+eg_acoustics <- arrow::read_feather(iteration_julia$file_acoustics[614])
+range(eg_timeline$timestamp)
+range(eg_acoustics$timestamp)
 
 #### Automated checks
 ## Validate file creation
@@ -701,9 +702,12 @@ stopifnot(all(file.exists(iteration_julia$file_acoustics)))
 stopifnot(all(file.exists(iteration_julia$file_timeline)))
 ## Validate timeline/acoustics$timestamp alignment
 pbapply::pblapply(split(iteration_julia, iteration_julia$index), function(it) {
-  timeline <- arrow::read_feather(it$file_timeline)
+  timeline  <- arrow::read_feather(it$file_timeline)
   acoustics <- arrow::read_feather(it$file_acoustics)
+  # All acoustic time stamps should be in the timeline
   stopifnot(all(acoustics$timestamp %in% timeline$timestamp))
+  stopifnot(min(acoustics$timestamp) >= min(timeline$timestamp))
+  stopifnot(max(acoustics$timestamp) <= max(timeline$timestamp))
 }) |> invisible()
 
 #### Review the number of time steps/batches
