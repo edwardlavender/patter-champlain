@@ -90,6 +90,30 @@ if (FALSE) {
     facet_wrap(~individual_id, scales = "free")
 }
 
+#### Detection summary statistics
+# Detection period duration
+detections |>
+  group_by(individual_id) |> 
+  mutate(length = difftime(max(timestamp), min(timestamp), units = "mins")) |>
+  slice(1L) |> 
+  group_by(dataset) |> 
+  reframe(utils.add::basic_stats(length))
+# Number of detections
+detections |>
+  group_by(individual_id) |> 
+  mutate(n = difftime(max(timestamp), min(timestamp), units = "mins")) |>
+  slice(1L) |> 
+  group_by(dataset) |> 
+  reframe(utils.add::basic_stats(n))
+# Detection gap duration 
+detections |>
+  group_by(individual_id) |> 
+  arrange(timestamp, .by_group = TRUE) |> 
+  mutate(gap = Tools4ETS::serial_difference(timestamp, units = "mins")) |>
+  ungroup() |> 
+  filter(!is.na(gap)) |> 
+  group_by(dataset) |> 
+  reframe(utils.add::basic_stats(gap))
 
 #### Plot example occurrence distribution with tag location
 # Define tag location 
