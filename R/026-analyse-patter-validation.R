@@ -115,6 +115,31 @@ tests |>
 tests |> 
   group_by(dataset) |> 
   reframe(utils.add::basic_stats(as.numeric(difftime(end, start, units = "days"))))
+# Distance from each test to the nearest receiver (m)
+tests |> 
+  left_join(
+    moorings |> 
+      select(receiver_id, receiver_x, receiver_y, receiver_start, receiver_end),
+    by = join_by(
+      start <= receiver_end,
+      end >= receiver_start
+    )
+  ) |> 
+  mutate(
+    distance = sqrt(
+      (tag_x - receiver_x)^2 + 
+        (tag_y - receiver_y)^2
+    )
+  ) |> 
+  group_by(individual_id) |> 
+  summarise(
+    distance_nearest_receiver = min(distance),
+    .groups = "drop"
+  ) |> 
+  right_join(tests, by = "individual_id") |> 
+  group_by(dataset) |> 
+  reframe(utils.add::basic_stats(distance_nearest_receiver)) |> 
+  as.data.table() 
 
 #### Detection summary statistics
 # Detection period duration
@@ -131,6 +156,11 @@ detections |>
   slice(1L) |> 
   group_by(dataset) |> 
   reframe(utils.add::basic_stats(n))
+# Number of detections per individual for P dataset
+detections |>
+  filter(dataset == "P") |> 
+  group_by(individual_id) |> 
+  summarise(n = n()) 
 # Number of detections overall
 detections |>
   group_by(dataset) |> 
