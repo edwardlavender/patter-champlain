@@ -398,7 +398,8 @@ if (TRUE) {
 }
 
 #### (optional) Compute the distance between the tag location and the distribution centre
-if (FALSE) {
+if (TRUE) {
+  
   # Compute distances
   distances <- 
     pbapply::pbsapply(split(iteration, iteration$index), function(it) {
@@ -414,10 +415,22 @@ if (FALSE) {
         matrix(ncol = 2, byrow = FALSE)
       terra::distance(centre, cbind(test$tag_x, test$tag_y), lonlat = FALSE)
     })
+  iteration[, distance_error := distances]
+  
   # Make histogram
-  hist(distances)
+  hist(iteration$distance_error)
+  
+  # Relate distances to explanatory variables e.g., number of detections
+  ggplot(iteration, aes(detection_count, distances)) + 
+    geom_point() + 
+    geom_smooth() + 
+    facet_wrap(~dataset, scales = "free")
+  ggplot(iteration, aes(detection_gap_max, distances)) + 
+    geom_point() + 
+    geom_smooth() + 
+    facet_wrap(~dataset, scales = "free")
+  
 }
-
 
 #### End of code.
 ###########################
