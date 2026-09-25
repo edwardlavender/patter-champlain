@@ -25,6 +25,7 @@ library(data.table)
 library(dtplyr)
 library(dplyr, warn.conflicts = FALSE)
 library(ggplot2)
+library(leaflet)
 library(lubridate)
 library(proj.verse)
 files_source_r()
@@ -79,7 +80,8 @@ futia_moorings <-
                                max(futia_detections$detection_timestamp_utc)))) |> 
   rename(receiver_lon = deploy_lon, 
          receiver_lat = deploy_lat) |> 
-  select("dataset", "receiver_sn",
+  select("dataset", 
+         "receiver_sn",
          "receiver_start", "receiver_end",
          "receiver_lon", "receiver_lat") |> 
   as.data.table()
@@ -174,6 +176,32 @@ pinheiro_detections <-
   select("dataset", "transmitter_id", "tag_lon", "tag_lat", "start", "end",
          "timestamp", "receiver_sn",  "receiver_lon", "receiver_lat") |> 
   as.data.table()
+
+# Plot tag/receiver locations 
+if (TRUE) {
+  #### Plot tag/receiver locations
+  leaflet() |> 
+    addTiles() |> 
+    addCircleMarkers(
+      data = pinheiro_moorings,
+      lng = ~receiver_lon,
+      lat = ~receiver_lat,
+      radius = 4,
+      color = "blue",
+      label = ~paste0("Receiver: ", receiver_sn)
+    ) |> 
+    addCircleMarkers(
+      data = pinheiro_detections |> 
+        distinct(transmitter_id, tag_lon, tag_lat),
+      lng = ~tag_lon,
+      lat = ~tag_lat,
+      radius = 4,
+      color = "red",
+      label = ~paste0("Tag: ", transmitter_id)
+    )
+  # receiver: 123547
+  # tags: 24337 (closer), 26794 (further away)
+}
 
 #### Collate moorings
 
@@ -271,7 +299,7 @@ detections <-
 # This defines test IDs, the location of the range testing tag, and the start/end time
 tests <- 
   detections |> 
-  distinct(individual_id, dataset, tag_lon, tag_lat, start, end) |>
+  distinct(individual_id, dataset, transmitter_id, tag_lon, tag_lat, start, end) |>
   as.data.table()
 txy <- 
   tests |> 
@@ -286,6 +314,8 @@ tests <-
          tag_y = txy$y, 
          .after = tag_lat) |> 
   as.data.table()
+# Checks
+tests[dataset == "P", ]
 
 #### Clean up
 moorings <- 

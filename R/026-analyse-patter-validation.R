@@ -107,6 +107,10 @@ land <- terra::erase(
 tests |> 
   group_by(dataset) |> 
   summarise(n = n())
+# Number of unique tag deployment locations
+tests |>
+  group_by(dataset) |>
+  summarise(uniqueN(paste(tag_lon, tag_lat)))
 # Time period of range tests 
 tests |> 
   group_by(dataset) |> 
@@ -115,31 +119,37 @@ tests |>
 tests |> 
   group_by(dataset) |> 
   reframe(utils.add::basic_stats(as.numeric(difftime(end, start, units = "days"))))
-# Distance from each test to the nearest receiver (m)
-tests |> 
+# Distance from each test to the nearest active receiver (m)
+tests <- 
+  tests |> 
   left_join(
     moorings |> 
-      select(receiver_id, receiver_x, receiver_y, receiver_start, receiver_end),
+      select(receiver_x, receiver_y, receiver_start, receiver_end),
     by = join_by(
       start <= receiver_end,
       end >= receiver_start
     )
   ) |> 
   mutate(
-    distance = sqrt(
+    distance_nearest_receiver = sqrt(
       (tag_x - receiver_x)^2 + 
         (tag_y - receiver_y)^2
     )
   ) |> 
-  group_by(individual_id) |> 
   summarise(
-    distance_nearest_receiver = min(distance),
-    .groups = "drop"
+    distance_nearest_receiver = min(distance_nearest_receiver),
+    .by = all_of(names(tests))
   ) |> 
-  right_join(tests, by = "individual_id") |> 
-  group_by(dataset) |> 
-  reframe(utils.add::basic_stats(distance_nearest_receiver)) |> 
-  as.data.table() 
+  as.data.table()
+# Summarise distances
+tests |> 
+  group_by(dataset) |>
+  reframe(utils.add::basic_stats(distance_nearest_receiver))
+# Summarise distances for P
+tests |> 
+  filter(dataset == "P") |> 
+  group_by(individual_id) |> 
+  summarise(unique(distance_nearest_receiver))
 
 #### Detection summary statistics
 # Detection period duration
@@ -149,6 +159,11 @@ detections |>
   slice(1L) |> 
   group_by(dataset) |> 
   reframe(utils.add::basic_stats(length))
+# Detection period duration for P
+detections |>
+  filter(dataset == "P") |> 
+  group_by(individual_id) |> 
+  summarise(length = difftime(max(timestamp), min(timestamp), units = "mins"))
 # Number of detections per individual
 detections |>
   group_by(individual_id) |> 
@@ -182,13 +197,33 @@ detections |>
   mutate(gap = Tools4ETS::serial_difference(timestamp, units = "mins")) |>
   filter(!is.na(gap)) |> 
   reframe(utils.add::basic_stats(gap))
+# Relationship between gap duration & distance from nearest receiver
+iteration |> 
+  filter(sensitivity == "best") |> 
+  distinct(individual_id, dataset, detection_gap_max) |> 
+  left_join(
+    tests |> select(individual_id, distance_nearest_receiver),
+    by = "individual_id"
+  ) |> 
+  ggplot(aes(distance_nearest_receiver, detection_gap_max)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~dataset, scales = "free") +
+  labs(
+    x = "Distance to nearest receiver (m)",
+    y = "Maximum detection gap (min)"
+  )
 
 #### Plot spatial distribution of tags/receivers
+png(here_fig("validation", "main", "champlain-range-tests.png"), 
+    height = 10, width = 3, units = "in", res = 800)
 terra::plot(land, col = scales::alpha("dimgrey", 0.3))
-points(moorings$receiver_x, moorings$receiver_y, 
-       pch = 4, cex = 0.35)
-points(tests$tag_x, tests$tag_y, 
-       col = "red3", lwd = 1.5)
+# points(moorings$receiver_x, moorings$receiver_y, 
+#        pch = 4, cex = 0.35)
+points(tests$tag_x[tests$dataset == "F"], 
+       tests$tag_y[tests$dataset == "F"], 
+       pch = 4, col = "red", cex = 0.2)
+dev.off()
 
 #### Plot histogram of distances between tags/receivers (~1 s)
 distances <- 
@@ -428,6 +463,7 @@ if (TRUE) {
       labels = paste0(
         it$individual_id, " (",
         it$test_duration, ", ",
+        it$detection_count, ", ",
         it$detection_gap_max, ")"
       ),
       font = 2,
