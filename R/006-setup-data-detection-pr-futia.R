@@ -53,6 +53,26 @@ lubridate::tz(detections$detection_timestamp_utc)
 lubridate::tz(metadata$set_dt)
 lubridate::tz(metadata$pull_dt)
 
+#### Review range tests
+# There are 95 transmitter_id/set_dt combinations
+#   (of which 93 are associated with detections, below)
+# Metadata contains 172 rows
+#   The extra rows are b/c metadata includes rows for multiple receivers
+metadata <- as.data.table(metadata)
+metadata[, metadata_row_id := seq_len(.N)]
+metadata[, metadata_test_id := .GRP, by = c("transmitter_id", "set_dt")]
+nrow(metadata)
+uniqueN(metadata$metadata_row_id)
+uniqueN(metadata$metadata_test_id)
+# This code shows that the same test ID includes multiple receivers 
+metadata |> 
+  group_by(transmitter_id, set_dt) |> 
+  mutate(n = n(), group = cur_group_id()) |> 
+  filter(n > 1) |> 
+  select(group, location, receiver_sn, rec_lat, rec_lon, transmitter_id, set_dt) |> 
+  arrange(group, receiver_sn) |> 
+  as.data.table()
+
 #### Merge range test detections with associated metadata
 # The set and pull times are exact to the second that the range test tags 
 # were set and deployed, so there should not be any more detections than 
@@ -67,6 +87,10 @@ detections <-
   mutate(receiver_sn = as.integer(receiver_sn)) |> 
   left_join(metadata, relationship = "many-to-many") |>  
   filter(local_time %within% interval(set_dt, pull_dt + 75))
+# 131 rows in metadata are associated with detections 
+uniqueN(detections$metadata_row_id)
+# 93/95 range tests associated with detections
+uniqueN(detections$metadata_test_id)
 
 #### Examine range test locations (compared to moorings)
 # Define range test locations 
