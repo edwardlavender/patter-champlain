@@ -172,30 +172,34 @@ terra::crds(p) |>
   matrix(ncol = 2) |>
   terra::distance(cbind(test$tag_x, test$tag_y), lonlat = FALSE)
 
-#### Plot best occurrence distributions with tag location
-table(iteration$sensitivity)
-iteration_best <- iteration[sensitivity == "best", ]
-png(here_fig("validation", "main", "maps-best.png"), 
+#### Plot occurrence distributions for independent range test (including sensitivity)
+# TO DO 
+
+#### Plot occurrence distributions for non-independent range tests (best only)
+png(here_fig("validation", "main", "maps-futia-best.png"), 
     height = 6, width = 10, units = "in", res = 800)
 pp <- par(mfrow = c(5, 20), 
           mar = c(0, 0, 0, 0),
           oma = c(0, 0, 0, 0))
-pbapply::pblapply(split(iteration_best, iteration_best$index), function(it) {
+iteration_selected <- iteration[sensitivity == "best" &  dataset == "F", ]
+nrow(iteration_selected)
+pbapply::pblapply(split(iteration_selected, iteration_selected$index), function(it) {
   # Define active receivers
   m <- 
     moorings |> 
     filter(int_overlaps(interval(receiver_start, receiver_end),
                         interval(it$block_start, it$block_end))) |> 
     as.data.table() 
-  # Define occurrence distribution, zoomed in a bit
+  # Define tag region
+  buffer <- 
+    cbind(it$tag_x, it$tag_y) |> 
+    terra::vect(crs = terra::crs(map)) |> 
+    terra::buffer(width = 2000)
+  # Define occurrence distribution around tag
   r  <- terra::rast(it$file_occupancy)
   r  <- terra::classify(r, cbind(0, NA))
-  r0 <- r
-  r  <- terra::trim(r)
-  e  <- terra::ext(r)
-  e  <- e + 20000
-  r  <- terra::crop(r0, e)
-  e  <- terra::ext(r)
+  r  <- terra::crop(r, buffer)
+  e  <- terra::ext(buffer)
   xlim <- as.numeric(e[1:2])
   ylim <- as.numeric(e[3:4])
   # Make map
