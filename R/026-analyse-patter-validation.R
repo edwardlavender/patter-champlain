@@ -28,6 +28,7 @@ library(ggplot2)
 library(lubridate)
 library(spatial.extensions)
 library(tictoc)
+library(proj.verse)
 files_source_r(here_src())
 
 #### Load data
@@ -50,7 +51,38 @@ iteration <-
   filter(file.exists(file_occupancy)) |> 
   # Add test information i.e., tag_x and tag_y
   left_join(tests, by = "individual_id") |> 
-  as.data.table()
+  # Add detection summary statistics (for plot)
+  left_join(
+    detections |> 
+      left_join(
+        tests |> 
+          select(individual_id, start, end),
+        by = "individual_id"
+      ) |> 
+      group_by(individual_id) |> 
+      arrange(timestamp, .by_group = TRUE) |> 
+      summarise(
+        # Number of detections for each individual
+        detection_count = n(),
+        # Longest period without detection (mins -> n time steps)
+        detection_gap_max = max(
+          c(
+            difftime(first(timestamp), first(start), units = "mins"),
+            Tools4ETS::serial_difference(timestamp, units = "mins"),
+            difftime(first(end), last(timestamp), units = "mins")
+          ), na.rm = TRUE
+        ),
+        detection_gap_max = as.numeric(round(detection_gap_max / 2)),
+        # Duration of the test (number of time steps)
+        test_duration = as.numeric(round(difftime(max(end), min(start), units = "mins") / 2))
+      ) |> 
+      as.data.table(),
+    by = "individual_id"
+  )
+# Review test durations
+iteration |> 
+  distinct(individual_id, start, end, test_duration) |> 
+  arrange(test_duration)
 
 #### Process observations
 detections <- 
@@ -177,8 +209,8 @@ terra::crds(p) |>
 
 #### Plot occurrence distributions for non-independent range tests (best only)
 png(here_fig("validation", "main", "maps-futia-best.png"), 
-    height = 6, width = 10, units = "in", res = 800)
-pp <- par(mfrow = c(5, 20), 
+    height = 10, width = 10, units = "in", res = 800)
+pp <- par(mfrow = c(10, 10), 
           mar = c(0, 0, 0, 0),
           oma = c(0, 0, 0, 0))
 iteration_selected <- iteration[sensitivity == "best" &  dataset == "F", ]
@@ -194,10 +226,10 @@ pbapply::pblapply(split(iteration_selected, iteration_selected$index), function(
   buffer <- 
     cbind(it$tag_x, it$tag_y) |> 
     terra::vect(crs = terra::crs(map)) |> 
-    terra::buffer(width = 2000)
+    terra::buffer(width = 4000)
   # Define occurrence distribution around tag
-  r  <- terra::rast(it$file_occupancy)
-  r  <- terra::classify(r, cbind(0, NA))
+  r0 <- terra::rast(it$file_occupancy)
+  r  <- terra::classify(r0, cbind(0, NA))
   r  <- terra::crop(r, buffer)
   e  <- terra::ext(buffer)
   xlim <- as.numeric(e[1:2])
@@ -208,24 +240,36 @@ pbapply::pblapply(split(iteration_selected, iteration_selected$index), function(
               axes = FALSE, box = FALSE, legend = FALSE,
               mar = NA, buffer = FALSE, 
               font = 2)
+  # patter::map_hr_home(r0, .add = TRUE)
+  terra::plot(land, col = "white", add = TRUE, border = NA)
   terra::plot(land, col = scales::alpha("lightgrey", 0.5), add = TRUE, lwd = 0.5)
   points(it$tag_x, it$tag_y, col = "red3", lwd = 1.5)
   points(m$receiver_x, m$receiver_y, col = "black", pch = 4, cex = 0.5, lwd = 1)
+  terra::sbar(d = 1000, xy = "bottomleft", labels = "", lonlat = FALSE, halo = FALSE)
   # terra::sbar()
   # mtext(side = 3, 
   #       text = it$individual_id, 
   #       line = -1.75, adj = 0.03, font = 2, cex = 1)
-  legend(
-    "topleft",
-    legend = it$individual_id,
-    bty = "o",
-    bg = scales::alpha("white", 0.9),
-    box.col = NA,
-    text.font = 2,
-    text.width = strwidth(it$individual_id),
-    y.intersp = 0.1,
-    cex = 1,
-    inset = 0.01
+  usr <- par("usr")
+  yadj <- 0.2
+  rect(
+    xleft   = usr[1],
+    ybottom = usr[4] - yadj * diff(usr[3:4]),
+    xright  = usr[2],
+    ytop    = usr[4],
+    col     = scales::alpha("dimgrey", 0.7),
+    border  = NA
+  )
+  text(
+    x = mean(usr[1:2]),
+    y = usr[4] - yadj / 2 * diff(usr[3:4]),
+    labels = paste0(
+      it$individual_id, " (",
+      it$test_duration, ", ",
+      it$detection_gap_max, ")"
+    ),
+    font = 2,
+    cex = 1.2
   )
   box(lwd = 1)
 }) |> invisible()
