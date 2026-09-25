@@ -65,6 +65,9 @@ iteration           <- qs::qread(here_input_analysis("iteration.qs"))
 ## For "real" iteration[1, ]:
 # * 15 min on 5 cl
 # * 2 + 4 min on 40 cl
+#
+## For "validation" iteration
+# * 2.5 min on 1 cl
 
 #### Subset iterations
 # We will produce maps for all chains where _all blocks_ have:
