@@ -64,7 +64,7 @@ iteration <-
       summarise(
         # Number of detections for each individual
         detection_count = n(),
-        # Longest period without detection (mins -> n time steps)
+        # Longest period without detection (mins)
         detection_gap_max = max(
           c(
             difftime(first(timestamp), first(start), units = "mins"),
@@ -72,9 +72,9 @@ iteration <-
             difftime(first(end), last(timestamp), units = "mins")
           ), na.rm = TRUE
         ),
-        detection_gap_max = as.numeric(round(detection_gap_max / 2)),
-        # Duration of the test (number of time steps)
-        test_duration = as.numeric(round(difftime(max(end), min(start), units = "mins") / 2))
+        detection_gap_max = as.numeric(round(detection_gap_max)),
+        # Duration of the test 
+        test_duration = as.numeric(round(difftime(max(end), min(start), units = "mins")))
       ) |> 
       as.data.table(),
     by = "individual_id"
@@ -101,6 +101,57 @@ land <- terra::erase(
 ###########################
 ###########################
 #### Analysis
+
+#### Test summary statistics
+# Number of range-testing tags
+tests |> 
+  group_by(dataset) |> 
+  summarise(n = n())
+# Time period of range tests 
+tests |> 
+  group_by(dataset) |> 
+  summarise(min(start), max(end))
+# Duration of tests 
+tests |> 
+  group_by(dataset) |> 
+  reframe(utils.add::basic_stats(as.numeric(difftime(end, start, units = "days"))))
+
+#### Detection summary statistics
+# Detection period duration
+detections |>
+  group_by(individual_id) |> 
+  mutate(length = difftime(max(timestamp), min(timestamp), units = "mins")) |>
+  slice(1L) |> 
+  group_by(dataset) |> 
+  reframe(utils.add::basic_stats(length))
+# Number of detections per individual
+detections |>
+  group_by(individual_id) |> 
+  mutate(n = n()) |>
+  slice(1L) |> 
+  group_by(dataset) |> 
+  reframe(utils.add::basic_stats(n))
+# Number of detections overall
+detections |>
+  group_by(dataset) |> 
+  summarise(n = n())
+# Detection gap duration 
+detections |>
+  group_by(individual_id) |> 
+  arrange(timestamp, .by_group = TRUE) |> 
+  mutate(gap = Tools4ETS::serial_difference(timestamp, units = "mins")) |>
+  ungroup() |> 
+  filter(!is.na(gap)) |> 
+  group_by(dataset) |> 
+  reframe(utils.add::basic_stats(gap))
+# Detection gap duration for P 
+detections |>
+  filter(dataset == "P") |> 
+  group_by(individual_id) |> 
+  arrange(timestamp, .by_group = TRUE) |> 
+  mutate(gap = Tools4ETS::serial_difference(timestamp, units = "mins")) |>
+  filter(!is.na(gap)) |> 
+  reframe(utils.add::basic_stats(gap))
 
 #### Plot spatial distribution of tags/receivers
 terra::plot(land, col = scales::alpha("dimgrey", 0.3))
@@ -146,45 +197,6 @@ if (FALSE) {
     geom_point(aes(timestamp, receiver_id)) +
     facet_wrap(~individual_id, scales = "free")
 }
-
-#### Test summary statistics
-# Number of range-testing tags
-tests |> 
-  group_by(dataset) |> 
-  summarise(n = n())
-# Time period of range tests 
-tests |> 
-  group_by(dataset) |> 
-  summarise(min(start), max(end))
-
-#### Detection summary statistics
-# Detection period duration
-detections |>
-  group_by(individual_id) |> 
-  mutate(length = difftime(max(timestamp), min(timestamp), units = "mins")) |>
-  slice(1L) |> 
-  group_by(dataset) |> 
-  reframe(utils.add::basic_stats(length))
-# Number of detections per individual
-detections |>
-  group_by(individual_id) |> 
-  mutate(n = n()) |>
-  slice(1L) |> 
-  group_by(dataset) |> 
-  reframe(utils.add::basic_stats(n))
-# Number of detections overall
-detections |>
-  group_by(dataset) |> 
-  summarise(n = n())
-# Detection gap duration 
-detections |>
-  group_by(individual_id) |> 
-  arrange(timestamp, .by_group = TRUE) |> 
-  mutate(gap = Tools4ETS::serial_difference(timestamp, units = "mins")) |>
-  ungroup() |> 
-  filter(!is.na(gap)) |> 
-  group_by(dataset) |> 
-  reframe(utils.add::basic_stats(gap))
 
 #### Plot example occurrence distribution with tag location
 # Define tag location 
