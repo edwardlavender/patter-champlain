@@ -147,6 +147,16 @@ if (FALSE) {
     facet_wrap(~individual_id, scales = "free")
 }
 
+#### Test summary statistics
+# Number of range-testing tags
+tests |> 
+  group_by(dataset) |> 
+  summarise(n = n())
+# Time period of range tests 
+tests |> 
+  group_by(dataset) |> 
+  summarise(min(start), max(end))
+
 #### Detection summary statistics
 # Detection period duration
 detections |>
@@ -155,13 +165,17 @@ detections |>
   slice(1L) |> 
   group_by(dataset) |> 
   reframe(utils.add::basic_stats(length))
-# Number of detections
+# Number of detections per individual
 detections |>
   group_by(individual_id) |> 
-  mutate(n = difftime(max(timestamp), min(timestamp), units = "mins")) |>
+  mutate(n = n()) |>
   slice(1L) |> 
   group_by(dataset) |> 
   reframe(utils.add::basic_stats(n))
+# Number of detections overall
+detections |>
+  group_by(dataset) |> 
+  summarise(n = n())
 # Detection gap duration 
 detections |>
   group_by(individual_id) |> 
