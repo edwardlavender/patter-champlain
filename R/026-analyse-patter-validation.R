@@ -71,10 +71,35 @@ land <- terra::erase(
 #### Analysis
 
 #### Plot spatial distribution of tags/receivers
-# TO DO
+terra::plot(land, col = scales::alpha("dimgrey", 0.3))
+points(moorings$receiver_x, moorings$receiver_y, 
+       pch = 4, cex = 0.35)
+points(tests$tag_x, tests$tag_y, 
+       col = "red3", lwd = 1.5)
 
-#### Plot histogram of distances between tags/receivers
-# TO DO
+#### Plot histogram of distances between tags/receivers (~1 s)
+distances <- 
+  pbapply::pblapply(split(tests, tests$individual_id), function(test) {
+    # Define active receivers
+    m <- 
+      moorings |> 
+      filter(int_overlaps(interval(receiver_start, receiver_end),
+                          interval(test$start, test$end))) |> 
+      as.data.table() 
+    # Compute distances between active receivers and tag location
+    distances <- terra::distance(cbind(m$receiver_x, m$receiver_y), 
+                                 cbind(test$tag_x, test$tag_y),
+                                 lonlat = FALSE)
+    # distances <- distances[distances < 10000]
+    data.frame(individual_id = test$individual_id, 
+               distance = distances)
+  }) |> rbindlist()
+# Summarise the average distance of a range testing tag from an active receiver
+utils.add::basic_stats(distances$distance)
+# As above but focusing on receivers within ~10 km
+utils.add::basic_stats(distances$distance[distances$distance < 10000])
+# Visualise histogram 
+hist(distances$distance)
 
 #### Plot detection time series
 if (FALSE) {
@@ -135,7 +160,7 @@ e  <- e + 20000
 r  <- terra::crop(r0, e)
 # Make map
 terra::plot(r, legend = FALSE)
-terra::plot(land, col = scales::alpha("lightgrey", 0.8), add = TRUE)
+terra::plot(land, col = scales::alpha("dimgrey", 0.3), add = TRUE)
 points(test$tag_x, test$tag_y, col = "red3", lwd = 3)
 points(m$receiver_x, m$receiver_y, col = "black", pch = 4, cex = 0.5, lwd = 2)
 terra::sbar()
