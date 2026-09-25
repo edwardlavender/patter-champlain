@@ -205,76 +205,183 @@ terra::crds(p) |>
   terra::distance(cbind(test$tag_x, test$tag_y), lonlat = FALSE)
 
 #### Plot occurrence distributions for independent range test (including sensitivity)
-# TO DO 
-
-#### Plot occurrence distributions for non-independent range tests (best only)
-png(here_fig("validation", "main", "maps-futia-best.png"), 
-    height = 10, width = 10, units = "in", res = 800)
-pp <- par(mfrow = c(10, 10), 
-          mar = c(0, 0, 0, 0),
-          oma = c(0, 0, 0, 0))
-iteration_selected <- iteration[sensitivity == "best" &  dataset == "F", ]
-nrow(iteration_selected)
-pbapply::pblapply(split(iteration_selected, iteration_selected$index), function(it) {
-  # Define active receivers
-  m <- 
-    moorings |> 
-    filter(int_overlaps(interval(receiver_start, receiver_end),
-                        interval(it$block_start, it$block_end))) |> 
-    as.data.table() 
-  # Define tag region
+if (TRUE) {
+  # Define iterations 
+  iteration_selected <- iteration[dataset == "P", ]
+  nr <- uniqueN(iteration_selected$individual_id)
+  nc <- uniqueN(iteration_selected$sensitivity_label)
+  # Define map aspect ratio
+  it <- iteration_selected[1, ]
   buffer <- 
     cbind(it$tag_x, it$tag_y) |> 
     terra::vect(crs = terra::crs(map)) |> 
-    terra::buffer(width = 4000)
-  # Define occurrence distribution around tag
-  r0 <- terra::rast(it$file_occupancy)
-  r  <- terra::classify(r0, cbind(0, NA))
-  r  <- terra::crop(r, buffer)
-  e  <- terra::ext(buffer)
-  xlim <- as.numeric(e[1:2])
-  ylim <- as.numeric(e[3:4])
-  # Make map
-  terra::plot(r, 
-              xlim = xlim, ylim = ylim,
-              axes = FALSE, box = FALSE, legend = FALSE,
-              mar = NA, buffer = FALSE, 
-              font = 2)
-  # patter::map_hr_home(r0, .add = TRUE)
-  terra::plot(land, col = "white", add = TRUE, border = NA)
-  terra::plot(land, col = scales::alpha("lightgrey", 0.5), add = TRUE, lwd = 0.5)
-  points(it$tag_x, it$tag_y, col = "red3", lwd = 1.5)
-  points(m$receiver_x, m$receiver_y, col = "black", pch = 4, cex = 0.5, lwd = 1)
-  terra::sbar(d = 1000, xy = "bottomleft", labels = "", lonlat = FALSE, halo = FALSE)
-  # terra::sbar()
-  # mtext(side = 3, 
-  #       text = it$individual_id, 
-  #       line = -1.75, adj = 0.03, font = 2, cex = 1)
-  usr <- par("usr")
-  yadj <- 0.2
-  rect(
-    xleft   = usr[1],
-    ybottom = usr[4] - yadj * diff(usr[3:4]),
-    xright  = usr[2],
-    ytop    = usr[4],
-    col     = scales::alpha("dimgrey", 0.7),
-    border  = NA
-  )
-  text(
-    x = mean(usr[1:2]),
-    y = usr[4] - yadj / 2 * diff(usr[3:4]),
-    labels = paste0(
-      it$individual_id, " (",
-      it$test_duration, ", ",
-      it$detection_gap_max, ")"
-    ),
-    font = 2,
-    cex = 1.2
-  )
-  box(lwd = 1)
-}) |> invisible()
-par(pp)
-dev.off()
+    terra::buffer(width = 15e3)
+  r <- 
+    terra::rast(it$file_occupancy) |> 
+    terra::crop(buffer)
+  e <- terra::ext(r)
+  map_asp <- (e$xmax - e$xmin) / (e$ymax - e$ymin)
+  # Define device dimensions to match map aspect ratio
+  height <- 2.5
+  width <- height * nc / nr * map_asp
+  # Make plot 
+  png(here_fig("validation", "main", "maps-pinheiro-full.png"), 
+      height = height, width = width, units = "in", res = 800)
+  pp <- par(mfrow = c(nr, nc), 
+            mar = c(0, 0, 0, 0),
+            oma = c(0, 0, 0, 0))
+  # Iterate over individuals and make plot
+  pbapply::pblapply(
+    split(
+      iteration_selected,
+      interaction(
+        iteration_selected$individual_id,
+        iteration_selected$sensitivity_label,
+        drop = TRUE,
+        lex.order = TRUE
+      )
+    ), 
+    function(it) {
+      # Define active receivers
+      m <- 
+        moorings |> 
+        filter(int_overlaps(interval(receiver_start, receiver_end),
+                            interval(it$block_start, it$block_end))) |> 
+        as.data.table() 
+      # Define tag region
+      buffer <- 
+        cbind(it$tag_x, it$tag_y) |> 
+        terra::vect(crs = terra::crs(map)) |> 
+        terra::buffer(width = 15e3)
+      # Define occurrence distribution around tag
+      r0 <- terra::rast(it$file_occupancy)
+      r  <- terra::classify(r0, cbind(0, NA))
+      r  <- terra::crop(r, buffer)
+      # Make map
+      terra::plot(
+        r, 
+        axes = FALSE, box = FALSE, legend = FALSE,
+        mar = NA, buffer = FALSE, 
+        font = 2
+      )
+      # patter::map_hr_home(r0, .add = TRUE)
+      terra::plot(land, col = "white", add = TRUE, border = NA)
+      terra::plot(
+        land, 
+        col = scales::alpha("lightgrey", 0.5), 
+        add = TRUE, lwd = 0.5
+      )
+      points(it$tag_x, it$tag_y, col = "red3", lwd = 1.5)
+      points(
+        m$receiver_x, m$receiver_y, 
+        col = "black", pch = 4, cex = 0.5, lwd = 1
+      )
+      terra::sbar(
+        d = 5000, xy = "bottomleft", labels = "", 
+        lonlat = FALSE, halo = FALSE
+      )
+      # Add panel label
+      usr <- par("usr")
+      yadj <- 0.2
+      rect(
+        xleft   = usr[1],
+        ybottom = usr[4] - yadj * diff(usr[3:4]),
+        xright  = usr[2],
+        ytop    = usr[4],
+        col     = scales::alpha("dimgrey", 0.7),
+        border  = NA
+      )
+      text(
+        x = mean(usr[1:2]),
+        y = usr[4] - yadj / 2 * diff(usr[3:4]),
+        labels = paste0(
+          match(
+            it$individual_id,
+            sort(unique(iteration_selected$individual_id))
+          ), " | ",
+          it$sensitivity_label
+        ),
+        font = 2,
+        cex = 1.2
+      )
+      
+      box(lwd = 1)
+    }
+  ) |> invisible()
+  par(pp)
+  dev.off()
+}
+
+#### Plot occurrence distributions for non-independent range tests (best only)
+if (TRUE) {
+  png(here_fig("validation", "main", "maps-futia-best.png"), 
+      height = 10, width = 10, units = "in", res = 800)
+  pp <- par(mfrow = c(10, 10), 
+            mar = c(0, 0, 0, 0),
+            oma = c(0, 0, 0, 0))
+  iteration_selected <- iteration[sensitivity == "best" &  dataset == "F", ]
+  nrow(iteration_selected)
+  pbapply::pblapply(split(iteration_selected, iteration_selected$index), function(it) {
+    # Define active receivers
+    m <- 
+      moorings |> 
+      filter(int_overlaps(interval(receiver_start, receiver_end),
+                          interval(it$block_start, it$block_end))) |> 
+      as.data.table() 
+    # Define tag region
+    buffer <- 
+      cbind(it$tag_x, it$tag_y) |> 
+      terra::vect(crs = terra::crs(map)) |> 
+      terra::buffer(width = 4000)
+    # Define occurrence distribution around tag
+    r0 <- terra::rast(it$file_occupancy)
+    r  <- terra::classify(r0, cbind(0, NA))
+    r  <- terra::crop(r, buffer)
+    e  <- terra::ext(buffer)
+    xlim <- as.numeric(e[1:2])
+    ylim <- as.numeric(e[3:4])
+    # Make map
+    terra::plot(r, 
+                xlim = xlim, ylim = ylim,
+                axes = FALSE, box = FALSE, legend = FALSE,
+                mar = NA, buffer = FALSE, 
+                font = 2)
+    # patter::map_hr_home(r0, .add = TRUE)
+    terra::plot(land, col = "white", add = TRUE, border = NA)
+    terra::plot(land, col = scales::alpha("lightgrey", 0.5), add = TRUE, lwd = 0.5)
+    points(it$tag_x, it$tag_y, col = "red3", lwd = 1.5)
+    points(m$receiver_x, m$receiver_y, col = "black", pch = 4, cex = 0.5, lwd = 1)
+    terra::sbar(d = 1000, xy = "bottomleft", labels = "", lonlat = FALSE, halo = FALSE)
+    # terra::sbar()
+    # mtext(side = 3, 
+    #       text = it$individual_id, 
+    #       line = -1.75, adj = 0.03, font = 2, cex = 1)
+    usr <- par("usr")
+    yadj <- 0.2
+    rect(
+      xleft   = usr[1],
+      ybottom = usr[4] - yadj * diff(usr[3:4]),
+      xright  = usr[2],
+      ytop    = usr[4],
+      col     = scales::alpha("dimgrey", 0.7),
+      border  = NA
+    )
+    text(
+      x = mean(usr[1:2]),
+      y = usr[4] - yadj / 2 * diff(usr[3:4]),
+      labels = paste0(
+        it$individual_id, " (",
+        it$test_duration, ", ",
+        it$detection_gap_max, ")"
+      ),
+      font = 2,
+      cex = 1.2
+    )
+    box(lwd = 1)
+  }) |> invisible()
+  par(pp)
+  dev.off()
+}
 
 #### (optional) Compute the distance between the tag location and the distribution centre
 if (FALSE) {
