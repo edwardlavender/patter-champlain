@@ -482,7 +482,6 @@ if (TRUE) {
   par(pp)
   dev.off()
 }
-stop()
 
 #### (optional) Compute the distance between the tag location and the distribution centre
 if (TRUE) {
