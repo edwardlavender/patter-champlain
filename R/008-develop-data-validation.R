@@ -45,19 +45,26 @@ pinheiro_detections <-
     here_data_raw("mfutia", 
                   "validation", 
                   "Champlain_RangeTestDetections_Summer2016_mhf.qs2"))
+pinheiro_moorings <- 
+  readRDS(here_data_raw_mf("OriginalReceiverSummary_2013-2017.rds"))
 
 
 ###########################
 ###########################
 #### Process individual datasets
 
+###########################
+#### Process Futia & Marsden (2025) dataset
+
 #### Process Futia & Marsden (2025) moorings (non-independent)
-# The futia_moorings contains all receiver deployments
+# The futia_moorings contains all receiver deployments from 2017-2023
+range(c(as.Date(futia_moorings$date_deploy, "%m/%d/%Y"), 
+        as.Date(futia_moorings$date_recover, "%m/%d/%Y")), 
+      na.rm = TRUE)
 # We use this over the range_test_metadata_2021-2022.qs
 # used in the setup-detection-pr-futia.R script b/c that is pre-processed
 # data from MF that does not include receiver start/end times
 # which we need for the in-field validation. 
-
 futia_moorings <- 
   futia_moorings |> 
   mutate(
@@ -76,7 +83,7 @@ futia_moorings <-
       as.POSIXct(tz = "America/New York") |> 
       lubridate::with_tz("UTC")) |> 
   filter(!is.na(receiver_start) & !is.na(receiver_end)) |>
-  # Focus on receivers 
+  # Focus on relevant receivers 
   filter(int_overlaps(interval(receiver_start, receiver_end), 
                       interval(min(futia_detections$detection_timestamp_utc), 
                                max(futia_detections$detection_timestamp_utc)))) |> 
@@ -136,40 +143,86 @@ futia_detections <-
   ) |> 
   as.data.table()
 
+
+###########################
+#### Process Pinheiro (unpublished) dataset
+
 #### Process Pinheiro (unpublished) moorings
-# For this dataset, surrounding receivers are unknown so we focus on the (one)
-# receiver that recorded detections to define moorings. 
+# This dataset does not overlap in time with the Futia & Marsden dataset
 # We assume a deployment period over the duration of detections 
 # as the full deployment period & timing of the range test is also unknown. 
+
+range(pinheiro_detections$detection_timestamp_utc)
+stopifnot(all(pinheiro_detections$receiver_sn %in% pinheiro_moorings$receiver_sn))
+
+pinheiro_detections |> 
+  distinct(receiver_sn, rec_deployLat, rec_deployLon)
+
+pinheiro_moorings |> 
+  filter(receiver_sn %in% pinheiro_detections$receiver_sn[1]) |> 
+  distinct(receiver_sn, deploy_lat, deploy_long)
+
+pll <- 
+  pinheiro_moorings |> 
+  filter(
+    receiver_sn == pinheiro_detections$receiver_sn[1],
+    near(deploy_lat, pinheiro_detections$rec_deployLat[1], tol = 1e-5),
+    near(deploy_long, pinheiro_detections$rec_deployLon[1], tol = 1e-5)
+  )
+
+pll
+
+str(pinheiro_moorings)
+
 pinheiro_moorings <- 
-  pinheiro_detections |>  
+  pinheiro_moorings |>  
   janitor::clean_names() |> 
   mutate(dataset = "P") |> 
-  rename(receiver_lon = rec_deploy_lon, 
-         receiver_lat = rec_deploy_lat) |> 
-  distinct(dataset, receiver_sn, receiver_lon, receiver_lat) |> 
-  mutate(receiver_start = min(pinheiro_detections$detection_timestamp_utc),
-         receiver_end   = max(pinheiro_detections$detection_timestamp_utc), 
-         receiver_start = lubridate::force_tz(receiver_start, "UTC"), 
-         receiver_end   = lubridate::force_tz(receiver_end, "UTC")
-  ) |> 
+  rename(receiver_lon = deploy_long, 
+         receiver_lat = deploy_lat) |> 
+  mutate(
+    receiver_sn = as.integer(as.character(receiver_sn)),
+    receiver_start = 
+           deploy_date_time |> 
+           as.POSIXct(tz = "America/New York") |> 
+           lubridate::with_tz("UTC"), 
+         receiver_end = recover_date_time |> 
+           as.POSIXct(tz = "America/New York") |> 
+           lubridate::with_tz("UTC")) |> 
+  # Focus on relevant receivers
+  filter(int_overlaps(interval(receiver_start, receiver_end), 
+                      interval(min(pinheiro_detections$detection_timestamp_utc), 
+                               max(pinheiro_detections$detection_timestamp_utc)))) |> 
   select("dataset", 
          "receiver_sn", 
          "receiver_lon", "receiver_lat", 
          "receiver_start", "receiver_end") |> 
   as.data.table()
 
+# Filter moorings to receivers within ~10000 m of a tag 
+# * This is not implemented for the Pinheiro dataset
+# * This is a longer range test with longer gaps between detections
+#   so we leverage all receivers
+
+# Record number of moorings
+n_pinheiro_moorings <- nrow(pinheiro_moorings)
+
 #### Process Pinheiro (unpublished) detections
 pinheiro_detections <- 
   pinheiro_detections |>  
   janitor::clean_names() |>
   mutate(dataset   = "P", 
-         timestamp = lubridate::force_tz(detection_timestamp_utc, "UTC")) |> 
+         timestamp = lubridate::force_tz(detection_timestamp_utc, "UTC"), 
+         receiver_sn = as.integer(as.character(receiver_sn))) |> 
   rename(transmitter_id = transmitter, 
          tag_lon        = tag_deploy_lon, 
          tag_lat        = tag_deploy_lat, 
          receiver_lon   = rec_deploy_lon, 
          receiver_lat   = rec_deploy_lat) |> 
+  # Fix floating point mismatch between moorings/detections in receiver coordinates
+  # (Use receiver coordinates in pinheiro_moorings)
+  mutate(receiver_lon = pll$deploy_long, 
+         receiver_lat = pll$deploy_lat) |> 
   group_by(transmitter_id, tag_lon, tag_lat) |>
   # Assign start/end times based on time of range test(s) using detections
   # This is necessary because unlike the Futia dataset test times are unknown
@@ -183,7 +236,6 @@ unique(pinheiro_detections$transmitter_id) # 26794 24337
 
 # Plot tag/receiver locations 
 if (TRUE) {
-  #### Plot tag/receiver locations
   leaflet() |> 
     addTiles() |> 
     addCircleMarkers(
@@ -385,6 +437,7 @@ futia_metadata |>
   filter(transmitter_id %in% c("26794", "24337"))
 
 #### Automated checks
+stopifnot(all(c("F", "P") %in% tests$dataset))
 # Validate time zones (UTC)
 stopifnot(all(sapply(list(
   futia_moorings$receiver_start,
