@@ -102,6 +102,12 @@ land <- terra::erase(
 ###########################
 #### Analysis
 
+#### Review selected tests
+# Tests 1 and 41 include two tags deployed in same location at same time
+iteration |> 
+  filter(sensitivity == "best" & individual_id %in% c(1, 41)) |> 
+  select("individual_id", "block_start", "block_end", "transmitter_id", "tag_lon", "tag_lat")
+
 #### Test summary statistics
 # Number of range-testing tags
 tests |> 
@@ -410,9 +416,15 @@ if (TRUE) {
   pp <- par(mfrow = c(10, 10), 
             mar = c(0, 0, 0, 0),
             oma = c(0, 0, 0, 0))
-  iteration_selected <- iteration[sensitivity == "best" &  dataset == "F", ]
+  iteration_selected <- 
+    iteration |> 
+    filter(sensitivity == "best" &  dataset == "F") |> 
+    mutate(tag_type = factor(tag_type, levels = c("V9", "V13"))) |> 
+    arrange(tag_lon, tag_lat, start, tag_type) |>
+    mutate(panel_id = row_number()) |> 
+    as.data.table()
   nrow(iteration_selected)
-  pbapply::pblapply(split(iteration_selected, iteration_selected$index), function(it) {
+  pbapply::pblapply(split(iteration_selected, iteration_selected$panel_id), function(it) {
     # Define active receivers
     m <- 
       moorings |> 
@@ -442,11 +454,6 @@ if (TRUE) {
     terra::plot(land, col = scales::alpha("lightgrey", 0.5), add = TRUE, lwd = 0.5)
     points(it$tag_x, it$tag_y, col = "red3", lwd = 1.5)
     points(m$receiver_x, m$receiver_y, col = "black", pch = 4, cex = 0.5, lwd = 1)
-    terra::sbar(d = 1000, xy = "bottomleft", labels = "", lonlat = FALSE, halo = FALSE)
-    # terra::sbar()
-    # mtext(side = 3, 
-    #       text = it$individual_id, 
-    #       line = -1.75, adj = 0.03, font = 2, cex = 1)
     usr <- par("usr")
     yadj <- 0.2
     rect(
@@ -461,10 +468,11 @@ if (TRUE) {
       x = mean(usr[1:2]),
       y = usr[4] - yadj / 2 * diff(usr[3:4]),
       labels = paste0(
-        it$individual_id, " (",
-        it$test_duration, ", ",
-        it$detection_count, ", ",
-        it$detection_gap_max, ")"
+        it$panel_id, "/",
+        it$tag_type, "/",
+        it$test_duration, "/",
+        it$detection_count, "/",
+        it$detection_gap_max
       ),
       font = 2,
       cex = 1.2
@@ -474,6 +482,7 @@ if (TRUE) {
   par(pp)
   dev.off()
 }
+stop()
 
 #### (optional) Compute the distance between the tag location and the distribution centre
 if (TRUE) {
@@ -509,6 +518,7 @@ if (TRUE) {
     facet_wrap(~dataset, scales = "free")
   
 }
+
 
 #### End of code.
 ###########################

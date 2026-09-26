@@ -37,6 +37,8 @@ futia_detections <-
   qs::qread(here_data("supp", "model-obs", "futia-raw-validation.qs"))
 futia_moorings <- 
   fread(here_data_raw("mfutia", "validation", "dissertation_receiver_log.csv"))
+futia_metadata <- qs::qread(here_data_raw("model-obs","futia-et-al-2025",
+                                      "range_test_metadata_2021-2022.qs"))
 # Pinheiro (unpublished dataset)
 pinheiro_detections <-
   qs2::qs_read(
@@ -47,7 +49,7 @@ pinheiro_detections <-
 
 ###########################
 ###########################
-#### Process datasets
+#### Process individual datasets
 
 #### Process Futia & Marsden (2025) moorings (non-independent)
 # The futia_moorings contains all receiver deployments
@@ -177,6 +179,8 @@ pinheiro_detections <-
          "timestamp", "receiver_sn",  "receiver_lon", "receiver_lat") |> 
   as.data.table()
 
+unique(pinheiro_detections$transmitter_id) # 26794 24337
+
 # Plot tag/receiver locations 
 if (TRUE) {
   #### Plot tag/receiver locations
@@ -203,7 +207,13 @@ if (TRUE) {
   # tags: 24337 (closer), 26794 (further away)
 }
 
-#### Collate moorings
+
+###########################
+###########################
+#### Collate datasets
+
+###########################
+#### Collate moorings 
 
 # Collate moorings
 moorings <- 
@@ -271,7 +281,10 @@ moorings |>
   ungroup() |>
   pull(n)
 
+
+###########################
 #### Collate detections
+
 detections <- 
   rbind(futia_detections, pinheiro_detections) |> 
   # Define receiver_id in detections
@@ -295,12 +308,25 @@ detections <-
   ungroup() |> 
   as.data.table()
 
+
+###########################
 #### Collate 'tagging' (range test) information
 # This defines test IDs, the location of the range testing tag, and the start/end time
+
 tests <- 
   detections |> 
-  distinct(individual_id, dataset, transmitter_id, tag_lon, tag_lat, start, end) |>
+  distinct(individual_id, dataset, 
+           transmitter_id, tag_lon, tag_lat, 
+           start, end) |>
+  left_join(futia_metadata |> 
+              distinct(transmitter_id, tag_type) |> 
+              as.data.table(),
+            by = "transmitter_id") |> 
+  select("individual_id", "dataset", 
+         "transmitter_id", "tag_type", "tag_lon", "tag_lat", 
+         "start", "end") |> 
   as.data.table()
+
 txy <- 
   tests |> 
   select("tag_lon", "tag_lat") |> 
@@ -308,16 +334,21 @@ txy <-
   terra::vect(crs = "WGS84") |> 
   terra::project(terra::crs(map)) |> 
   terra::geom(df = TRUE)
+
 tests <- 
   tests |> 
   mutate(tag_x = txy$x, 
          tag_y = txy$y, 
          .after = tag_lat) |> 
   as.data.table()
+
 # Checks
 tests[dataset == "P", ]
 
+
+###########################
 #### Clean up
+
 moorings <- 
   moorings |> 
   select("receiver_id", 
@@ -332,9 +363,26 @@ detections <-
   arrange(individual_id, timestamp, receiver_id) |> 
   as.data.table()
 
+
+###########################
+###########################
 #### Review datasets
+
+#### Examine datasets
 moorings
 detections
+tests
+
+#### Check metadata 
+# Double check test durations 
+futia_metadata |> 
+  mutate(duration = difftime(pull_dt, set_dt, units = "mins")) |> 
+  arrange(duration) |>
+  distinct(location, transmitter_id, tag_type, deploy_lat, deploy_lon, set_dt, pull_dt, duration) |> 
+  head()
+# Check if we have tag types for Pinheiro tags
+futia_metadata |>
+  filter(transmitter_id %in% c("26794", "24337"))
 
 #### Automated checks
 # Validate time zones (UTC)
@@ -354,7 +402,11 @@ stopifnot(all(sapply(list(
   tests$end
 ), lubridate::tz) == "UTC"))
 
+
+###########################
+###########################
 #### Write to file
+
 qs::qsave(tests, here_input_validation("main", "tests.qs"))
 qs::qsave(moorings, here_input_validation("main", "moorings.qs"))
 qs::qsave(detections, here_input_validation("main", "detections.qs"))
