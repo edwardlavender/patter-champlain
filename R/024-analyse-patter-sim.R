@@ -720,7 +720,7 @@ residency_skill |>
 # * I.e., we expect reduced variation (increased precision)
 # * We show the variation with a boxplot over all tracks
 png(here_fig_sim("main", "residency-skill-moe.png"), 
-    height = 3, width = 8, units = "in", res = 800)
+    height = 2.5, width = 6, units = "in", res = 800)
 p <- 
   residency_skill_moe |>
   # (optional) Filter Int model 
@@ -746,7 +746,7 @@ dev.off()
 # As above but including Int
 if (TRUE) {
   png(here_fig_sim("main", "residency-skill-moe-incl-Int.png"), 
-      height = 3, width = 8, units = "in", res = 800)
+      height = 2.5, width = 6, units = "in", res = 800)
   p <- 
     residency_skill_moe |>
     # (optional) Filter Int model 
