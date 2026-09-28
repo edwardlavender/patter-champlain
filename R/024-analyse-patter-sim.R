@@ -308,11 +308,20 @@ residency_gla <- residency_skill[individual_id == it$individual_id &
 stopifnot(it$sensitivity == "best")
 stopifnot(nrow(residency_pat) == nrow(residency_gla))
 
+#### (optional) Define plot limits
+# We plot whole study area or delete South Lake (reviewer suggestion)
+xl <- yl <- NULL
+champlain_utm_north <- champlain_utm[champlain_utm$region != "South Lake", ] 
+e <- terra::ext(champlain_utm_north)
+xl <- as.numeric(e[1:2])
+yl <- as.numeric(e[3:4])
+
 #### Map simulated path for example individual
 png(here_fig_sim("main", "example-path.png"), 
     height = 5, width = 5, units = "in", res = 800)
 # Create base map with correct legend for path 
 terra::plot(map,
+            xlim = xl, ylim = yl,
             col = viridis::inferno(nrow(path)),
             range = range(path$timestep), 
             type = "continuous",
@@ -332,7 +341,9 @@ dev.off()
 #### Map occupancy distribution for example individual
 png(here_fig_sim("main", "example-occupancy.png"), 
     height = 5, width = 5, units = "in", res = 800)
-terra::plot(occupancy, pax = list(labels = FALSE, lwd.ticks = 0))
+terra::plot(occupancy, 
+            xlim = xl, ylim = yl,
+            pax = list(labels = FALSE, lwd.ticks = 0))
 points(moorings$receiver_x, moorings$receiver_y, pch = 4, cex = 0.35)
 terra::lines(champlain_utm, lwd = 0.5)
 dev.off()
@@ -350,9 +361,12 @@ occupancy_contours <- terra::classify(occupancy_contours, cbind(0, NA))
 # Make map
 png(here_fig_sim("main", "example-occupancy-quantiles.png"), 
     height = 5, width = 5, units = "in", res = 800)
-terra::plot(occupancy_contours, pax = list(labels = FALSE, lwd.ticks = 0))
+terra::plot(occupancy_contours, 
+            xlim = xl, ylim = yl,
+            pax = list(labels = FALSE, lwd.ticks = 0))
 zlim <- c(0, length(probs))
 terra::plot(occupancy_contours, 
+            xlim = xl, ylim = yl,
             range = zlim, 
             col = grDevices::terrain.colors(length(probs), rev = TRUE),
             pax = list(labels = FALSE, lwd.ticks = 0),
@@ -372,6 +386,7 @@ mx <- max(abs(range(c(residency_pat$perc, residency_gla$perc))))
 png(here_fig_sim("main", "example-residency-patter.png"), 
     height = 5, width = 5, units = "in", res = 800)
 terra::plot(champlain_utm, y = "skill_perc",
+            xlim = xl, ylim = yl,
             range = c(-mx, mx), 
             col = terra::map.pal("differences", 100), type = "continuous", 
             pax = list(labels = FALSE, lwd.ticks = 0), lwd = 0.5)
@@ -388,6 +403,7 @@ mx <- max(abs(champlain_utm$skill_perc))
 png(here_fig_sim("main", "example-residency-glatos.png"), 
     height = 5, width = 5, units = "in", res = 800)
 terra::plot(champlain_utm, y = "skill_perc",
+            xlim = xl, ylim = yl,
             range = c(-mx, mx), 
             col = terra::map.pal("differences", 100), type = "continuous", 
             pax = list(labels = FALSE, lwd.ticks = 0), lwd = 0.5)
@@ -439,10 +455,13 @@ stopifnot(nrow(map_paths) > 1L)
 # (C) Make maps
 png(here_fig_sim("main", "maps-best.png"), 
     height = 5, width = 10, units = "in", res = 800)
-p <- ggmaps(.mapdt = map_dt, .map = map, 
-            .coast = champlain_utm, .geom_coast = list(colour = "black"),
+p <- ggmaps(.mapdt = map_dt, 
+            .map = map, 
+            .coast = champlain_utm, 
+            .geom_coast = list(colour = "black"),
             .path = map_paths, 
-            .geom_path = list(linewidth = 0.2, arrow = grid::arrow(length = unit(0.001, "cm"))))
+            .geom_path = list(linewidth = 0.2, 
+                              arrow = grid::arrow(length = unit(0.001, "cm"))))
 print(p)
 dev.off()
 
@@ -540,7 +559,8 @@ map_dt[, file_ud_quantile := NULL]
 op <- options(terra.pal = grDevices::terrain.colors(length(probs), rev = TRUE))
 png(here_fig_sim("main", "maps-full-quantiles.png"), 
     height = 14, width = 6, units = "in", res = 800)
-p <- ggmaps(.mapdt = map_dt, .map = map, .zlim = zlim,
+p <- ggmaps(.mapdt = map_dt, .map = map,
+            .xlim = xl, .ylim = yl, .zlim = zlim,
             .coast = champlain_utm, .geom_coast = list(colour = "black"),
             .path = map_paths, 
             .geom_path = list(linewidth = 0.2, arrow = grid::arrow(length = unit(0.001, "cm"))), 
