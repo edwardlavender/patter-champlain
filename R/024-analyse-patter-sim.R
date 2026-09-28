@@ -727,8 +727,9 @@ p <-
   # filter(sensitivity_label != "Int") |> 
   ggplot(aes(sensitivity_label, moe, fill = sensitivity_label)) + 
   geom_boxplot(linewidth = 0.25, size = 0.5, varwidth = TRUE, outliers = FALSE) + 
-  geom_jitter(size = 0.25, colour = "dimgrey", width = 0.1, height = 0) +
+  # geom_jitter(size = 0.25, colour = "dimgrey", width = 0.1, height = 0) +
   # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
+  scale_x_discrete(drop = FALSE) +
   scale_fill_discrete(drop = FALSE) +
   xlab("Sensitivity") + 
   ylab("MOE (%)") + 
@@ -741,6 +742,33 @@ p <-
         axis.text.x = element_text(angle = 45, hjust = 1)) 
 print(p)
 dev.off()
+
+# As above but including Int
+if (TRUE) {
+  png(here_fig_sim("main", "residency-skill-moe-incl-Int.png"), 
+      height = 3, width = 8, units = "in", res = 800)
+  p <- 
+    residency_skill_moe |>
+    # (optional) Filter Int model 
+    # filter(sensitivity_label != "Int") |> 
+    ggplot(aes(sensitivity_label, moe, fill = sensitivity_label)) + 
+    geom_boxplot(linewidth = 0.25, size = 0.5, varwidth = TRUE, outliers = FALSE) + 
+    geom_jitter(size = 0.25, colour = "dimgrey", width = 0.1, height = 0) +
+    # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
+    scale_x_discrete(drop = FALSE) +
+    scale_fill_discrete(drop = FALSE) +
+    xlab("Sensitivity") + 
+    ylab("MOE (%)") + 
+    labs(fill = "Analysis") +
+    theme_bw() +
+    theme(panel.grid.minor.y = element_blank(), 
+          panel.grid.major.y = element_blank(), 
+          axis.title.x = element_text(margin = margin(t = 10)),
+          axis.title.y = element_text(margin = margin(r = 10)), 
+          axis.text.x = element_text(angle = 45, hjust = 1)) 
+  print(p)
+  dev.off()
+}
 
 # Summarise MOE
 residency_skill_moe |> 
