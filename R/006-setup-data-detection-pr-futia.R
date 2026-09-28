@@ -74,8 +74,11 @@ metadata |>
   as.data.table()
 # Check metadata for example tags 
 metadata |> 
-  filter(transmitter_id %in% c(4331, 4632)) |> 
   distinct(transmitter_id, tag_type, transmitter_dB)
+metadata |> 
+  distinct(transmitter_id, tag_type, transmitter_dB) |> 
+  group_by(transmitter_id) |> 
+  filter(n() > 1L)
 
 #### Merge range test detections with associated metadata
 # The set and pull times are exact to the second that the range test tags 
