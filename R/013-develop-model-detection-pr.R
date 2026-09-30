@@ -299,7 +299,7 @@ gg <-
   # Colour lines 
   scale_colour_manual(values = c(
       "F146" = "lightblue",
-      "F151" = "skyblue",
+      "F151" = "dodgerblue3",
       "F152" = "blue",
       "K145" = "mediumpurple1",
       "K153" = "purple3",

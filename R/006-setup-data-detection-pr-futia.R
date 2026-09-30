@@ -80,6 +80,14 @@ metadata |>
   group_by(transmitter_id) |> 
   filter(n() > 1L)
 
+#### Fix metadata
+# For tag 4632 (v13), the correct transmitter_dB is 152 dB
+# Other tag types and dB are correct (MF)
+metadata[transmitter_id == 4632 & transmitter_dB == 151L, transmitter_dB := 152L]
+stopifnot(all(metadata$transmitter_dB[metadata$transmitter_id == 4632] == 152L))
+metadata |> 
+  distinct(transmitter_id, tag_type, transmitter_dB)
+
 #### Merge range test detections with associated metadata
 # The set and pull times are exact to the second that the range test tags 
 # were set and deployed, so there should not be any more detections than 
@@ -224,6 +232,7 @@ dcounts |>
 #### Write to file
 qs::qsave(dcounts, here_data("supp", "model-obs", "futia-raw.qs"))
 qs::qsave(validation, here_data("supp", "model-obs", "futia-raw-validation.qs"))
+
 
 #### End of code. 
 ###########################
