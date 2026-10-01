@@ -271,7 +271,8 @@ if (FALSE) {
 
 #### Plot example occurrence distribution with tag location
 # Define tag location 
-it   <- iteration[1, ]
+# it   <- iteration[1, ]
+it   <- iteration[individual_id == 94 & sensitivity == "best", ]
 test <- tests[individual_id == it$individual_id, ]
 # Define active receivers
 m <- 
@@ -281,12 +282,23 @@ m <-
   as.data.table() 
 # Define occurrence distribution, zoomed in a bit
 r  <- terra::rast(it$file_occupancy)
-r  <- terra::classify(r, cbind(0, NA))
-r0 <- r
-r  <- terra::trim(r)
-e  <- terra::ext(r)
-e  <- e + 20000
-r  <- terra::crop(r0, e)
+if (TRUE) {
+  # Zoom around point
+  e <- 
+    cbind(test$tag_x, test$tag_y) |> 
+    terra::vect(crs = terra::crs(r)) |> 
+    terra::buffer(width = 1000) |> 
+    terra::ext()
+  r  <- terra::crop(r, e)
+} else {
+  # Zoom around probability distribution
+  r  <- terra::classify(r, cbind(0, NA))
+  r0 <- r
+  r  <- terra::trim(r)
+  e  <- terra::ext(r)
+  e  <- e + 10000
+  r  <- terra::crop(r0, e)
+}
 # Make map
 terra::plot(r, legend = FALSE)
 terra::plot(land, col = scales::alpha("dimgrey", 0.3), add = TRUE)
