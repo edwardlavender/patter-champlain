@@ -69,6 +69,7 @@ iteration.n_particle_smoother = Int.(iteration.n_particle_smoother);
 # Filter rows 
 # iteration   = iteration[iteration.sensitivity .== "best", :];
 # iteration = iteration[iteration.index .∈ Ref([7, 13, 14, 119, 133, 140, 147, 161, 166, 168, 176, 178, 179, 182, 195, 196]), :];
+# iteration = iteration[iteration.individual_id .∈ Ref([94, 95]), :];
 
 #### Define iteration row
 if isinteractive()
