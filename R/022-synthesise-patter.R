@@ -43,7 +43,7 @@ map_summer <- terra::rast("./data/input/map-summer.tif")
 #### Select analysis
 
 #### Define analysis 
-analysis <- "sim"
+# analysis <- "sim"
 # analysis <- "real"
 analysis <- "validation"
 subanalysis <- "main"
