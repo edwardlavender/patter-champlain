@@ -428,13 +428,23 @@ if (TRUE) {
   pp <- par(mfrow = c(10, 10), 
             mar = c(0, 0, 0, 0),
             oma = c(0, 0, 0, 0))
+  # Define selected iterations & panel titles
   iteration_selected <- 
     iteration |> 
     filter(sensitivity == "best" &  dataset == "F") |> 
     mutate(tag_type = factor(tag_type, levels = c("V9", "V13"))) |> 
     arrange(tag_lon, tag_lat, start, tag_type) |>
-    mutate(panel_id = row_number()) |> 
+    mutate(panel_id = row_number(), 
+           panel_title = paste0(panel_id, "/",
+                                tag_type, "/",
+                                test_duration, "/",
+                                detection_count, "/",
+                                detection_gap_max
+           )
+    ) |> 
     as.data.table()
+  tail(iteration_selected, 20)
+  # Loop over panels & make plots 
   nrow(iteration_selected)
   pbapply::pblapply(split(iteration_selected, iteration_selected$panel_id), function(it) {
     # Define active receivers
@@ -479,13 +489,7 @@ if (TRUE) {
     text(
       x = mean(usr[1:2]),
       y = usr[4] - yadj / 2 * diff(usr[3:4]),
-      labels = paste0(
-        it$panel_id, "/",
-        it$tag_type, "/",
-        it$test_duration, "/",
-        it$detection_count, "/",
-        it$detection_gap_max
-      ),
+      labels = it$panel_title,
       font = 2,
       cex = 1.2
     )
