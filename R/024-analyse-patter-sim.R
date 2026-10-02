@@ -690,6 +690,62 @@ p <-
 print(p)
 dev.off()
 
+if (TRUE) {
+  
+  # As above including Int without outliers
+  png(here_fig_sim("main", "residency-skill-sensitivity-with-Int.png"), 
+      height = 4, width = 12, units = "in", res = 800)
+  p <- 
+    residency_skill |>
+    # (optional) Filter Int model 
+    # filter(sensitivity_label != "Int") |> 
+    ggplot() + 
+    geom_boxplot(aes(region, perc, fill = sensitivity_label), 
+                 linewidth = 0.25, size = 0.5, varwidth = TRUE, 
+                 outliers = FALSE) + 
+    scale_fill_discrete(drop = FALSE) +
+    geom_hline(yintercept = 0, linetype = 3) + 
+    # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
+    xlab("Region") + 
+    ylab("Residency error (%)") + 
+    labs(fill = "Analysis") +
+    theme_bw() +
+    theme(panel.grid.minor.y = element_blank(), 
+          panel.grid.major.y = element_blank(), 
+          axis.title.x = element_text(margin = margin(t = 10)),
+          axis.title.y = element_text(margin = margin(r = 10)), 
+          axis.text.x = element_text(angle = 45, hjust = 1)) 
+  print(p)
+  dev.off()
+  
+  # As above including outliers
+  png(here_fig_sim("main", "residency-skill-sensitivity-with-Int-and-outliers.png"), 
+      height = 4, width = 12, units = "in", res = 800)
+  p <- 
+    residency_skill |>
+    # (optional) Filter Int model 
+    # filter(sensitivity_label != "Int") |> 
+    ggplot() + 
+    geom_boxplot(aes(region, perc, fill = sensitivity_label), 
+                 linewidth = 0.25, size = 0.5, varwidth = TRUE, 
+                 outliers = TRUE) + 
+    scale_fill_discrete(drop = FALSE) +
+    geom_hline(yintercept = 0, linetype = 3) + 
+    # scale_y_continuous(expand = c(0, 0), limits = c(-1, 1)) + 
+    xlab("Region") + 
+    ylab("Residency error (%)") + 
+    labs(fill = "Analysis") +
+    theme_bw() +
+    theme(panel.grid.minor.y = element_blank(), 
+          panel.grid.major.y = element_blank(), 
+          axis.title.x = element_text(margin = margin(t = 10)),
+          axis.title.y = element_text(margin = margin(r = 10)), 
+          axis.text.x = element_text(angle = 45, hjust = 1)) 
+  print(p)
+  dev.off()
+  
+}
+
 #### Summarise residency skill overs region simply (%)
 # Range in absolute mean error for 'best' analyses
 residency_skill |> 
